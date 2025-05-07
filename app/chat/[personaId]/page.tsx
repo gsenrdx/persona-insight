@@ -20,6 +20,7 @@ interface PersonaForPage {
   summary?: string;
   painPoint?: string;
   hiddenNeeds?: string;
+  persona_charactor?: string;
 }
 
 interface ChatPageProps {
@@ -226,12 +227,24 @@ export default function ChatPage({ params }: ChatPageProps) {
               
               {/* 숨겨진 니즈 - 토스 스타일 적용 */}
               {persona.hiddenNeeds && (
-                <div className="pb-0 sm:pb-4">
+                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
                     내 숨겨진 니즈
                   </h3>
                   <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
                     {persona.hiddenNeeds}
+                  </div>
+                </div>
+              )}
+              
+              {/* 성격 및 말투 - 토스 스타일 적용 */}
+              {persona.persona_charactor && (
+                <div className="pb-0 sm:pb-4">
+                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                    성격 및 말투
+                  </h3>
+                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                    {persona.persona_charactor}
                   </div>
                 </div>
               )}

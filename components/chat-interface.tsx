@@ -17,15 +17,28 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ personaId, personaData }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
   }, [])
 
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [])
+
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [])
+
+  const focusInput = useCallback(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
     }
   }, [])
 
@@ -45,7 +58,8 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       painPoint: personaData.painPoint,
       hiddenNeeds: personaData.hiddenNeeds,
       keywords: personaData.keywords || [],
-      summary: personaData.summary || ""
+      summary: personaData.summary || "",
+      persona_charactor: personaData.persona_charactor || ""
     }
   }), [personaData])
 
@@ -55,14 +69,24 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     body: memoizedChatBody,
     onFinish: () => {
       scrollToBottom()
+      focusInput()
     },
   })
 
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom()
+      if (!isLoading) {
+        focusInput()
+      }
     }
-  }, [messages.length, scrollToBottom])
+  }, [messages.length, scrollToBottom, isLoading, focusInput])
+
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      focusInput()
+    }
+  }, [isLoading, messages.length, focusInput])
 
   return (
     <div className="flex flex-col h-full">
@@ -162,6 +186,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       <div className="flex-shrink-0 border-t border-zinc-200 dark:border-zinc-800 p-4 bg-white dark:bg-zinc-950">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto relative">
           <Input
+            ref={inputRef}
             value={input}
             onChange={handleInputChange}
             placeholder="메시지를 입력하세요..."

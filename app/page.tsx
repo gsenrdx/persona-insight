@@ -20,7 +20,10 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80" />
-            <h2 className="text-xl font-semibold tracking-tight">Persona Insight</h2>
+            <div className="flex items-baseline">
+              <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
+              <span className="ml-2 text-xs text-muted-foreground">by MISO1004</span>
+            </div>
           </div>
           <ModeToggle />
         </div>

@@ -10,6 +10,7 @@ interface PersonaData {
   summary?: string;
   pain_point?: string;
   hidden_needs?: string;
+  persona_charactor?: string;
   [key: string]: any;
 }
 
@@ -63,6 +64,7 @@ export async function fetchPersonaById(id: string) {
       summary: item.summary || "",
       painPoint: item.pain_point || "",
       hiddenNeeds: item.hidden_needs || "",
+      persona_charactor: item.persona_charactor || "",
     }
   } catch (error) {
     console.error("Error fetching persona by ID:", error)
@@ -97,6 +99,7 @@ export async function fetchPersonas(page: number | 'all' = 1, limit = 8) {
         summary: item.summary || "",
         painPoint: item.pain_point || "",
         hiddenNeeds: item.hidden_needs || "",
+        persona_charactor: item.persona_charactor || "",
       }))
     }
 
@@ -117,6 +120,7 @@ export async function fetchPersonas(page: number | 'all' = 1, limit = 8) {
         summary: item.summary || "",
         painPoint: item.pain_point || "",
         hiddenNeeds: item.hidden_needs || "",
+        persona_charactor: item.persona_charactor || "",
       }
     })
   } catch (error) {
