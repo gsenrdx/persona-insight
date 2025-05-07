@@ -30,8 +30,23 @@ export async function fetchPersonaById(id: string) {
       throw new Error("Invalid data format received from API")
     }
 
-    // row_id로 데이터 찾기
-    const item = result.data.find((persona: PersonaData) => persona.row_id === id)
+    let item: PersonaData | undefined;
+
+    // 먼저 row_id로 데이터 찾기
+    item = result.data.find((persona: PersonaData) => persona.row_id === id)
+
+    // row_id로 찾지 못했고, id가 "persona-" 패턴이면 인덱스로 찾기 시도
+    if (!item && id.startsWith("persona-")) {
+      const indexStr = id.split("-")[1];
+      if (indexStr) {
+        const index = parseInt(indexStr, 10) - 1; // 1-based index to 0-based
+        if (index >= 0 && index < result.data.length) {
+          item = result.data[index];
+          // 이 경우, item.row_id가 없을 수 있으므로, 반환되는 id는 요청된 id를 사용하도록 보장
+          // (아래 반환 객체에서 id: id, 부분으로 이미 처리됨)
+        }
+      }
+    }
 
     if (!item) {
       console.error(`Persona with ID ${id} not found`)
@@ -39,7 +54,7 @@ export async function fetchPersonaById(id: string) {
     }
 
     return {
-      id,
+      id, // 요청된 id를 그대로 사용
       name: item.name || item.persona || '알 수 없는 페르소나',
       image: item.image || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(item.name || item.persona || "페르소나")}`,
       keywords: item.keywords ? item.keywords.split(",").map((k: string) => k.trim()) : 
