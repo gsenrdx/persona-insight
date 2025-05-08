@@ -6,8 +6,8 @@ import TagList from "@/components/tag-list"
 import SkeletonCardGrid from "@/components/skeleton-card-grid"
 import { ModeToggle } from "@/components/mode-toggle"
 
-export default function Home({ searchParams }: { searchParams: { q?: string, searchIntent?: string, result?: string } }) {
-  const isSearching = !!searchParams.searchIntent || !!searchParams.result
+export default function Home({ searchParams }: { searchParams: { q?: string, searchIntent?: string, results?: string } }) {
+  const isSearching = !!searchParams.searchIntent || !!searchParams.results
   
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
@@ -48,7 +48,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
           )}
         </div>
 
-        {isSearching && searchParams.result ? (
+        {isSearching ? (
           <SearchResult />
         ) : (
           <Suspense fallback={<SkeletonCardGrid />}>

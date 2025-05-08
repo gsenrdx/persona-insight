@@ -122,14 +122,22 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "system",
-            content: `당신은 사용자의 검색 쿼리를 분석하여 가장 적합한 페르소나를 찾아주는 AI 어시스턴트입니다. 
-            제공된 페르소나 목록에서 사용자의 요구와 가장 잘 맞는 페르소나를 선택해주세요.
+            content: `당신은 사용자의 검색 쿼리를 분석하여 적합한 페르소나를 찾아주는 AI 어시스턴트입니다. 
+            제공된 페르소나 목록에서 사용자의 요구와 가장 잘 맞는 페르소나 3-5개를 선택해주세요.
             응답은 반드시 다음 JSON 형식이어야 합니다:
-            { "personaId": "persona_row_id", "reason": "이 페르소나를 선택한 간단한 이유" }`
+            { 
+              "personas": [
+                { "personaId": "첫번째_persona_row_id", "reason": "이 페르소나를 선택한 간단한 이유", "relevanceScore": 90 },
+                { "personaId": "두번째_persona_row_id", "reason": "이 페르소나를 선택한 간단한 이유", "relevanceScore": 85 },
+                ...
+              ]
+            }
+            relevanceScore는 검색 쿼리와의 관련성 점수로 0-100 사이의 값을 제공해주세요.
+            가장 관련성이 높은 페르소나부터 내림차순으로 정렬하여 반환하세요.`
           },
           {
             role: "user",
-            content: `사용자 검색 쿼리: "${query}"\n\n사용 가능한 페르소나 목록:\n${JSON.stringify(personaInfos, null, 2)}\n\n가장 적합한 페르소나의 row_id와 선택 이유를 JSON 형식으로 반환해주세요.`
+            content: `사용자 검색 쿼리: "${query}"\n\n사용 가능한 페르소나 목록:\n${JSON.stringify(personaInfos, null, 2)}\n\n적합한 페르소나들의 row_id와 선택 이유를 JSON 형식으로 반환해주세요.`
           }
         ],
         temperature: 0.5,
@@ -145,25 +153,34 @@ export async function POST(req: Request) {
     const responseContent = openaiResponse.choices[0].message.content
     const gptResponse = JSON.parse(responseContent)
     
-    // 해당 페르소나 찾기
-    const selectedPersona = personas.find((p: any) => p.row_id === gptResponse.personaId)
+    // 선택된 페르소나들 정보 가져오기
+    const recommendedPersonas = gptResponse.personas.map((recommendation: any) => {
+      const persona = personas.find((p: any) => p.row_id === recommendation.personaId)
+      
+      if (!persona) return null
+      
+      return {
+        personaId: persona.row_id,
+        personaData: {
+          name: persona.name,
+          image: persona.image || "",
+          summary: persona.summary || "",
+          insight: persona.insight || "",
+          painPoint: persona.pain_point || "",
+          hiddenNeeds: persona.hidden_needs || "",
+          keywords: persona.keywords ? persona.keywords.split(",").map((k: string) => k.trim()) : [],
+        },
+        reason: recommendation.reason,
+        relevanceScore: recommendation.relevanceScore
+      }
+    }).filter(Boolean)
     
-    if (!selectedPersona) {
+    if (recommendedPersonas.length === 0) {
       return NextResponse.json({ error: "적합한 페르소나를 찾을 수 없습니다." }, { status: 404 })
     }
     
     return NextResponse.json({
-      personaId: selectedPersona.row_id,
-      personaData: {
-        name: selectedPersona.name,
-        image: selectedPersona.image || "",
-        summary: selectedPersona.summary || "",
-        insight: selectedPersona.insight || "",
-        painPoint: selectedPersona.pain_point || "",
-        hiddenNeeds: selectedPersona.hidden_needs || "",
-        keywords: selectedPersona.keywords ? selectedPersona.keywords.split(",").map((k: string) => k.trim()) : [],
-      },
-      reason: gptResponse.reason
+      recommendedPersonas
     })
   } catch (error) {
     console.error("AI 페르소나 검색 오류:", error)

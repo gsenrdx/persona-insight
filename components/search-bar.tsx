@@ -68,12 +68,15 @@ export default function SearchBar() {
         
         const data = await response.json()
         
-        if (data.personaId && data.personaData) {
-          // 검색 결과 URL 설정
+        if (data.recommendedPersonas && data.recommendedPersonas.length > 0) {
+          // 검색 결과 URL 설정 - 여러 페르소나 결과를 JSON 문자열로 저장
           const resultParams = new URLSearchParams()
           resultParams.set("q", query)
-          resultParams.set("result", data.personaId)
-          resultParams.set("reason", encodeURIComponent(data.reason))
+          resultParams.set("results", "true") // 단일 결과가 아닌 여러 결과가 있음을 표시
+          
+          // 결과 데이터를 URL에 저장하지 않고 세션 스토리지에 저장
+          sessionStorage.setItem('personaSearchResults', JSON.stringify(data.recommendedPersonas))
+          
           router.push(`/?${resultParams.toString()}`, {scroll: false})
         } else {
           toast({
