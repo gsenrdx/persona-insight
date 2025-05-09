@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, MessageCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -119,12 +119,6 @@ export default function PersonaCard({
                 </p>
               </div>
               
-              {/* 구분선 */}
-              <div className={cn(
-                "h-px w-full my-4",
-                isDark ? "bg-zinc-800" : "bg-zinc-100"
-              )} />
-              
               {/* 키워드 모음 */}
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {keywords.slice(0, 3).map((keyword, index) => (
@@ -156,6 +150,12 @@ export default function PersonaCard({
                 )}
               </div>
               
+              {/* 구분선 - 투명색으로 변경 */}
+              <div className={cn(
+                "h-px w-full my-4",
+                "bg-transparent"
+              )} />
+              
               {/* 빈 공간 */}
               <div className="flex-grow" />
               
@@ -170,10 +170,14 @@ export default function PersonaCard({
                 )}
               >
                 <span className={cn(
-                  "text-sm font-medium", 
+                  "flex items-center text-sm font-medium", 
                   isDark ? "text-white" : "text-zinc-900"
                 )}>
-                  채팅으로 대화하기
+                  <MessageCircle className={cn(
+                    "h-3.5 w-3.5 mr-1",
+                    isDark ? "text-zinc-400" : "text-zinc-500"
+                  )} />
+                  <span className="ml-1">대화하기</span>
                 </span>
                 <div className={cn(
                   "p-1.5 rounded-full",

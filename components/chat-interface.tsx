@@ -71,6 +71,16 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       scrollToBottom()
       focusInput()
     },
+    onResponse: (response) => {
+      // 응답을 디버깅하기 위한 코드
+      console.log("Chat API 응답 받음:", response.status, response.statusText);
+      if (!response.ok) {
+        console.error("Chat API 오류 응답:", response.status, response.statusText);
+      }
+    },
+    onError: (error) => {
+      console.error("Chat API 오류 발생:", error);
+    }
   })
 
   useEffect(() => {

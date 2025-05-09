@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, Check, Users, RefreshCw, UserPlus } from "lucide-react"
+import { ChevronDown, Check, Users, UserPlus } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -38,14 +38,6 @@ export default function PersonaSwitcher({ currentPersona, allPersonas, currentPe
       {showHeader && (
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">다른 페르소나</h3>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 w-7 p-0 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="sr-only">새로고침</span>
-          </Button>
         </div>
       )}
       
