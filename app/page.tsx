@@ -28,8 +28,8 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
             </div>
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="default" className="text-sm font-medium gap-2" asChild>
-              <Link href="/insights"><PieChart className="h-4 w-4" />인터뷰 종합 인사이트</Link>
+            <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
+              <Link href="/insights"><PieChart className="h-4 w-4" />종합 인사이트</Link>
             </Button>
             <ModeToggle />
           </div>

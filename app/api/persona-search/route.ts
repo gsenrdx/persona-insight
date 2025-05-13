@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
-import { streamText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { createDataStreamResponse } from 'ai'
+
+// Edge Runtime 설정
+export const runtime = 'edge'
+export const maxDuration = 30
 
 // Google Sheets에서 데이터를 가져오는 함수
 async function fetchGoogleSheetsData() {
@@ -11,7 +14,7 @@ async function fetchGoogleSheetsData() {
     // CSV 형식으로 데이터 가져오기
     const response = await fetch(
       `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=0`,
-      { cache: "no-store" }, // 항상 최신 데이터 가져오기
+      { cache: "no-store" } // 항상 최신 데이터 가져오기
     )
 
     if (!response.ok) {
@@ -84,6 +87,7 @@ function parseCSVLine(line: string): string[] {
   return result
 }
 
+// Miso API를 사용한 페르소나 검색 처리
 export async function POST(req: Request) {
   try {
     const { query } = await req.json()
@@ -92,6 +96,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "검색어가 필요합니다." }, { status: 400 })
     }
     
+    // 전달되는 값 콘솔 출력 (디버깅용)
+    console.log('[페르소나 검색 요청] query:', query)
+    
     // 구글 시트에서 페르소나 데이터 가져오기
     const personas = await fetchGoogleSheetsData()
     
@@ -99,7 +106,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "페르소나 데이터를 찾을 수 없습니다." }, { status: 404 })
     }
     
-    // GPT를 사용하여 가장 적합한 페르소나 찾기
+    // 페르소나 정보 형식 변환
     const personaInfos = personas.map((persona: any) => ({
       row_id: persona.row_id,
       name: persona.name,
@@ -110,80 +117,130 @@ export async function POST(req: Request) {
       keywords: persona.keywords ? persona.keywords.split(",").map((k: string) => k.trim()) : []
     }))
     
-    // OpenAI 요청 수행
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4-turbo",
-        messages: [
-          {
-            role: "system",
-            content: `당신은 사용자의 검색 쿼리를 분석하여 적합한 페르소나를 찾아주는 AI 어시스턴트입니다. 
-            제공된 페르소나 목록에서 사용자의 요구와 가장 잘 맞는 페르소나 3-5개를 선택해주세요.
-            응답은 반드시 다음 JSON 형식이어야 합니다:
-            { 
-              "personas": [
-                { "personaId": "첫번째_persona_row_id", "reason": "이 페르소나를 선택한 간단한 이유", "relevanceScore": 90 },
-                { "personaId": "두번째_persona_row_id", "reason": "이 페르소나를 선택한 간단한 이유", "relevanceScore": 85 },
-                ...
-              ]
-            }
-            relevanceScore는 검색 쿼리와의 관련성 점수로 0-100 사이의 값을 제공해주세요.
-            가장 관련성이 높은 페르소나부터 내림차순으로 정렬하여 반환하세요.`
+    // Miso API 호출
+    const response = await fetch(
+      'https://api.holdings.miso.gs/ext/v1/chat',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,  // 테스트용 토큰
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: query,  // 사용자 검색어
+          inputs: {
+            selected_mode: "persona_search",
+            persona_search_context: JSON.stringify(personaInfos)  // 페르소나 정보를 문자열로 변환
           },
-          {
-            role: "user",
-            content: `사용자 검색 쿼리: "${query}"\n\n사용 가능한 페르소나 목록:\n${JSON.stringify(personaInfos, null, 2)}\n\n적합한 페르소나들의 row_id와 선택 이유를 JSON 형식으로 반환해주세요.`
-          }
-        ],
-        temperature: 0.5,
-        response_format: { type: "json_object" }
-      })
-    })
+          mode: 'blocking',  // streaming이 아닌 blocking 모드 사용
+          conversation_id: '',
+          user: 'persona-insight-user',
+          files: []
+        })
+      }
+    )
     
+    // 오류 처리
     if (!response.ok) {
-      throw new Error(`OpenAI API 오류: ${response.status} ${response.statusText}`)
+      const errorText = await response.text().catch(() => '')
+      console.error('⛔ Miso API 오류:', response.status, errorText)
+      return NextResponse.json({ error: "페르소나 검색 중 외부 API 오류가 발생했습니다." }, { status: 500 })
     }
     
-    const openaiResponse = await response.json()
-    const responseContent = openaiResponse.choices[0].message.content
-    const gptResponse = JSON.parse(responseContent)
+    // Miso API 응답 처리
+    const data = await response.json()
     
-    // 선택된 페르소나들 정보 가져오기
-    const recommendedPersonas = gptResponse.personas.map((recommendation: any) => {
-      const persona = personas.find((p: any) => p.row_id === recommendation.personaId)
-      
-      if (!persona) return null
-      
-      return {
-        personaId: persona.row_id,
-        personaData: {
-          name: persona.name,
-          image: persona.image || "",
-          summary: persona.summary || "",
-          insight: persona.insight || "",
-          painPoint: persona.pain_point || "",
-          hiddenNeeds: persona.hidden_needs || "",
-          keywords: persona.keywords ? persona.keywords.split(",").map((k: string) => k.trim()) : [],
-        },
-        reason: recommendation.reason,
-        relevanceScore: recommendation.relevanceScore
-      }
-    }).filter(Boolean)
+    if (!data.answer) {
+      return NextResponse.json({ error: "페르소나 검색 결과를 찾을 수 없습니다." }, { status: 404 })
+    }
+    
+    // XML 응답 파싱
+    const xmlResult = data.answer
+    const recommendedPersonas = parsePersonaSearchResults(xmlResult)
     
     if (recommendedPersonas.length === 0) {
       return NextResponse.json({ error: "적합한 페르소나를 찾을 수 없습니다." }, { status: 404 })
     }
     
-    return NextResponse.json({
-      recommendedPersonas
+    // 파싱된 추천 페르소나에 더 자세한 정보 추가
+    const enrichedPersonas = recommendedPersonas.map(persona => {
+      const fullPersona = personas.find((p: any) => p.row_id === persona.personaId)
+      
+      if (!fullPersona) return persona
+      
+      return {
+        ...persona,
+        personaData: {
+          ...persona.personaData,
+          image: fullPersona.image || "",
+          insight: fullPersona.insight || "",
+          painPoint: fullPersona.pain_point || "",
+          hiddenNeeds: fullPersona.hidden_needs || "",
+          keywords: fullPersona.keywords ? fullPersona.keywords.split(",").map((k: string) => k.trim()) : [],
+        }
+      }
     })
+    
+    return NextResponse.json({ recommendedPersonas: enrichedPersonas })
+    
   } catch (error) {
-    console.error("AI 페르소나 검색 오류:", error)
+    console.error("페르소나 검색 오류:", error)
     return NextResponse.json({ error: "페르소나 검색 중 오류가 발생했습니다." }, { status: 500 })
   }
+}
+
+// XML 형식의 페르소나 검색 결과 파싱 함수
+function parsePersonaSearchResults(xmlText: string): any[] {
+  try {
+    // 결과 배열 초기화
+    const results: any[] = []
+    
+    // persona_search_results 태그 추출
+    const resultsMatch = xmlText.match(/<persona_search_results>([\s\S]*?)<\/persona_search_results>/i)
+    
+    if (!resultsMatch) {
+      console.error("XML 파싱 오류: persona_search_results 태그를 찾을 수 없습니다.")
+      return []
+    }
+    
+    // 각 persona 태그 추출
+    const personasContent = resultsMatch[1]
+    const personaMatches = personasContent.matchAll(/<persona>([\s\S]*?)<\/persona>/gi)
+    
+    // 각 persona 정보 파싱
+    for (const match of personaMatches) {
+      const personaContent = match[1]
+      
+      // 필요한 필드 추출
+      const personaId = extractTagContent(personaContent, "persona_id")
+      const name = extractTagContent(personaContent, "name")
+      const summary = extractTagContent(personaContent, "summary")
+      const relevanceScore = parseInt(extractTagContent(personaContent, "relevance_score") || "0", 10)
+      const reason = extractTagContent(personaContent, "reason")
+      
+      // 결과 객체 구성
+      results.push({
+        personaId,
+        personaData: {
+          name,
+          summary,
+        },
+        reason,
+        relevanceScore
+      })
+    }
+    
+    // 관련성 점수 기준 내림차순 정렬
+    return results.sort((a, b) => b.relevanceScore - a.relevanceScore)
+    
+  } catch (error) {
+    console.error("XML 파싱 오류:", error)
+    return []
+  }
+}
+
+// XML 태그 내용 추출 헬퍼 함수
+function extractTagContent(content: string, tagName: string): string {
+  const match = content.match(new RegExp(`<${tagName}>(.*?)<\/${tagName}>`, 's'))
+  return match ? match[1].trim() : ""
 } 

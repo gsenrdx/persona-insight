@@ -97,7 +97,7 @@ export default function ChatPage({ params }: ChatPageProps) {
   if (!persona) return null
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden isolate">
+    <div className="relative flex flex-col h-[100dvh] overflow-hidden isolate">
       {/* 배경 효과 - 부드러운 그라데이션과 패턴 */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] pointer-events-none -z-20" />
       <div className="absolute top-0 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl -z-20" />
@@ -135,7 +135,7 @@ export default function ChatPage({ params }: ChatPageProps) {
         <aside className={`
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
           fixed md:relative md:w-80 lg:w-96 z-30 md:z-auto
-          h-[calc(100%-57px)] md:h-full w-[85%] max-w-xs
+          h-[calc(100dvh-57px)] md:h-full w-[85%] max-w-xs
           bg-white dark:bg-zinc-950 flex flex-col shadow-sm md:shadow-none
           border-r border-zinc-200 dark:border-zinc-800 
           overflow-hidden transition-transform duration-300

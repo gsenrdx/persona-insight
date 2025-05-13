@@ -6,8 +6,9 @@ import { useInView } from "react-intersection-observer"
 import { fetchPersonas } from "@/lib/data"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Loader2, AlertOctagon, RefreshCw, SearchX } from "lucide-react"
+import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus } from "lucide-react"
 import { motion } from "framer-motion"
+import AddInterviewModal from "./add-interview-modal"
 
 interface Persona extends Omit<PersonaCardProps, 'summary'> {
   summary?: string;
@@ -21,6 +22,7 @@ export default function PersonaCardGrid() {
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([])
   const [isLoading, setIsLoading] = useState(cachedAllPersonas === null)
   const [error, setError] = useState<string | null>(null)
+  const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   // searchParams를 문자열로 변환하여 의존성 배열에 안전하게 사용
@@ -154,27 +156,44 @@ export default function PersonaCardGrid() {
   }
 
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-20"
-      key={selectedKeywords.join(',')} // 선택된 키워드 변경 시만 애니메이션 재생
-    >
-      {filteredPersonas.map((persona) => (
-        <motion.div key={persona.id} variants={item} className="h-full">
-          <PersonaCard
-            id={persona.id}
-            name={persona.name}
-            image={persona.image}
-            keywords={persona.keywords}
-            insight={persona.insight}
-            summary={persona.summary}
-            painPoint={persona.painPoint}
-            hiddenNeeds={persona.hiddenNeeds}
-          />
-        </motion.div>
-      ))}
-    </motion.div>
+    <>
+      <div className="flex justify-end mb-4">
+        <Button 
+          onClick={() => setIsAddInterviewModalOpen(true)}
+          className="gap-1.5"
+        >
+          <Plus className="h-4 w-4" />
+          고객 인터뷰 추가
+        </Button>
+      </div>
+
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-20"
+        key={selectedKeywords.join(',')} // 선택된 키워드 변경 시만 애니메이션 재생
+      >
+        {filteredPersonas.map((persona) => (
+          <motion.div key={persona.id} variants={item} className="h-full">
+            <PersonaCard
+              id={persona.id}
+              name={persona.name}
+              image={persona.image}
+              keywords={persona.keywords}
+              insight={persona.insight}
+              summary={persona.summary}
+              painPoint={persona.painPoint}
+              hiddenNeeds={persona.hiddenNeeds}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
+
+      <AddInterviewModal 
+        open={isAddInterviewModalOpen}
+        onOpenChange={setIsAddInterviewModalOpen}
+      />
+    </>
   )
 }
