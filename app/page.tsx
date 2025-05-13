@@ -24,7 +24,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
           <Link href="/" className="flex items-center gap-2">
             <div className="flex items-baseline">
               <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-              <span className="ml-2 text-xs text-muted-foreground">by MISO1004</span>
+              <span className="ml-2 text-xs text-muted-foreground">by MISO</span>
             </div>
           </Link>
           <div className="flex items-center gap-3">
@@ -65,7 +65,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
       </main>
       
       <footer className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-        <p>© 2025 Persona Insight by MISO1004. All rights reserved.</p>
+        <p>© 2025 Persona Insight by MISO. All rights reserved.</p>
       </footer>
     </div>
   )

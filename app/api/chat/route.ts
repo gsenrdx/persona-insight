@@ -23,18 +23,32 @@ export async function POST(req: NextRequest) {
   }
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
+  // 전달되는 값 콘솔 출력 (디버깅용)
+  console.log('[MISO API 요청] query:', lastUser)
+  console.log('[MISO API 요청] inputs:', personaData)
+
+  const cleanInputs = { ...personaData }
+  delete cleanInputs.keywords
+
   /* 2. 업스트림 요청 — 외부 LLM/에이전트 API */
   const upstream = await fetch(
     'https://api.holdings.miso.gs/ext/v1/chat',
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,   // .env 에 보관
+        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,   // 테스트용
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         query: lastUser,
-        inputs: {},
+        inputs: {
+          name: personaData.name,
+          summary: personaData.summary,
+          insight: personaData.insight,
+          painPoint: personaData.painPoint,
+          hiddenNeeds: personaData.hiddenNeeds,
+          persona_character: personaData.persona_character
+        },
         mode: 'streaming',
         conversation_id: '',
         user: 'persona-insight-user',
@@ -79,7 +93,6 @@ export async function POST(req: NextRequest) {
 
           try {
             const payload = JSON.parse(line) as UpstreamLine
-            console.log('Debug: Upstream payload.answer:', payload.answer); 
             if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
               const delta = payload.answer;
               if (delta) { // 빈 문자열이 아닌 경우에만 전송

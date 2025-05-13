@@ -10,8 +10,8 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: 'Persona Insight | MISO1004',
-  description: '전문 디자인 브랜드 수준의 페르소나 인사이트로 사용자 이해를 한 단계 높여보세요',
+  title: 'Persona Insight | MISO',
+  description: 'Persona Insight는 고객의 니즈와 행동 패턴을 더 깊이 이해하고 대화할 수 있는 서비스입니다',
   generator: 'Next.js',
 }
 
