@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         query: lastUser,
         inputs: {
+          selected_mode: "persona_chat",
           name: personaData.name,
           summary: personaData.summary,
           insight: personaData.insight,
