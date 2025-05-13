@@ -149,7 +149,7 @@ export default function ChatPage({ params }: ChatPageProps) {
                 className="gap-1.5 text-zinc-800 dark:text-zinc-200 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 <Home className="h-4 w-4" />
-                <span className="text-sm">메인으로</span>
+                <span className="text-sm">돌아가기</span>
               </Button>
             </Link>
             <ModeToggle />

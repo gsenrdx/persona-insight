@@ -138,8 +138,7 @@ export default function PersonaCardGrid() {
   if (filteredPersonas.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-4">
-        <div className="bg-muted/50 p-8 rounded-xl text-center max-w-lg mx-auto">
-          <SearchX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <div className="text-center max-w-lg mx-auto">
           <p className="text-xl font-semibold mb-2">검색 결과가 없습니다</p>
           <p className="text-muted-foreground mb-2">다른 검색어나 필터를 사용해 보세요.</p>
           <Button 
@@ -159,7 +158,7 @@ export default function PersonaCardGrid() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16 px-4 py-4 pb-20"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-20"
       key={selectedKeywords.join(',')} // 선택된 키워드 변경 시만 애니메이션 재생
     >
       {filteredPersonas.map((persona) => (
