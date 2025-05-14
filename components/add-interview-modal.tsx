@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, FileUp, File, X, Check, AlertCircle } from "lucide-react";
+import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export interface AddInterviewModalProps {
   open: boolean;
@@ -140,14 +141,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
       }
       
       setUploadSuccess(true);
-      
-      // 3초 후 모달 닫기
-      setTimeout(() => {
-        setFiles([]);
-        setIsUploading(false);
-        setUploadSuccess(false);
-        onOpenChange(false);
-      }, 3000);
+      setIsUploading(false);
     } catch (error: any) {
       console.error("처리 실패:", error);
       setError(error.message || '파일 처리 중 오류가 발생했습니다');
@@ -166,117 +160,167 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
       }
     }}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>고객 인터뷰 추가</DialogTitle>
-          <DialogDescription>
-            인터뷰 파일을 업로드하여 분석을 시작하세요.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div
-          className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-            isDragging ? 'border-primary bg-primary/5' : 'border-border'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
-          />
-          
-          <div className="flex flex-col items-center justify-center gap-2">
-            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium">파일을 드래그하여 놓거나</p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleUploadClick}
-              className="mt-1"
+        {!uploadSuccess ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>고객 인터뷰 추가</DialogTitle>
+              <DialogDescription>
+                인터뷰 파일을 업로드하여 분석을 시작하세요.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div
+              className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                isDragging ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <FileUp className="h-4 w-4 mr-2" />
-              파일 선택
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              지원 형식: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub (최대 10MB)
-            </p>
-          </div>
-        </div>
-        
-        {files.length > 0 && (
-          <div className="mt-4">
-            <Label>첨부된 파일 ({files.length})</Label>
-            <div className="mt-2 space-y-2">
-              {files.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
+              />
+              
+              <div className="flex flex-col items-center justify-center gap-2">
+                <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium">파일을 드래그하여 놓거나</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleUploadClick}
+                  className="mt-1"
                 >
-                  <div className="flex items-center">
-                    <File className="h-4 w-4 mr-2 text-primary" />
-                    <span className="text-sm truncate max-w-[200px] md:max-w-[300px]">
-                      {file.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveFile(index)}
-                    className="h-7 w-7"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                  <FileUp className="h-4 w-4 mr-2" />
+                  파일 선택
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  지원 형식: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub (최대 10MB)
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-        
-        {error && (
-          <div className="p-3 flex items-start space-x-2 text-sm text-red-500 bg-red-50 rounded-md">
-            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-        
-        <DialogFooter className="flex-col sm:flex-row sm:justify-between sm:space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isUploading}
-          >
-            취소
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={files.length === 0 || isUploading || !!error}
-            className="relative"
-          >
-            {isUploading && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
+            
+            {files.length > 0 && (
+              <div className="mt-4">
+                <Label>첨부된 파일 ({files.length})</Label>
+                <div className="mt-2 space-y-2">
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
+                    >
+                      <div className="flex items-center">
+                        <File className="h-4 w-4 mr-2 text-primary" />
+                        <span className="text-sm truncate max-w-[200px] md:max-w-[300px]">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveFile(index)}
+                        className="h-7 w-7"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            {uploadSuccess && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <Check className="h-5 w-5 text-current" />
-              </span>
+            
+            {error && (
+              <div className="p-3 flex items-start space-x-2 text-sm text-red-500 bg-red-50 rounded-md">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
             )}
-            <span className={isUploading || uploadSuccess ? 'opacity-0' : ''}>
-              분석하기
-            </span>
-          </Button>
-        </DialogFooter>
+            
+            <DialogFooter className="flex-col sm:flex-row sm:justify-between sm:space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isUploading}
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={files.length === 0 || isUploading || !!error}
+                className="relative"
+              >
+                {isUploading && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </span>
+                )}
+                <span className={isUploading ? 'opacity-0' : ''}>
+                  분석하기
+                </span>
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center justify-center py-8 text-center"
+          >
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+              className="bg-green-100 dark:bg-green-900/20 p-6 rounded-full mb-6"
+            >
+              <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-400" />
+            </motion.div>
+            
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-bold mb-2"
+            >
+              업로드 성공!
+            </motion.h2>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-muted-foreground mb-6"
+            >
+              고객 인터뷰 파일이 성공적으로 업로드되었습니다.
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Button 
+                onClick={() => {
+                  setUploadSuccess(false);
+                  setFiles([]);
+                  onOpenChange(false);
+                }}
+                className="px-8"
+              >
+                확인
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
       </DialogContent>
     </Dialog>
   );

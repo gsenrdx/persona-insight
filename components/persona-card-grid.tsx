@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus } from "lucide-react"
 import { motion } from "framer-motion"
 import AddInterviewModal from "./add-interview-modal"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Persona extends Omit<PersonaCardProps, 'summary'> {
   summary?: string;
@@ -157,16 +158,6 @@ export default function PersonaCardGrid() {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button 
-          onClick={() => setIsAddInterviewModalOpen(true)}
-          className="gap-1.5"
-        >
-          <Plus className="h-4 w-4" />
-          고객 인터뷰 추가
-        </Button>
-      </div>
-
       <motion.div 
         variants={container}
         initial="hidden"
@@ -189,6 +180,24 @@ export default function PersonaCardGrid() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Floating Action Button - 우측 하단에 고정 배치 */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={() => setIsAddInterviewModalOpen(true)}
+              className="fixed bottom-8 right-8 rounded-full shadow-lg px-6 z-50"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              고객 인터뷰 추가
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>새 고객 인터뷰 데이터 추가</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <AddInterviewModal 
         open={isAddInterviewModalOpen}
