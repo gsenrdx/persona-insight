@@ -5,8 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload, FileUp, File, X, Check, AlertCircle } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 
 export interface AddInterviewModalProps {
   open: boolean;
@@ -16,14 +14,30 @@ export interface AddInterviewModalProps {
 // 10MB 크기 제한 (바이트 단위)
 const MAX_FILE_SIZE = 10 * 1024 * 1024; 
 
+// 지원하는 파일 형식
+const SUPPORTED_FILE_TYPES = [
+  'text/plain', 'text/markdown', 'text/mdx', 'text/x-markdown',
+  'application/pdf', 'text/html', 
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv',
+  'message/rfc822', 'application/vnd.ms-outlook',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint',
+  'application/xml', 'application/epub+zip'
+];
+
+// 지원하는 파일 확장자
+const SUPPORTED_FILE_EXTENSIONS = [
+  '.txt', '.md', '.mdx', '.markdown', '.pdf', '.html', 
+  '.xlsx', '.xls', '.docx', '.csv', '.eml', '.msg', 
+  '.pptx', '.ppt', '.xml', '.epub'
+];
+
 export default function AddInterviewModal({ open, onOpenChange }: AddInterviewModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inputMode, setInputMode] = useState<"file" | "text">("file");
-  const [directText, setDirectText] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +58,10 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
     }
     
     // 파일 형식 검사
-    if (file.type !== 'text/plain' && !file.name.endsWith('.txt')) {
-      return `텍스트(.txt) 파일만 업로드 가능합니다.`;
+    const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+    if (!SUPPORTED_FILE_TYPES.includes(file.type) && 
+        !SUPPORTED_FILE_EXTENSIONS.some(ext => fileExtension === ext)) {
+      return `지원하지 않는 파일 형식입니다. 지원되는 파일: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub`;
     }
     
     // 빈 파일 검사
@@ -98,21 +114,10 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
     fileInputRef.current?.click();
   };
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDirectText(e.target.value);
-    setError(null);
-  };
-
   const handleSubmit = async () => {
-    // 파일 모드일 때 파일 체크
-    if (inputMode === "file" && files.length === 0) {
+    // 파일 체크
+    if (files.length === 0) {
       setError("파일을 선택해주세요.");
-      return;
-    }
-    
-    // 텍스트 모드일 때 텍스트 체크
-    if (inputMode === "text" && !directText.trim()) {
-      setError("인터뷰 내용을 입력해주세요.");
       return;
     }
     
@@ -121,16 +126,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
     
     try {
       const formData = new FormData();
-      
-      if (inputMode === "file") {
-        // 파일 업로드 모드
-        formData.append('file', files[0]);
-      } else {
-        // 텍스트 직접 입력 모드
-        // 텍스트를 Blob으로 변환하여 파일처럼 전송
-        const textBlob = new Blob([directText], { type: 'text/plain' });
-        formData.append('file', textBlob, 'interview-text.txt');
-      }
+      formData.append('file', files[0]);
       
       // workflow API 엔드포인트로 요청 전송
       const response = await fetch('/api/workflow', {
@@ -148,7 +144,6 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
       // 3초 후 모달 닫기
       setTimeout(() => {
         setFiles([]);
-        setDirectText("");
         setIsUploading(false);
         setUploadSuccess(false);
         onOpenChange(false);
@@ -166,109 +161,83 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
         onOpenChange(newOpen);
         if (!newOpen) {
           setFiles([]);
-          setDirectText("");
           setError(null);
         }
       }
     }}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <DialogHeader>
-          <DialogTitle>고객 인터뷰 추가(개발중)</DialogTitle>
+          <DialogTitle>고객 인터뷰 추가</DialogTitle>
           <DialogDescription>
-            *현재 작업중입니다.
+            인터뷰 파일을 업로드하여 분석을 시작하세요.
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs value={inputMode} onValueChange={(value) => setInputMode(value as "file" | "text")} className="pt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="file">파일 업로드</TabsTrigger>
-            <TabsTrigger value="text">텍스트 입력</TabsTrigger>
-          </TabsList>
+        <div
+          className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            isDragging ? 'border-primary bg-primary/5' : 'border-border'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
+          />
           
-          <TabsContent value="file" className="pt-2">
-            <div
-              className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                isDragging ? 'border-primary bg-primary/5' : 'border-border'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+          <div className="flex flex-col items-center justify-center gap-2">
+            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+            <p className="text-sm font-medium">파일을 드래그하여 놓거나</p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleUploadClick}
+              className="mt-1"
             >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".txt,text/plain"
-              />
-              
-              <div className="flex flex-col items-center justify-center gap-2">
-                <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium">파일을 드래그하여 놓거나</p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleUploadClick}
-                  className="mt-1"
+              <FileUp className="h-4 w-4 mr-2" />
+              파일 선택
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              지원 형식: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub (최대 10MB)
+            </p>
+          </div>
+        </div>
+        
+        {files.length > 0 && (
+          <div className="mt-4">
+            <Label>첨부된 파일 ({files.length})</Label>
+            <div className="mt-2 space-y-2">
+              {files.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
                 >
-                  <FileUp className="h-4 w-4 mr-2" />
-                  파일 선택
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  지원 형식: TXT (최대 10MB)
-                </p>
-              </div>
-            </div>
-            
-            {files.length > 0 && (
-              <div className="mt-4">
-                <Label>첨부된 파일 ({files.length})</Label>
-                <div className="mt-2 space-y-2">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
-                    >
-                      <div className="flex items-center">
-                        <File className="h-4 w-4 mr-2 text-primary" />
-                        <span className="text-sm truncate max-w-[200px] md:max-w-[300px]">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveFile(index)}
-                        className="h-7 w-7"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  <div className="flex items-center">
+                    <File className="h-4 w-4 mr-2 text-primary" />
+                    <span className="text-sm truncate max-w-[200px] md:max-w-[300px]">
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveFile(index)}
+                    className="h-7 w-7"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="text" className="pt-2">
-            <div className="mt-2">
-              <Label htmlFor="interview-text">인터뷰 내용을 직접 입력하세요</Label>
-              <Textarea 
-                id="interview-text"
-                placeholder="인터뷰 내용을 여기에 붙여넣거나 직접 입력하세요..."
-                value={directText} 
-                onChange={handleTextChange}
-                className="mt-2 min-h-[200px]"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                최대 10MB 텍스트까지 입력 가능합니다.
-              </p>
+              ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
         
         {error && (
           <div className="p-3 flex items-start space-x-2 text-sm text-red-500 bg-red-50 rounded-md">
@@ -287,10 +256,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={(inputMode === "file" && files.length === 0) || 
-              (inputMode === "text" && !directText.trim()) || 
-              isUploading || 
-              !!error}
+            disabled={files.length === 0 || isUploading || !!error}
             className="relative"
           >
             {isUploading && (
