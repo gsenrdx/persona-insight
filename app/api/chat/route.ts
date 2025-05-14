@@ -9,13 +9,17 @@ interface UpstreamLine {
   event?: 'agent_message'
   /** 누적 전체 답변 스냅샷 */
   answer?: string
+  /** 대화 식별자 */
+  conversation_id?: string
+  /** 메시지 식별자 */
+  message_id?: string
   /** 기타 필드들 무시 */
   [key: string]: unknown
 }
 
 /* ---------- 메인 POST 핸들러 ---------- */
 export async function POST(req: NextRequest) {
-  const { messages, personaData } = await req.json()
+  const { messages, personaData, conversationId: clientConversationId } = await req.json()
 
   /* 1. 입력 검증 */
   if (!personaData) {
@@ -26,6 +30,7 @@ export async function POST(req: NextRequest) {
   // 전달되는 값 콘솔 출력 (디버깅용)
   console.log('[MISO API 요청] query:', lastUser)
   console.log('[MISO API 요청] inputs:', personaData)
+  console.log('[MISO API 요청] conversationId:', clientConversationId)
 
   const cleanInputs = { ...personaData }
   delete cleanInputs.keywords
@@ -51,7 +56,7 @@ export async function POST(req: NextRequest) {
           persona_character: personaData.persona_character
         },
         mode: 'streaming',
-        conversation_id: '',
+        conversation_id: clientConversationId || '',
         user: 'persona-insight-user',
         files: []
       })
@@ -68,6 +73,7 @@ export async function POST(req: NextRequest) {
   /* 3. Vercel AI Data-Stream 응답 생성 */
   return createDataStreamResponse({
     async execute(stream) {
+      let misoConversationId: string | null = null;
 
       const messageId = crypto.randomUUID()
       stream.write(`f:${JSON.stringify({ messageId })}
@@ -100,6 +106,15 @@ export async function POST(req: NextRequest) {
                 stream.write(`0:${JSON.stringify(delta)}
 `)   // text 파트
               }
+            }
+            
+            // MISO의 conversation_id 처리 - Vercel AI SDK 데이터 형식 사용 (배열로 감싸야 함)
+            if (payload.conversation_id && !misoConversationId && !clientConversationId) {
+              misoConversationId = payload.conversation_id;
+              // 표준 데이터 스트림 형식 '2:' 사용 (data) - 배열 형태로 전송
+              stream.write(`2:${JSON.stringify([{ misoConversationId: misoConversationId }])}
+`);
+              console.log('[MISO API 응답] New MISO Conversation ID:', misoConversationId);
             }
           } catch (err) {
             console.error('⚠️ JSON parse error', err, line)

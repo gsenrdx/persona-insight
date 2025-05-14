@@ -15,10 +15,20 @@ interface ChatInterfaceProps {
   personaData: any
 }
 
+// MISO 응답에서 오는 데이터 타입 정의
+interface MisoStreamData {
+  misoConversationId?: string;
+  [key: string]: any;
+}
+
 export default function ChatInterface({ personaId, personaData }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [isClient, setIsClient] = useState(false)
+  const [misoConversationId, setMisoConversationId] = useState<string | null>(null)
+  const [chatMessages, setChatMessages] = useState<Message[]>([])
+  const [userInput, setUserInput] = useState<string>("")
+  const [loading, setLoading] = useState<boolean>(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -29,6 +39,18 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       inputRef.current.focus()
     }
   }, [])
+
+  // 초기 메시지 설정
+  useEffect(() => {
+    setChatMessages([
+      {
+        id: "1",
+        role: "assistant" as const,
+        content: `안녕하세요! 저는 ${personaData.name}입니다. 무엇을 도와드릴까요?`,
+        createdAt: new Date(),
+      }
+    ]);
+  }, [personaData.name]);
 
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -42,68 +64,148 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     }
   }, [])
 
-  const memoizedInitialMessages: Message[] = useMemo(() => [
-    {
-      id: "1",
-      role: "assistant" as const,
-      content: `안녕하세요! 저는 ${personaData.name}입니다. 무엇을 도와드릴까요?`,
+  // API 요청 처리 함수
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!userInput.trim() || loading) return;
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: userInput,
       createdAt: new Date(),
-    },
-  ], [personaData.name])
-
-  const memoizedChatBody = useMemo(() => ({
-    personaData: {
-      name: personaData.name,
-      insight: personaData.insight,
-      painPoint: personaData.painPoint,
-      hiddenNeeds: personaData.hiddenNeeds,
-      keywords: personaData.keywords || [],
-      summary: personaData.summary || "",
-      persona_charactor: personaData.persona_charactor || ""
-    }
-  }), [personaData])
-
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: "/api/chat",
-    initialMessages: memoizedInitialMessages,
-    body: memoizedChatBody,
-    onFinish: () => {
-      scrollToBottom()
-      focusInput()
-    },
-    onResponse: (response) => {
-      // 응답을 디버깅하기 위한 코드
-      console.log("Chat API 응답 받음:", response.status, response.statusText);
+    };
+    
+    // UI에 사용자 메시지 추가
+    setChatMessages(prev => [...prev, userMessage]);
+    setLoading(true);
+    
+    console.log("대화 전송 - conversationId:", misoConversationId);
+    
+    try {
+      // 직접 API 호출
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [...chatMessages, userMessage],
+          personaData: {
+            name: personaData.name,
+            insight: personaData.insight,
+            painPoint: personaData.painPoint,
+            hiddenNeeds: personaData.hiddenNeeds,
+            keywords: personaData.keywords || [],
+            summary: personaData.summary || "",
+            persona_character: personaData.persona_character || ""
+          },
+          conversationId: misoConversationId
+        }),
+      });
+      
       if (!response.ok) {
-        console.error("Chat API 오류 응답:", response.status, response.statusText);
+        throw new Error(`API 오류: ${response.status}`);
       }
-    },
-    onError: (error) => {
-      console.error("Chat API 오류 발생:", error);
+      
+      // 스트림 처리
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let fullText = "";
+      let assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+      };
+      
+      // 메시지 추가
+      setChatMessages(prev => [...prev, assistantMessage]);
+      
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        
+        if (value) {
+          const chunkText = decoder.decode(value, { stream: true });
+          const lines = chunkText.split("\n").filter(line => line.trim() !== "");
+          
+          for (const line of lines) {
+            // 데이터 파싱
+            if (line.startsWith("0:")) {
+              // 텍스트 응답
+              const textContent = JSON.parse(line.slice(2));
+              // 전체 응답 업데이트
+              fullText += textContent;
+              
+              // UI 업데이트: 응답 메시지 내용 업데이트
+              setChatMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: fullText,
+                };
+                return updated;
+              });
+            } else if (line.startsWith("2:")) {
+              // 데이터 응답
+              try {
+                const dataArray = JSON.parse(line.slice(2));
+                if (Array.isArray(dataArray)) {
+                  dataArray.forEach(item => {
+                    if (item && typeof item === "object" && "misoConversationId" in item) {
+                      const newConvId = item.misoConversationId;
+                      console.log("MISO 대화 ID 수신:", newConvId);
+                      setMisoConversationId(newConvId);
+                    }
+                  });
+                }
+              } catch (e) {
+                console.error("데이터 파싱 오류:", e);
+              }
+            }
+          }
+        }
+      }
+      
+      scrollToBottom();
+      setUserInput("");
+    } catch (error) {
+      console.error("API 요청 오류:", error);
+      // 오류 메시지 UI에 표시
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다.",
+        createdAt: new Date(),
+      }]);
+    } finally {
+      setLoading(false);
+      focusInput();
     }
-  })
+  };
 
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom()
-      if (!isLoading) {
-        focusInput()
-      }
+    if (chatMessages.length > 0) {
+      scrollToBottom();
     }
-  }, [messages.length, scrollToBottom, isLoading, focusInput])
+  }, [chatMessages, scrollToBottom]);
 
+  // 대화 ID 변경 시 로그 출력 (디버깅용)
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
-      focusInput()
+    if (misoConversationId) {
+      console.log("대화 ID 상태 업데이트됨:", misoConversationId);
     }
-  }, [isLoading, messages.length, focusInput])
+  }, [misoConversationId]);
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-zinc-50 dark:bg-zinc-900 custom-scrollbar">
         <div className="max-w-3xl mx-auto space-y-4">
           <AnimatePresence initial={false}>
-            {messages.map((message) => (
+            {chatMessages.map((message) => (
               <motion.div
                 key={message.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -169,7 +271,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             ))}
           </AnimatePresence>
 
-          {isLoading && (
+          {loading && (
             <div className="flex justify-start mb-4">
               <div className="flex flex-row items-end gap-2">
                 <Avatar className="h-9 w-9 rounded-full border border-zinc-200 dark:border-zinc-700 overflow-hidden">
@@ -194,19 +296,19 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       </div>
 
       <div className="flex-shrink-0 border-t border-zinc-200 dark:border-zinc-800 p-4 bg-white dark:bg-zinc-950">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto relative">
+        <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto relative">
           <Input
             ref={inputRef}
-            value={input}
-            onChange={handleInputChange}
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
             placeholder="메시지를 입력하세요..."
-            disabled={isLoading}
+            disabled={loading}
             className="pr-12 py-2.5 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 shadow-sm"
           />
           <Button 
             type="submit" 
             size="icon"
-            disabled={isLoading || !input.trim()}
+            disabled={loading || !userInput.trim()}
             className="absolute right-1.5 top-1/2 transform -translate-y-1/2 h-9 w-9 rounded-full bg-blue-500 text-white hover:bg-blue-600 shadow-md disabled:bg-blue-400 disabled:shadow-none transition-all"
           >
             <Send className="h-4 w-4" />
