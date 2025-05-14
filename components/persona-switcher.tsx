@@ -37,7 +37,7 @@ export default function PersonaSwitcher({ currentPersona, allPersonas, currentPe
     <div className="space-y-3">
       {showHeader && (
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">다른 페르소나</h3>
+          <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">다른 페르소나와 대화하기</h3>
         </div>
       )}
       

@@ -179,7 +179,6 @@ export default function SearchBar() {
           animate={{ opacity: 1, y: 0 }}
           className="absolute right-5 -bottom-9 text-xs text-primary bg-background/80 px-2 py-1 rounded-md shadow-sm"
         >
-          <span>Enter 키를 눌러 AI에게 적합한 대화 상대를 추천받으세요</span>
         </motion.div>
       )}
     </motion.div>

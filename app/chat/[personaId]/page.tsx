@@ -159,12 +159,12 @@ export default function ChatPage({ params }: ChatPageProps) {
           <div className="shrink-0 h-32 sm:h-36 md:h-40 relative border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
             <div className="relative h-full flex justify-between items-center p-3 sm:p-4 md:p-5">
               <div className="flex-1 pr-2 sm:pr-3 md:pr-4 z-10">
-                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1 line-clamp-1">
+                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1">
                   {persona.name}
                 </h2>
                 {persona.summary && (
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-2 sm:line-clamp-3">
-                    {persona.summary}
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                    {persona.summary.split('.')[0] + '.'}
                   </p>
                 )}
               </div>
@@ -182,21 +182,54 @@ export default function ChatPage({ params }: ChatPageProps) {
           {/* 스크롤 가능한 정보 영역 - 토스 스타일 적용 */}
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-6">
-              {/* 인사이트 카드 - 토스 스타일 적용 */}
-              {persona.insight && (
+              {/* 성격 및 말투 - 토스 스타일 적용 */}
+              {persona.persona_character && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    내 인사이트
+                    프로필
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    "{persona.insight}"
-                  </p>
+                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    {persona.persona_character}
+                  </div>
+                </div>
+              )}
+
+              {/* 인사이트와 숨겨진 니즈 통합 섹션 */}
+              {(persona.insight || persona.hiddenNeeds) && (
+                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
+                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                    핵심 니즈
+                  </h3>
+                  <div className="space-y-3">
+                    {persona.insight && (
+                      <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
+                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.insight}
+                      </div>
+                    )}
+                    {persona.hiddenNeeds && (
+                      <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
+                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.hiddenNeeds}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 페인 포인트 - 토스 스타일 적용 */}
+              {persona.painPoint && (
+                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
+                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                    어려움
+                  </h3>
+                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                    {persona.painPoint}
+                  </div>
                 </div>
               )}
 
               {/* 키워드 섹션 - 토스 스타일 적용 */}
               {(persona.keywords || []).length > 0 && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="pb-0 sm:pb-4">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
                     키워드
                   </h3>
@@ -209,42 +242,6 @@ export default function ChatPage({ params }: ChatPageProps) {
                         {keyword}
                       </Badge>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 페인 포인트 - 토스 스타일 적용 */}
-              {persona.painPoint && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    내 어려움
-                  </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
-                    {persona.painPoint}
-                  </div>
-                </div>
-              )}
-              
-              {/* 숨겨진 니즈 - 토스 스타일 적용 */}
-              {persona.hiddenNeeds && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    내 숨겨진 니즈
-                  </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                    {persona.hiddenNeeds}
-                  </div>
-                </div>
-              )}
-              
-              {/* 성격 및 말투 - 토스 스타일 적용 */}
-              {persona.persona_character && (
-                <div className="pb-0 sm:pb-4">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    성격 및 말투
-                  </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                    {persona.persona_character}
                   </div>
                 </div>
               )}
