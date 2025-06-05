@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, User, Calendar, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 
 export interface AddInterviewModalProps {
@@ -39,6 +40,14 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // 분석 결과 상태 관리
+  const [analysisResult, setAnalysisResult] = useState<{
+    type: string;
+    description: string;
+    summary: string;
+    date: string;
+  } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,7 +138,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
       const formData = new FormData();
       formData.append('file', files[0]);
       
-      // workflow API 엔드포인트로 요청 전송
+      // workflow API 엔드포인트로 요청 전송 (블로킹 모드)
       const response = await fetch('/api/workflow', {
         method: 'POST',
         body: formData
@@ -139,6 +148,17 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
         const errorText = await response.text();
         throw new Error(errorText || '파일 처리 중 오류가 발생했습니다');
       }
+      
+      // JSON 응답 파싱
+      const analysisData = await response.json();
+      
+      // 분석 결과 설정
+      setAnalysisResult({
+        type: analysisData.type || "알 수 없음",
+        description: analysisData.description || "설명이 없습니다.",
+        summary: analysisData.summary || "요약이 없습니다.",
+        date: analysisData.date || "날짜 정보가 없습니다."
+      });
       
       setUploadSuccess(true);
       setIsUploading(false);
@@ -274,44 +294,80 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center justify-center py-8 text-center"
+            className="flex flex-col items-center justify-center py-6 text-center"
           >
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-              className="bg-green-100 dark:bg-green-900/20 p-6 rounded-full mb-6"
+              className="bg-green-100 dark:bg-green-900/20 p-5 rounded-full mb-4"
             >
-              <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
             </motion.div>
             
             <motion.h2
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-2xl font-bold mb-2"
+              className="text-xl font-bold mb-2"
             >
-              업로드 성공!
+              분석 완료!
             </motion.h2>
             
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-muted-foreground mb-6"
-            >
-              고객 인터뷰 파일이 성공적으로 업로드되었습니다.
-            </motion.p>
+            {analysisResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="w-full mt-4 mb-4"
+              >
+                {/* 사용자 유형 카드 */}
+                <div className="bg-primary/5 rounded-lg p-4 mb-4 text-left">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-medium text-primary">사용자 유형</h3>
+                    <Badge 
+                      variant="outline" 
+                      className="font-semibold border-primary/30 bg-primary/10 text-primary"
+                    >
+                      {`Type ${analysisResult.type}`}
+                    </Badge>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-primary/70 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground/90">{analysisResult.description}</p>
+                  </div>
+                </div>
+
+                {/* 날짜 정보 */}
+                <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>인터뷰 날짜: {analysisResult.date}</span>
+                </div>
+                
+                {/* 요약 정보 */}
+                <div className="bg-muted/40 rounded-lg p-4 text-left">
+                  <h3 className="font-medium mb-2 flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    요약 정보
+                  </h3>
+                  <p className="text-sm text-foreground/90 whitespace-pre-line">
+                    {analysisResult.summary}
+                  </p>
+                </div>
+              </motion.div>
+            )}
             
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              className="mt-3"
             >
               <Button 
                 onClick={() => {
                   setUploadSuccess(false);
                   setFiles([]);
+                  setAnalysisResult(null);
                   onOpenChange(false);
                 }}
                 className="px-8"
