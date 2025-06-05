@@ -47,6 +47,14 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
     description: string;
     summary: string;
     date: string;
+    charging_pattern_scores: Array<{
+      home_centric_score: number;
+      road_centric_score: number;
+    }>;
+    value_orientation_scores: Array<{
+      cost_driven_score: number;
+      tech_brand_driven_score: number;
+    }>;
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,7 +165,19 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
         type: analysisData.type || "알 수 없음",
         description: analysisData.description || "설명이 없습니다.",
         summary: analysisData.summary || "요약이 없습니다.",
-        date: analysisData.date || "날짜 정보가 없습니다."
+        date: analysisData.date || "날짜 정보가 없습니다.",
+        charging_pattern_scores: analysisData.charging_pattern_scores || [
+          {
+            home_centric_score: 0,
+            road_centric_score: 0
+          }
+        ],
+        value_orientation_scores: analysisData.value_orientation_scores || [
+          {
+            cost_driven_score: 0,
+            tech_brand_driven_score: 0
+          }
+        ]
       });
       
       setUploadSuccess(true);
@@ -179,7 +199,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
         }
       }
     }}>
-      <DialogContent className="sm:max-w-md md:max-w-lg">
+      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
         {!uploadSuccess ? (
           <>
             <DialogHeader>
@@ -294,22 +314,22 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center justify-center py-6 text-center"
+            className="flex flex-col items-center justify-center py-4 text-center"
           >
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-              className="bg-green-100 dark:bg-green-900/20 p-5 rounded-full mb-4"
+              className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full mb-3"
             >
-              <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </motion.div>
             
             <motion.h2
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-xl font-bold mb-2"
+              className="text-lg font-semibold mb-4"
             >
               분석 완료!
             </motion.h2>
@@ -319,38 +339,82 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="w-full mt-4 mb-4"
+                className="w-full space-y-4"
               >
                 {/* 사용자 유형 카드 */}
-                <div className="bg-primary/5 rounded-lg p-4 mb-4 text-left">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-medium text-primary">사용자 유형</h3>
+                <div className="bg-primary/5 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium text-primary">사용자 유형</h3>
                     <Badge 
                       variant="outline" 
-                      className="font-semibold border-primary/30 bg-primary/10 text-primary"
+                      className="text-xs font-medium border-primary/30 bg-primary/10 text-primary"
                     >
                       {`Type ${analysisResult.type}`}
                     </Badge>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <User className="h-5 w-5 text-primary/70 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-foreground/90">{analysisResult.description}</p>
-                  </div>
+                  <p className="text-sm text-foreground/90">{analysisResult.description}</p>
                 </div>
 
-                {/* 날짜 정보 */}
-                <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>인터뷰 날짜: {analysisResult.date}</span>
+                {/* 점수 그리드 */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 충전 패턴 점수 */}
+                  {analysisResult.charging_pattern_scores?.[0] && (
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <h4 className="text-xs font-medium mb-3">충전 패턴</h4>
+                      <div className="space-y-2">
+                        <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
+                            style={{ 
+                              width: `${analysisResult.charging_pattern_scores[0].home_centric_score}%` 
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-blue-600 font-medium">
+                            단거리 충전 {analysisResult.charging_pattern_scores[0].home_centric_score}%
+                          </span>
+                          <span className="text-muted-foreground">
+                            장거리 충전 {analysisResult.charging_pattern_scores[0].road_centric_score}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 가치 지향 점수 */}
+                  {analysisResult.value_orientation_scores?.[0] && (
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <h4 className="text-xs font-medium mb-3">가치 지향</h4>
+                      <div className="space-y-2">
+                        <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
+                            style={{ 
+                              width: `${analysisResult.value_orientation_scores[0].cost_driven_score}%` 
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-green-600 font-medium">
+                            비용 절약 {analysisResult.value_orientation_scores[0].cost_driven_score}%
+                          </span>
+                          <span className="text-muted-foreground">
+                            품질,기술 {analysisResult.value_orientation_scores[0].tech_brand_driven_score}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                {/* 요약 정보 */}
-                <div className="bg-muted/40 rounded-lg p-4 text-left">
-                  <h3 className="font-medium mb-2 flex items-center">
-                    <FileText className="h-4 w-4 mr-2" />
-                    요약 정보
-                  </h3>
-                  <p className="text-sm text-foreground/90 whitespace-pre-line">
+
+                {/* 날짜와 요약 정보 */}
+                <div className="bg-muted/40 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>{analysisResult.date}</span>
+                  </div>
+                  <p className="text-sm text-foreground/90">
                     {analysisResult.summary}
                   </p>
                 </div>
@@ -361,7 +425,7 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="mt-3"
+              className="mt-4"
             >
               <Button 
                 onClick={() => {
@@ -370,7 +434,8 @@ export default function AddInterviewModal({ open, onOpenChange }: AddInterviewMo
                   setAnalysisResult(null);
                   onOpenChange(false);
                 }}
-                className="px-8"
+                size="sm"
+                className="px-6"
               >
                 확인
               </Button>

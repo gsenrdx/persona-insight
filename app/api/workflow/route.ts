@@ -139,7 +139,19 @@ export async function POST(req: NextRequest) {
       type: output.type || "정보 없음", 
       description: output.description || "설명이 없습니다.",
       summary: output.summary || "요약이 없습니다.",
-      date: output.date || "날짜 정보가 없습니다."
+      date: output.date || "날짜 정보가 없습니다.",
+      charging_pattern_scores: output.charging_pattern_scores || [
+        {
+          "home_centric_score": 0,
+          "road_centric_score": 0
+        }
+      ],
+      value_orientation_scores: output.value_orientation_scores || [
+        {
+          "cost_driven_score": 0,
+          "tech_brand_driven_score": 0
+        }
+      ]
     };
     
     // JSON 응답으로 반환
