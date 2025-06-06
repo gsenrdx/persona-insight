@@ -1,15 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import PersonaCard, { PersonaCardProps } from "./persona-card"
 import { useInView } from "react-intersection-observer"
 import { fetchPersonas } from "@/lib/data"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus } from "lucide-react"
-import { motion } from "framer-motion"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus, Clock, Play } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import AddInterviewModal from "./add-interview-modal"
+import WorkflowProgressSpeedDial from "./workflow-progress-modal"
+import JobDetailModal from "./job-detail-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 
 interface Persona extends Omit<PersonaCardProps, 'summary'> {
   summary?: string;
@@ -24,7 +28,27 @@ export default function PersonaCardGrid() {
   const [isLoading, setIsLoading] = useState(cachedAllPersonas === null)
   const [error, setError] = useState<string | null>(null)
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
+  const [isProgressDropdownOpen, setIsProgressDropdownOpen] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<WorkflowJob | null>(null)
+  const [isJobDetailModalOpen, setIsJobDetailModalOpen] = useState(false)
   const searchParams = useSearchParams()
+  
+  // Button ref for positioning the dropdown
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // 워크플로우 큐 관리
+  const {
+    jobs,
+    activeJobs,
+    completedJobs,
+    failedJobs,
+    isProcessing,
+    addJobs,
+    removeJob,
+    clearCompleted,
+    clearAll,
+    retryJob
+  } = useWorkflowQueue();
 
   // searchParams를 문자열로 변환하여 의존성 배열에 안전하게 사용
   const searchParamsString = useMemo(() => {
@@ -38,6 +62,34 @@ export default function PersonaCardGrid() {
     searchParams?.get("keywords")?.split(",").filter(Boolean) || [], 
     [searchParamsString]
   );
+
+  // Handle job click to show detail modal
+  const handleJobClick = (job: WorkflowJob) => {
+    setSelectedJob(job);
+    setIsJobDetailModalOpen(true);
+    setIsProgressDropdownOpen(false);
+  };
+
+  // Handle button click
+  const handleButtonClick = () => {
+    if (isProcessing) {
+      setIsProgressDropdownOpen(!isProgressDropdownOpen);
+    } else {
+      if (jobs.length > 0) {
+        // If there are jobs but not processing, show dropdown first
+        setIsProgressDropdownOpen(!isProgressDropdownOpen);
+      } else {
+        // If no jobs, directly open add interview modal
+        setIsAddInterviewModalOpen(true);
+      }
+    }
+  };
+
+  // Handle add more action
+  const handleAddMore = () => {
+    setIsProgressDropdownOpen(false);
+    setIsAddInterviewModalOpen(true);
+  };
 
   // 최초 한 번만 모든 데이터 로드
   useEffect(() => {
@@ -162,8 +214,15 @@ export default function PersonaCardGrid() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-20"
+        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 ${
+          isProgressDropdownOpen 
+            ? 'pb-[320px]' // Speed Dial이 열려있을 때: 메인 버튼(48px) + 간격(24px) + Speed Dial 항목들(약 240px) + 여유분(8px)
+            : 'pb-24' // 기본: 메인 버튼(48px) + 간격(48px)
+        }`}
         key={selectedKeywords.join(',')} // 선택된 키워드 변경 시만 애니메이션 재생
+        style={{
+          transition: 'padding-bottom 0.3s ease-in-out'
+        }}
       >
         {filteredPersonas.map((persona) => (
           <motion.div key={persona.id} variants={item} className="h-full">
@@ -185,23 +244,115 @@ export default function PersonaCardGrid() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              onClick={() => setIsAddInterviewModalOpen(true)}
-              className="fixed bottom-8 right-8 rounded-full shadow-lg px-6 z-50"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              고객 인터뷰 추가
-            </Button>
+            <motion.div className="fixed bottom-8 right-8 z-50">
+              <AnimatePresence mode="wait">
+                {isProcessing ? (
+                  <motion.div
+                    key="processing"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Button
+                      ref={buttonRef}
+                      onClick={handleButtonClick}
+                      className="rounded-full shadow-lg px-5 py-2.5 h-[48px] bg-blue-600 hover:bg-blue-700 text-white border-0 min-w-[140px] max-w-[220px] backdrop-blur-sm"
+                    >
+                      <div className="flex items-center gap-2.5 w-full">
+                        <div className="relative">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ 
+                              duration: 1.5, 
+                              repeat: Infinity, 
+                              ease: "linear"
+                            }}
+                            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-sm font-medium truncate">진행중</span>
+                          <Badge variant="secondary" className="bg-white/20 text-white border-0 px-2 py-0.5 text-xs">
+                            {activeJobs.length}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="idle"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Button
+                      ref={buttonRef}
+                      onClick={handleButtonClick}
+                      className="rounded-full shadow-lg px-5 py-2.5 h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground border-0 min-w-[140px] max-w-[220px] backdrop-blur-sm"
+                    >
+                      <div className="flex items-center gap-2.5 w-full">
+                        <Plus className="h-4 w-4 flex-shrink-0" />
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-sm font-medium truncate">페르소나 추가하기</span>
+                          {jobs.length > 0 && (
+                            <Badge variant="secondary" className="bg-white/20 text-white border-0 px-2 py-0.5 text-xs">
+                              {completedJobs.length + failedJobs.length}/{jobs.length}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </TooltipTrigger>
-          <TooltipContent side="left">
-            <p>새 고객 인터뷰 데이터 추가</p>
+          <TooltipContent side="left" className="bg-gray-900 text-white border-gray-700">
+            <p className="text-sm">
+              {isProcessing 
+                ? `${activeJobs.length}개 파일 처리 중... 클릭하여 진행 상황 확인`
+                : jobs.length > 0
+                ? "진행 상황 확인 또는 새 페르소나 추가"
+                : "새 고객 인터뷰로 페르소나 생성"
+              }
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
+      {/* Speed Dial Menu */}
+      <WorkflowProgressSpeedDial
+        open={isProgressDropdownOpen}
+        onOpenChange={setIsProgressDropdownOpen}
+        jobs={jobs}
+        onRetryJob={retryJob}
+        onRemoveJob={removeJob}
+        onClearCompleted={clearCompleted}
+        onClearAll={clearAll}
+        onAddMore={handleAddMore}
+        onJobClick={handleJobClick}
+      />
+
       <AddInterviewModal 
         open={isAddInterviewModalOpen}
         onOpenChange={setIsAddInterviewModalOpen}
+        onFilesSubmit={(files) => {
+          addJobs(files);
+          if (files.length > 0) {
+            setIsProgressDropdownOpen(true);
+          }
+        }}
+      />
+
+      <JobDetailModal
+        job={selectedJob}
+        open={isJobDetailModalOpen}
+        onOpenChange={setIsJobDetailModalOpen}
+        onRetryJob={retryJob}
+        onRemoveJob={removeJob}
       />
     </>
   )
