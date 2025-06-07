@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, use } from "react"
 import ChatInterface from "@/components/chat-interface"
-import { fetchPersonaById, fetchPersonas } from "@/lib/data"
+import { fetchPersonaById, fetchPersonas } from "@/lib/persona-data"
 import { notFound } from "next/navigation"
 import { ModeToggle } from "@/components/mode-toggle"
 import Link from "next/link"
@@ -61,7 +61,7 @@ export default function ChatPage({ params }: ChatPageProps) {
     const loadData = async () => {
       try {
         const personaData = await fetchPersonaById(personaId) as PersonaForPage | null
-        const allPersonasData = await fetchPersonas('all') as PersonaForPage[]
+        const allPersonasData = await fetchPersonas() as PersonaForPage[]
         
         if (!personaData) {
           notFound()

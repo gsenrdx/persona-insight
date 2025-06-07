@@ -29,7 +29,18 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
           </Link>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-              <Link href="/insights"><PieChart className="h-4 w-4" />종합 인사이트</Link>
+              <Link href="/interviews" className="flex items-center gap-1">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                인터뷰 데이터
+              </Link>
+            </Button>
+            <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
+              <Link href="/insights" className="flex items-center gap-1">
+                <PieChart className="h-4 w-4" />
+                종합 인사이트
+              </Link>
             </Button>
             <ModeToggle />
           </div>
@@ -46,7 +57,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto mb-12">
+        <div className="max-w-3xl mx-auto mb-6">
           <SearchBar />
           {!isSearching && (
             <div className="mt-6">

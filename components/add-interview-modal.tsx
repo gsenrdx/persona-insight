@@ -1,17 +1,26 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, User, Calendar, FileText, Plus } from "lucide-react";
-import { motion } from "framer-motion";
+import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+export interface ExtractionCriteria {
+  id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+}
 
 export interface AddInterviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFilesSubmit: (files: File[]) => void;
+  onFilesSubmit: (files: File[], criteria: ExtractionCriteria[]) => void;
 }
 
 // 10MB 크기 제한 (바이트 단위)
@@ -35,10 +44,42 @@ const SUPPORTED_FILE_EXTENSIONS = [
   '.pptx', '.ppt', '.xml', '.epub'
 ];
 
+// 기본 추출 기준
+const DEFAULT_CRITERIA: ExtractionCriteria[] = [
+  { 
+    id: 'painpoint', 
+    name: '페인포인트', 
+    description: '사용자가 겪는 문제와 불편함',
+    isDefault: true 
+  },
+  { 
+    id: 'needs', 
+    name: '니즈', 
+    description: '사용자가 원하는 것들',
+    isDefault: true 
+  }
+];
+
+// 추천 기준 예시
+const SUGGESTED_CRITERIA = [
+  { name: '사용자 경험', description: '전반적인 사용 경험과 만족도' },
+  { name: '개선사항', description: '더 나아질 수 있는 부분들' },
+  { name: '선호도', description: '좋아하는 기능이나 특성' },
+  { name: '불편사항', description: '구체적인 불편함과 장애요소' },
+  { name: '기대사항', description: '앞으로 바라는 점들' },
+  { name: '사용 패턴', description: '이용 방식과 습관' }
+];
+
 export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }: AddInterviewModalProps) {
+  const [currentStep, setCurrentStep] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extractionCriteria, setExtractionCriteria] = useState<ExtractionCriteria[]>(DEFAULT_CRITERIA);
+  const [newCriteriaName, setNewCriteriaName] = useState('');
+  const [newCriteriaDescription, setNewCriteriaDescription] = useState('');
+  const [editingCriteria, setEditingCriteria] = useState<string | null>(null);
+  const [showFileList, setShowFileList] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,21 +94,18 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   
   // 파일 유효성 검사 함수
   const validateFile = (file: File): string | null => {
-    // 파일 크기 검사
     if (file.size > MAX_FILE_SIZE) {
-      return `파일 크기가 너무 큽니다. 최대 10MB까지 허용됩니다.`;
+      return `파일이 너무 커요 (최대 10MB)`;
     }
     
-    // 파일 형식 검사
     const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
     if (!SUPPORTED_FILE_TYPES.includes(file.type) && 
         !SUPPORTED_FILE_EXTENSIONS.some(ext => fileExtension === ext)) {
-      return `지원하지 않는 파일 형식입니다. 지원되는 파일: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub`;
+      return `지원하지 않는 파일 형식이에요`;
     }
     
-    // 빈 파일 검사
     if (file.size === 0) {
-      return `빈 파일입니다. 내용이 있는 파일을 업로드해주세요.`;
+      return `빈 파일은 업로드할 수 없어요`;
     }
     
     return null;
@@ -129,7 +167,6 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
       }
     }
     
-    // 파일 입력 초기화 (같은 파일 재선택 가능하도록)
     if (e.target) {
       e.target.value = '';
     }
@@ -144,127 +181,517 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
     fileInputRef.current?.click();
   };
 
-  const handleSubmit = () => {
-    // 파일 체크
-    if (files.length === 0) {
-      setError("파일을 선택해주세요.");
+  const handleAddCriteria = (suggestedCriteria?: { name: string; description: string }) => {
+    const nameToAdd = suggestedCriteria?.name || newCriteriaName.trim();
+    const descriptionToAdd = suggestedCriteria?.description || newCriteriaDescription.trim();
+    
+    if (!nameToAdd) {
+      setError('기준 이름을 입력해주세요');
       return;
     }
     
-    // 부모 컴포넌트로 파일들 전달
-    onFilesSubmit(files);
+    const isDuplicate = extractionCriteria.some(
+      criteria => criteria.name.toLowerCase() === nameToAdd.toLowerCase()
+    );
     
-    // 모달 초기화 및 닫기
+    if (isDuplicate) {
+      setError('이미 추가된 기준이에요');
+      return;
+    }
+    
+    const newCriteria: ExtractionCriteria = {
+      id: `custom-${Date.now()}`,
+      name: nameToAdd,
+      description: descriptionToAdd || `${nameToAdd}에 대한 내용을 분석해요`,
+      isDefault: false
+    };
+    
+    setExtractionCriteria(prev => [...prev, newCriteria]);
+    if (!suggestedCriteria) {
+      setNewCriteriaName('');
+      setNewCriteriaDescription('');
+    }
+    setError(null);
+  };
+
+  const handleUpdateCriteria = (id: string, name: string, description: string) => {
+    setExtractionCriteria(prev => 
+      prev.map(criteria => 
+        criteria.id === id 
+          ? { ...criteria, name: name.trim(), description: description.trim() }
+          : criteria
+      )
+    );
+    setEditingCriteria(null);
+  };
+
+  const handleRemoveCriteria = (id: string) => {
+    setExtractionCriteria(prev => prev.filter(criteria => criteria.id !== id));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddCriteria();
+    }
+  };
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (files.length === 0) {
+        setError("분석할 파일을 먼저 선택해주세요");
+        return;
+      }
+      setError(null);
+      setCurrentStep(2);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep === 2) {
+      setCurrentStep(1);
+      setError(null);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (files.length === 0) {
+      setError("분석할 파일을 먼저 선택해주세요");
+      return;
+    }
+    
+    onFilesSubmit(files, extractionCriteria);
+    
+    setCurrentStep(1);
     setFiles([]);
+    setExtractionCriteria(DEFAULT_CRITERIA);
+    setNewCriteriaName('');
+    setNewCriteriaDescription('');
+    setEditingCriteria(null);
+    setShowFileList(false);
     setError(null);
     onOpenChange(false);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      onOpenChange(newOpen);
-      if (!newOpen) {
-        setFiles([]);
-        setError(null);
-      }
-    }}>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>고객 인터뷰 추가</DialogTitle>
-          <DialogDescription>
-            인터뷰 파일을 업로드하여 분석을 시작하세요. 여러 파일을 동시에 선택할 수 있습니다.
-          </DialogDescription>
-        </DialogHeader>
+  const handleModalClose = (newOpen: boolean) => {
+    onOpenChange(newOpen);
+    if (!newOpen) {
+      setCurrentStep(1);
+      setFiles([]);
+      setExtractionCriteria(DEFAULT_CRITERIA);
+      setNewCriteriaName('');
+      setNewCriteriaDescription('');
+      setEditingCriteria(null);
+      setShowFileList(false);
+      setError(null);
+    }
+  };
+
+  // 파일 요약 정보 컴포넌트
+  const FilesSummary = () => {
+    if (files.length === 0) return null;
+    
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-900">
+              {files.length}개 파일 선택됨 ({totalSizeMB}MB)
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFileList(!showFileList)}
+            className="text-green-700 hover:text-green-800 h-6 px-2"
+          >
+            {showFileList ? '숨기기' : '보기'}
+          </Button>
+        </div>
         
-        <div
-          className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-            isDragging ? 'border-primary bg-primary/5' : 'border-border'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            multiple
-            accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
-          />
-          
-          <div className="flex flex-col items-center justify-center gap-2">
-            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium">파일을 드래그하여 놓거나</p>
+        <AnimatePresence>
+          {showFileList && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 space-y-2 max-h-32 overflow-y-auto"
+            >
+              {files.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <File className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    <span className="text-xs text-green-800 truncate">{file.name}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveFile(index)}
+                    className="h-5 w-5 text-green-400 hover:text-red-500 flex-shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  };
+
+  // 1단계: 파일 업로드
+  const FileUploadStep = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+          <Folder className="h-6 w-6 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">분석할 파일을 선택해주세요</h3>
+          <p className="text-sm text-gray-600 mt-1">인터뷰 내용이 담긴 파일을 업로드해주세요</p>
+        </div>
+      </div>
+      
+      <div
+        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
+          isDragging 
+            ? 'border-blue-400 bg-blue-50' 
+            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          multiple
+          accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
+        />
+        
+        <div className="space-y-4">
+          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">
+              파일을 드래그하거나 선택해주세요
+            </p>
             <Button
               type="button"
-              variant="secondary"
               onClick={handleUploadClick}
-              className="mt-1"
+              size="sm"
+              className="bg-gray-900 hover:bg-gray-800 text-white"
             >
-              <Plus className="h-4 w-4 mr-2" />
               파일 선택
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              지원 형식: txt, md, mdx, markdown, pdf, html, xlsx, xls, docx, csv, eml, msg, pptx, ppt, xml, epub (최대 10MB)
+            <p className="text-xs text-gray-500">
+              PDF, Word, Excel, 텍스트 파일 · 최대 10MB
             </p>
           </div>
         </div>
-            
-            {files.length > 0 && (
-              <div className="mt-4">
-                <Label>첨부된 파일 ({files.length})</Label>
-                <div className="mt-2 space-y-2">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
-                    >
-                      <div className="flex items-center">
-                        <File className="h-4 w-4 mr-2 text-primary" />
-                        <span className="text-sm truncate max-w-[200px] md:max-w-[300px]">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </span>
-                      </div>
+      </div>
+      
+      <FilesSummary />
+    </div>
+  );
+
+  // 2단계: 분석 기준 설정
+  const CriteriaSetupStep = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+          <Settings className="h-6 w-6 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">어떤 내용을 분석할까요?</h3>
+          <p className="text-sm text-gray-600 mt-1">분석 기준을 추가하면 더 정확한 결과를 얻을 수 있어요</p>
+        </div>
+      </div>
+      
+      {/* 현재 설정된 기준 */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium text-gray-900">분석 기준 ({extractionCriteria.length}개)</h4>
+        <div className="space-y-2">
+          {extractionCriteria.map((criteria) => (
+            <div
+              key={criteria.id}
+              className="p-3 bg-white border border-gray-200 rounded-xl"
+            >
+              {editingCriteria === criteria.id ? (
+                <CriteriaEditForm 
+                  criteria={criteria}
+                  onSave={handleUpdateCriteria}
+                  onCancel={() => setEditingCriteria(null)}
+                />
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{criteria.name}</span>
+                      {criteria.isDefault && (
+                        <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600">
+                          기본
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">{criteria.description}</p>
+                  </div>
+                  {!criteria.isDefault && (
+                    <div className="flex items-center gap-1 ml-3">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemoveFile(index)}
-                        className="h-7 w-7"
+                        onClick={() => setEditingCriteria(criteria.id)}
+                        className="h-6 w-6 text-gray-400 hover:text-gray-600"
                       >
-                        <X className="h-4 w-4" />
+                        <Edit3 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveCriteria(criteria.id)}
+                        className="h-6 w-6 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
                       </Button>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-            
-        {error && (
-          <div className="p-3 flex items-start space-x-2 text-sm text-red-500 bg-red-50 rounded-md">
-            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <div className="whitespace-pre-line">{error}</div>
-          </div>
-        )}
-        
-        <DialogFooter className="flex-col sm:flex-row sm:justify-between sm:space-x-2">
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* 새 기준 추가 */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium text-gray-900">새 기준 추가</h4>
+        <div className="space-y-2">
+          <Input
+            value={newCriteriaName}
+            onChange={(e) => setNewCriteriaName(e.target.value)}
+            placeholder="분석 기준 이름"
+            className="text-sm"
+          />
+          <Textarea
+            value={newCriteriaDescription}
+            onChange={(e) => setNewCriteriaDescription(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="어떤 내용을 분석하고 싶은지 설명해주세요"
+            className="text-sm resize-none"
+            rows={2}
+          />
           <Button
+            type="button"
+            onClick={() => handleAddCriteria()}
+            disabled={!newCriteriaName.trim()}
+            size="sm"
+            className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+          >
+            <Plus className="h-3 w-3 mr-2" />
+            기준 추가
+          </Button>
+        </div>
+      </div>
+      
+      {/* 추천 기준 */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium text-gray-900">추천 기준</h4>
+        <div className="grid grid-cols-2 gap-2">
+          {SUGGESTED_CRITERIA.filter(suggested => 
+            !extractionCriteria.some(criteria => 
+              criteria.name.toLowerCase() === suggested.name.toLowerCase()
+            )
+          ).slice(0, 6).map((suggested) => (
+            <button
+              key={suggested.name}
+              onClick={() => handleAddCriteria(suggested)}
+              className="p-2 text-left border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <p className="text-xs font-medium text-gray-900">{suggested.name}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{suggested.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // 기준 편집 폼 컴포넌트
+  const CriteriaEditForm = ({ 
+    criteria, 
+    onSave, 
+    onCancel 
+  }: { 
+    criteria: ExtractionCriteria;
+    onSave: (id: string, name: string, description: string) => void;
+    onCancel: () => void;
+  }) => {
+    const [editName, setEditName] = useState(criteria.name);
+    const [editDescription, setEditDescription] = useState(criteria.description);
+    
+    const handleSave = () => {
+      if (editName.trim()) {
+        onSave(criteria.id, editName, editDescription);
+      }
+    };
+    
+    return (
+      <div className="space-y-2">
+        <Input
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          className="text-sm font-medium"
+          placeholder="기준 이름"
+        />
+        <Textarea
+          value={editDescription}
+          onChange={(e) => setEditDescription(e.target.value)}
+          className="text-sm resize-none"
+          rows={2}
+          placeholder="기준 설명"
+        />
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSave}
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+          >
+            저장
+          </Button>
+          <Button
+            onClick={onCancel}
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            size="sm"
+            className="text-xs"
           >
             취소
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={files.length === 0 || !!error}
-          >
-            <FileUp className="h-4 w-4 mr-2" />
-            추가하기 ({files.length}개 파일)
-          </Button>
-        </DialogFooter>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col">
+        {/* 헤더 */}
+        <div className="p-6 pb-4 flex-shrink-0">
+          <DialogHeader className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  인터뷰 분석하기
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  {currentStep === 1 ? "파일을 업로드해주세요" : "분석 기준을 설정해주세요"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
+        
+        {/* 컨텐츠 */}
+        <div className="px-6 overflow-y-auto flex-1 min-h-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {currentStep === 1 && <FileUploadStep />}
+              {currentStep === 2 && <CriteriaSetupStep />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        
+        {/* 에러 메시지 */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mx-6 mb-4 flex-shrink-0"
+            >
+              <div className="bg-red-50 border border-red-200 p-3 rounded-xl">
+                <div className="flex gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-700">
+                    {error}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* 푸터 */}
+        <div className="p-6 pt-4 border-t border-gray-100 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              {currentStep > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={handlePreviousStep}
+                  size="sm"
+                  className="text-gray-600"
+                >
+                  <ArrowLeft className="h-3 w-3 mr-2" />
+                  이전
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                size="sm"
+                className="text-gray-600"
+              >
+                취소
+              </Button>
+            </div>
+            
+            {currentStep === 1 ? (
+              <Button
+                onClick={handleNextStep}
+                disabled={files.length === 0}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                다음
+                <ArrowRight className="h-3 w-3 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={files.length === 0 || !!error}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Sparkles className="h-3 w-3 mr-2" />
+                분석 시작
+              </Button>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

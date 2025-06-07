@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import PersonaCard, { PersonaCardProps } from "./persona-card"
 import { useInView } from "react-intersection-observer"
-import { fetchPersonas } from "@/lib/data"
+import { fetchPersonas, PersonaCardData } from "@/lib/persona-data"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,16 +15,12 @@ import JobDetailModal from "./job-detail-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 
-interface Persona extends Omit<PersonaCardProps, 'summary'> {
-  summary?: string;
-}
-
 // 전역 변수로 한 번 로드한 데이터 캐싱
-let cachedAllPersonas: Persona[] | null = null;
+let cachedAllPersonas: PersonaCardData[] | null = null;
 
 export default function PersonaCardGrid() {
-  const [allPersonas, setAllPersonas] = useState<Persona[]>(cachedAllPersonas || [])
-  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([])
+  const [allPersonas, setAllPersonas] = useState<PersonaCardData[]>(cachedAllPersonas || [])
+  const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
   const [isLoading, setIsLoading] = useState(cachedAllPersonas === null)
   const [error, setError] = useState<string | null>(null)
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
@@ -104,7 +100,7 @@ export default function PersonaCardGrid() {
       try {
         setIsLoading(true)
         // 모든 페이지 데이터를 한번에 로드
-        const data = await fetchPersonas('all')
+        const data = await fetchPersonas()
         cachedAllPersonas = data; // 전역 캐시에 저장
         setAllPersonas(data)
       } catch (error) {
@@ -235,6 +231,9 @@ export default function PersonaCardGrid() {
               summary={persona.summary}
               painPoint={persona.painPoint}
               hiddenNeeds={persona.hiddenNeeds}
+              persona_character={persona.persona_character}
+              persona_type={persona.persona_type}
+              persona_description={persona.persona_description}
             />
           </motion.div>
         ))}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
-import { fetchKeywords } from "@/lib/data"
+import { fetchKeywords } from "@/lib/persona-data"
 import { useRouter, useSearchParams } from "next/navigation"
 import { MoreHorizontal } from "lucide-react"
 import {

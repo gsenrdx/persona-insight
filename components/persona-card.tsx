@@ -19,6 +19,9 @@ export interface PersonaCardProps {
   summary?: string
   painPoint: string
   hiddenNeeds: string
+  persona_character?: string
+  persona_type?: string
+  persona_description?: string
 }
 
 export default function PersonaCard({
@@ -30,6 +33,9 @@ export default function PersonaCard({
   summary,
   painPoint,
   hiddenNeeds,
+  persona_character,
+  persona_type,
+  persona_description,
 }: PersonaCardProps) {
   const router = useRouter()
   const [isHovered, setIsHovered] = useState(false)
@@ -96,97 +102,68 @@ export default function PersonaCard({
               : "bg-white border-slate-200"
           )}>
             {/* 페르소나 카드 - 애플 스타일 */}
-            <div className="relative p-5 h-full flex flex-col z-10">
-              {/* 헤더 영역 - 페르소나 이름 */}
-              <div className="mb-4 flex items-center justify-between">
+            <div className="relative p-4 h-full flex flex-col z-10">
+              {/* 헤더 영역 - 페르소나 이름 (description) */}
+              <div className="mb-3 flex items-center justify-between">
                 <h3 className={cn(
-                  "text-lg font-semibold",
+                  "text-base font-semibold leading-tight",
                   isDark ? "text-white" : "text-zinc-900"
                 )}>
                   {name}
                 </h3>
               </div>
               
-              {/* 인사이트 - 애플 스타일의 명확한 인용구 */}
-              <div className="mb-4">
-                <p className={cn(
-                  "text-sm leading-relaxed italic",
-                  isDark 
-                    ? "text-zinc-300" 
-                    : "text-zinc-700"
-                )}>
-                  "{insight}"
-                </p>
-              </div>
-              
-              {/* 키워드 모음 */}
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {keywords.slice(0, 3).map((keyword, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="outline" 
-                    className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full",
-                      isDark 
-                        ? "bg-zinc-800/80 text-zinc-300 border-zinc-700" 
-                        : "bg-zinc-100/80 text-zinc-700 border-zinc-200"
-                    )}
-                  >
-                    {keyword}
-                  </Badge>
-                ))}
-                {keywords.length > 3 && (
-                  <Badge 
-                    variant="outline" 
-                    className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full",
-                      isDark
-                        ? "bg-zinc-800/80 text-zinc-400 border-zinc-700" 
-                        : "bg-zinc-100/80 text-zinc-500 border-zinc-200"
-                    )}
-                  >
-                    +{keywords.length - 3}
-                  </Badge>
-                )}
-              </div>
+              {/* 인용구 - persona_summary (요약된 버전) */}
+              {summary && (
+                <div className="mb-4">
+                  <p className={cn(
+                    "text-xs leading-relaxed italic line-clamp-3",
+                    isDark 
+                      ? "text-zinc-400" 
+                      : "text-zinc-600"
+                  )}>
+                    "{summary.length > 120 ? `${summary.substring(0, 120)}...` : summary}"
+                  </p>
+                </div>
+              )}
               
               {/* 구분선 - 투명색으로 변경 */}
               <div className={cn(
-                "h-px w-full my-4",
+                "h-px w-full my-3",
                 "bg-transparent"
               )} />
               
               {/* 빈 공간 */}
-              <div className="flex-grow" />
+              <div className="flex-grow min-h-[20px]" />
               
               {/* 채팅 버튼 - 애플 스타일 */}
               <motion.div 
                 animate={isHovered ? { x: 3 } : { x: 0 }}
                 className={cn(
-                  "self-stretch flex items-center justify-between pt-4",
+                  "self-stretch flex items-center justify-between pt-3",
                   isDark
                     ? "border-t border-zinc-800" 
                     : "border-t border-zinc-100"
                 )}
               >
                 <span className={cn(
-                  "flex items-center text-sm font-medium", 
+                  "flex items-center text-xs font-medium", 
                   isDark ? "text-white" : "text-zinc-900"
                 )}>
                   <MessageCircle className={cn(
-                    "h-3.5 w-3.5 mr-1",
+                    "h-3 w-3 mr-1",
                     isDark ? "text-zinc-400" : "text-zinc-500"
                   )} />
                   <span className="ml-1">대화하기</span>
                 </span>
                 <div className={cn(
-                  "p-1.5 rounded-full",
+                  "p-1 rounded-full",
                   isDark
                     ? "bg-zinc-800" 
                     : "bg-zinc-100"
                 )}>
                   <ArrowRight className={cn(
-                    "h-3.5 w-3.5",
+                    "h-3 w-3",
                     isDark ? "text-zinc-400" : "text-zinc-500"
                   )} />
                 </div>
@@ -201,7 +178,7 @@ export default function PersonaCard({
                 : "bg-gradient-to-br from-indigo-100 to-indigo-300/40"
             )} />
             
-            {/* 페르소나 이미지 - 더 크게 */}
+            {/* 페르소나 이미지 - 크기 통일 (400x400) */}
             <div className="absolute -bottom-5 -right-5 w-48 h-48 z-10 pointer-events-none">
               <motion.div
                 initial={{ y: 0 }}
@@ -211,19 +188,20 @@ export default function PersonaCard({
                   duration: 3,
                   ease: "easeInOut"
                 }}
+                className="w-full h-full"
               >
                 <Image
-                  src={image || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(name)} persona`}
+                  src={image || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(name)} persona`}
                   alt={`${name} 페르소나 이미지`}
-                  width={180}
-                  height={180}
+                  width={400}
+                  height={400}
                   className={cn(
-                    "object-contain",
+                    "w-full h-full object-cover object-center",
                     isDark
                       ? "drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]" 
                       : "drop-shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
                   )}
-                  sizes="180px"
+                  sizes="(max-width: 768px) 180px, 180px"
                 />
               </motion.div>
             </div>
@@ -262,10 +240,10 @@ export default function PersonaCard({
                         isDark ? "bg-zinc-800" : "bg-zinc-100"
                       )}>
                         <Image
-                          src={image || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(name)} persona`}
+                          src={image || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(name)} persona`}
                           alt={`${name} 페르소나 이미지`}
                           fill
-                          className="object-cover"
+                          className="object-cover object-center"
                         />
                       </div>
                     </div>
