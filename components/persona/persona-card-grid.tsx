@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus, Clock, Play } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import AddInterviewModal from "./add-interview-modal"
-import WorkflowProgressSpeedDial from "./workflow-progress-modal"
-import JobDetailModal from "./job-detail-modal"
+import { AddInterviewModal, WorkflowProgressModal, JobDetailModal } from "@/components/modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 
@@ -323,7 +321,7 @@ export default function PersonaCardGrid() {
       </TooltipProvider>
 
       {/* Speed Dial Menu */}
-      <WorkflowProgressSpeedDial
+              <WorkflowProgressModal
         open={isProgressDropdownOpen}
         onOpenChange={setIsProgressDropdownOpen}
         jobs={jobs}

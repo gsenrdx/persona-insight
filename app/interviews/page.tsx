@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ModeToggle } from "@/components/mode-toggle"
+import { ModeToggle } from "@/components/shared"
 import { CalendarDays, Search, Filter, Users, MessageSquare, ArrowRight, MessageCircle } from "lucide-react"
 import { IntervieweeData, IntervieweeApiResponse } from "@/types/interviewee"
 

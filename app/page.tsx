@@ -1,16 +1,15 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import PersonaCardGrid from "@/components/persona-card-grid"
-import SearchBar from "@/components/search-bar"
-import SearchResult from "@/components/search-result"
-import TagList from "@/components/tag-list"
-import SkeletonCardGrid from "@/components/skeleton-card-grid"
-import { ModeToggle } from "@/components/mode-toggle"
+import { PersonaCardGrid } from "@/components/persona"
+import { SearchBar, SearchResult } from "@/components/search"
+import { TagList, SkeletonCardGrid, ModeToggle } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { PieChart } from "lucide-react"
+import AuthButtons from "@/components/auth/auth-buttons"
 
-export default function Home({ searchParams }: { searchParams: { q?: string, searchIntent?: string, results?: string } }) {
-  const isSearching = !!searchParams.searchIntent || !!searchParams.results
+export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
+  const params = await searchParams
+  const isSearching = !!params.searchIntent || !!params.results
   
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
@@ -43,6 +42,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string, sea
               </Link>
             </Button>
             <ModeToggle />
+            <AuthButtons />
           </div>
         </div>
       </header>

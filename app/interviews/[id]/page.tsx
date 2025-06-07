@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { ModeToggle } from "@/components/mode-toggle"
+import { ModeToggle } from "@/components/shared"
 import { 
   ArrowLeft, 
   CalendarDays, 
