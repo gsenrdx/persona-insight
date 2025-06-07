@@ -18,7 +18,7 @@ export default function AuthButtons() {
   }
 
   if (loading) {
-    return <div className="h-9 w-16 bg-muted rounded animate-pulse" />
+    return <div className="h-9 w-16 bg-gray-200 rounded" />
   }
 
   if (user) {
