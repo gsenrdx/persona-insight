@@ -5,13 +5,15 @@ import { SearchBar, SearchResult } from "@/components/search"
 import { TagList, SkeletonCardGrid, ModeToggle } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { PieChart } from "lucide-react"
-import AuthButtons from "@/components/auth/auth-buttons"
+import AuthGuard from "@/components/auth/auth-guard"
+import UserMenu from "@/components/auth/user-menu"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
   const params = await searchParams
   const isSearching = !!params.searchIntent || !!params.results
   
   return (
+    <AuthGuard>
     <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
       {/* 배경 장식 요소 */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
@@ -42,7 +44,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
               </Link>
             </Button>
             <ModeToggle />
-            <AuthButtons />
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -79,5 +81,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         <p>© 2025 Persona Insight by MISO. All rights reserved.</p>
       </footer>
     </div>
+    </AuthGuard>
   )
 }

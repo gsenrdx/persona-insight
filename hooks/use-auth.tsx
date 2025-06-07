@@ -15,6 +15,11 @@ interface Profile {
   last_login_at: string | null
   created_at: string
   updated_at: string
+  company?: {
+    id: string
+    name: string
+    domains: string[]
+  } | null
 }
 
 interface AuthContextType {
@@ -34,20 +39,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('프로필 조회 시도 - userId:', userId)
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          company:companies(
+            id,
+            name,
+            domains
+          )
+        `)
         .eq('id', userId)
-        .single()
 
       if (error) {
-        console.error('프로필 로드 실패:', error)
+        console.error('프로필 로드 실패 (DB 오류):', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        })
         return null
       }
 
-      return data as Profile
+      if (!data || data.length === 0) {
+        console.error('프로필 로드 실패: RLS 정책에 의해 접근이 거부되었거나 해당 프로필이 존재하지 않습니다.')
+        return null
+      }
+
+      const profile = data[0]
+      console.log('프로필 로드 성공:', profile)
+      return profile as Profile
     } catch (err) {
-      console.error('프로필 로드 중 오류:', err)
+      console.error('프로필 로드 중 예외 발생:', err)
       return null
     }
   }
