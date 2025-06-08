@@ -29,6 +29,7 @@ import {
   Home
 } from "lucide-react"
 import { IntervieweeData, IntervieweeApiResponse } from "@/types/interviewee"
+import { useAuth } from "@/hooks/use-auth"
 
 // Framer Motion variants
 const containerVariants = {
@@ -118,6 +119,7 @@ function FeatureItem({ icon: Icon, title, description, score }: {
 }
 
 export default function InterviewDetailPage() {
+  const { profile } = useAuth()
   const params = useParams()
   const router = useRouter()
   const [interview, setInterview] = useState<IntervieweeData | null>(null)
@@ -127,15 +129,23 @@ export default function InterviewDetailPage() {
   const [imageLoading, setImageLoading] = useState(true)
 
   useEffect(() => {
-    fetchInterviewDetail()
-  }, [params.id])
+    if (profile?.company_id) {
+      fetchInterviewDetail()
+    }
+  }, [params.id, profile?.company_id])
 
   const fetchInterviewDetail = async () => {
     try {
       setLoading(true)
       setImageError(false)
       setImageLoading(true)
-      const response = await fetch('/api/supabase/interviewee')
+      
+      if (!profile?.company_id) {
+        setError('회사 정보를 찾을 수 없습니다')
+        return
+      }
+
+      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')

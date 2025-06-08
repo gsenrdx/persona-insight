@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ModeToggle } from "@/components/shared"
 import { CalendarDays, Search, Filter, Users, MessageSquare, ArrowRight, MessageCircle } from "lucide-react"
 import { IntervieweeData, IntervieweeApiResponse } from "@/types/interviewee"
+import { useAuth } from "@/hooks/use-auth"
 
 // Framer Motion variants
 const containerVariants = {
@@ -51,6 +52,7 @@ const cardHoverVariants = {
 }
 
 export default function InterviewsPage() {
+  const { profile } = useAuth()
   const [interviews, setInterviews] = useState<IntervieweeData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,13 +62,21 @@ export default function InterviewsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchInterviews()
-  }, [])
+    if (profile?.company_id) {
+      fetchInterviews()
+    }
+  }, [profile?.company_id])
 
   const fetchInterviews = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/supabase/interviewee')
+      
+      if (!profile?.company_id) {
+        setError('회사 정보를 찾을 수 없습니다')
+        return
+      }
+
+      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')

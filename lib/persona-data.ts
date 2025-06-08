@@ -1,15 +1,25 @@
 import { PersonaData, PersonaApiResponse, getPersonaTypeInfo } from "@/types/persona"
 
 // 모든 페르소나 가져오기
-export async function fetchPersonas(): Promise<PersonaCardData[]> {
+export async function fetchPersonas(company_id?: string): Promise<PersonaCardData[]> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
     )
     
-    const response = await fetch(`${baseUrl}/api/supabase/persona`)
+    if (!company_id) {
+      console.warn("fetchPersonas 호출 시 company_id가 제공되지 않았습니다.")
+      return []
+    }
+
+    const response = await fetch(`${baseUrl}/api/supabase/persona?company_id=${company_id}`)
 
     if (!response.ok) {
+      // 400 Bad Request와 같은 클라이언트 오류도 처리
+      if (response.status === 400) {
+        const errorData = await response.json()
+        throw new Error(`Failed to fetch personas: ${errorData.error || 'Bad Request'}`)
+      }
       throw new Error(`Failed to fetch personas: ${response.status} ${response.statusText}`)
     }
 
@@ -44,21 +54,32 @@ export async function fetchPersonas(): Promise<PersonaCardData[]> {
 }
 
 // 특정 ID의 페르소나 가져오기
-export async function fetchPersonaById(id: string): Promise<PersonaCardData | null> {
+export async function fetchPersonaById(id: string, company_id?: string): Promise<PersonaCardData | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
     )
     
-    const response = await fetch(`${baseUrl}/api/supabase/persona`)
+    if (!company_id) {
+      console.warn("fetchPersonaById 호출 시 company_id가 제공되지 않았습니다.")
+      return null
+    }
+    
+    const response = await fetch(`${baseUrl}/api/supabase/persona?company_id=${company_id}`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch personas: ${response.status} ${response.statusText}`)
     }
 
     const result: PersonaApiResponse = await response.json()
-    const persona = result.data.find(p => p.id === id)
 
+    if (!result.data || !Array.isArray(result.data)) {
+      throw new Error("Invalid persona data format received from API")
+    }
+
+    // 특정 ID의 페르소나 찾기
+    const persona = result.data.find((p: PersonaData) => p.id === id)
+    
     if (!persona) {
       console.error(`Persona with ID ${id} not found`)
       return null
@@ -68,9 +89,9 @@ export async function fetchPersonaById(id: string): Promise<PersonaCardData | nu
     
     return {
       id: persona.id,
-      name: persona.persona_description, // persona_description을 name으로 사용
+      name: persona.persona_description,
       image: persona.thumbnail || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(persona.persona_description)}`,
-      keywords: [], // 키워드 비우기
+      keywords: [],
       insight: persona.insight_quote,
       summary: persona.persona_summary,
       painPoint: persona.painpoints,

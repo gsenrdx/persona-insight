@@ -6,10 +6,20 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const persona_type = searchParams.get('type')
+    const company_id = searchParams.get('company_id')
+
+    // company_id가 필수로 제공되어야 함
+    if (!company_id) {
+      return NextResponse.json(
+        { error: "company_id가 필요합니다" }, 
+        { status: 400 }
+      )
+    }
 
     let query = supabase
       .from('personas')
       .select('*')
+      .eq('company_id', company_id) // 회사 필터링 추가
       .order('persona_type', { ascending: true })
 
     // 특정 타입 필터링

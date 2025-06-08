@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const company_id = searchParams.get('company_id')
+
+    // company_id가 필수로 제공되어야 함
+    if (!company_id) {
+      return NextResponse.json(
+        { error: "company_id가 필요합니다" }, 
+        { status: 400 }
+      )
+    }
+
     const { data, error } = await supabase
       .from('interviewees')
       .select('*')
+      .eq('company_id', company_id) // 회사 필터링 추가
       .order('session_date', { ascending: false })
 
     if (error) {

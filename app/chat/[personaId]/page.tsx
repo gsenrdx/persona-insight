@@ -10,6 +10,7 @@ import { PersonaSwitcher } from "@/components/persona"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Home, UserPlus, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/use-auth"
 
 interface PersonaForPage {
   id: string;
@@ -37,6 +38,7 @@ export default function ChatPage({ params }: ChatPageProps) {
   const unwrappedParams = use(params as any) as { personaId: string };
   const personaId = unwrappedParams.personaId;
   
+  const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
   const [persona, setPersona] = useState<PersonaForPage | null>(null)
   const [allPersonas, setAllPersonas] = useState<PersonaForPage[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -60,8 +62,13 @@ export default function ChatPage({ params }: ChatPageProps) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const personaData = await fetchPersonaById(personaId) as PersonaForPage | null
-        const allPersonasData = await fetchPersonas() as PersonaForPage[]
+        // 프로필이 아직 로드되지 않았으면 대기
+        if (!profile?.company_id) {
+          return;
+        }
+
+        const personaData = await fetchPersonaById(personaId, profile.company_id) as PersonaForPage | null
+        const allPersonasData = await fetchPersonas(profile.company_id) as PersonaForPage[]
         
         if (!personaData) {
           notFound()
@@ -77,7 +84,7 @@ export default function ChatPage({ params }: ChatPageProps) {
     }
     
     loadData()
-  }, [personaId])
+  }, [personaId, profile?.company_id])
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)

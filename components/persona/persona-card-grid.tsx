@@ -12,14 +12,17 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AddInterviewModal, WorkflowProgressModal, JobDetailModal } from "@/components/modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
+import { useAuth } from "@/hooks/use-auth"
 
 // 전역 변수로 한 번 로드한 데이터 캐싱
 let cachedAllPersonas: PersonaCardData[] | null = null;
+let cachedCompanyId: string | null = null; // 회사별 캐시 관리
 
 export default function PersonaCardGrid() {
+  const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
   const [allPersonas, setAllPersonas] = useState<PersonaCardData[]>(cachedAllPersonas || [])
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
-  const [isLoading, setIsLoading] = useState(cachedAllPersonas === null)
+  const [isLoading, setIsLoading] = useState(true) // 초기에는 로딩 상태
   const [error, setError] = useState<string | null>(null)
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
   const [isProgressDropdownOpen, setIsProgressDropdownOpen] = useState(false)
@@ -87,8 +90,14 @@ export default function PersonaCardGrid() {
 
   // 최초 한 번만 모든 데이터 로드
   useEffect(() => {
-    // 이미 캐시된 데이터가 있으면 사용
-    if (cachedAllPersonas) {
+    // 프로필이 아직 로드되지 않았으면 대기
+    if (!profile?.company_id) {
+      setIsLoading(true);
+      return;
+    }
+
+    // 이미 캐시된 데이터가 있고 같은 회사의 데이터인 경우 사용
+    if (cachedAllPersonas && cachedCompanyId === profile.company_id) {
       setAllPersonas(cachedAllPersonas);
       setIsLoading(false);
       return;
@@ -97,9 +106,11 @@ export default function PersonaCardGrid() {
     async function loadAllPersonas() {
       try {
         setIsLoading(true)
-        // 모든 페이지 데이터를 한번에 로드
-        const data = await fetchPersonas()
+        setError(null)
+        // 모든 페이지 데이터를 한번에 로드 (회사별)
+        const data = await fetchPersonas(profile?.company_id || undefined)
         cachedAllPersonas = data; // 전역 캐시에 저장
+        cachedCompanyId = profile?.company_id || null; // 회사 ID 캐시
         setAllPersonas(data)
       } catch (error) {
         console.error("Failed to fetch personas:", error)
@@ -110,7 +121,7 @@ export default function PersonaCardGrid() {
     }
 
     loadAllPersonas();
-  }, []) // 의존성 배열을 비워서 컴포넌트 마운트 시 한 번만 실행
+  }, [profile?.company_id]) // profile.company_id가 변경될 때만 실행
 
   // 검색어와 필터에 따라 클라이언트 측에서 필터링
   useEffect(() => {
