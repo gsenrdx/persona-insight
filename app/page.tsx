@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { PieChart } from "lucide-react"
 import AuthGuard from "@/components/auth/auth-guard"
 import UserMenu from "@/components/auth/user-menu"
+import CompanyBranding from "@/components/auth/company-branding"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
   const params = await searchParams
@@ -25,7 +26,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
           <Link href="/" className="flex items-center gap-2">
             <div className="flex items-baseline">
               <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-              <span className="ml-2 text-xs text-muted-foreground">by MISO</span>
+              <CompanyBranding />
             </div>
           </Link>
           <div className="flex items-center gap-3">
