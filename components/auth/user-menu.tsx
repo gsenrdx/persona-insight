@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { User, LogOut, Building2 } from 'lucide-react'
+import { User, LogOut, Building2, AlertTriangle, RefreshCw } from 'lucide-react'
 import ProfileModal from './profile-modal'
 
 const ROLE_LABELS = {
@@ -23,7 +23,7 @@ const ROLE_LABELS = {
 } as const
 
 export default function UserMenu() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, error, signOut, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
 
@@ -58,7 +58,52 @@ export default function UserMenu() {
     }
   }
 
-  if (!user || !profile) return null
+  if (!user) return null
+
+  // 에러가 있는 경우 에러 메뉴 표시
+  if (error || !profile) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="relative h-10 text-amber-600 border-amber-200 hover:bg-amber-50">
+            <AlertTriangle className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-64" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium leading-none text-amber-700">프로필 로드 실패</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              {error && (
+                <p className="text-xs text-amber-600">{error}</p>
+              )}
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={refreshProfile}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            <span>다시 시도</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={handleSignOut}
+            disabled={loading}
+            className="text-red-600 focus:text-red-600"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>로그아웃</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
 
   return (
     <>

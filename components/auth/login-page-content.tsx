@@ -204,7 +204,7 @@ export default function LoginPageContent() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">로딩 중...</p>
+          <p className="text-slate-600">인증 상태를 확인하고 있어요...</p>
         </div>
       </div>
     )
