@@ -12,7 +12,9 @@ import {
   User,
   Loader2,
   File,
-  Calendar
+  Calendar,
+  Sparkles,
+  Star
 } from "lucide-react";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
 import { format } from "date-fns";
@@ -54,6 +56,27 @@ const statusConfig = {
     color: "text-red-600",
     bgColor: "bg-red-50",
     borderColor: "border-red-200"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIZING]: {
+    icon: Sparkles,
+    label: "페르소나 합성중",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED]: {
+    icon: Star,
+    label: "페르소나 합성 완료",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIS_FAILED]: {
+    icon: XCircle,
+    label: "페르소나 합성 실패",
+    color: "text-rose-600",
+    bgColor: "bg-rose-50",
+    borderColor: "border-rose-200"
   }
 };
 
@@ -91,7 +114,7 @@ export default function JobDetailModal({
           <div className={`rounded-lg p-4 border ${config.bgColor} ${config.borderColor}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <StatusIcon className={`h-5 w-5 ${config.color} ${job.status === WorkflowStatus.PROCESSING ? 'animate-spin' : ''}`} />
+                <StatusIcon className={`h-5 w-5 ${config.color} ${(job.status === WorkflowStatus.PROCESSING || job.status === WorkflowStatus.PERSONA_SYNTHESIZING) ? 'animate-spin' : ''}`} />
                 <div>
                   <h3 className={`font-medium ${config.color}`}>{config.label}</h3>
                   <p className="text-sm text-gray-600">
@@ -99,6 +122,9 @@ export default function JobDetailModal({
                     {job.status === WorkflowStatus.PROCESSING && "현재 분석을 진행하고 있습니다"}
                     {job.status === WorkflowStatus.COMPLETED && "분석이 완료되었습니다"}
                     {job.status === WorkflowStatus.FAILED && "분석 중 오류가 발생했습니다"}
+                    {job.status === WorkflowStatus.PERSONA_SYNTHESIZING && "페르소나와 합성을 진행하고 있습니다"}
+                    {job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED && "페르소나 합성이 완료되었습니다"}
+                    {job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED && "페르소나 합성 중 오류가 발생했습니다"}
                   </p>
                 </div>
               </div>
@@ -158,9 +184,11 @@ export default function JobDetailModal({
           )}
 
           {/* 결과 정보 */}
-          {job.result && job.status === WorkflowStatus.COMPLETED && (
+          {job.result && (job.status === WorkflowStatus.COMPLETED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED) && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">분석 결과</h4>
+              <h4 className="font-medium text-gray-900">
+                {job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED ? "페르소나 합성 결과" : "분석 결과"}
+              </h4>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                 {job.result.type && (
                   <div className="flex items-center gap-2">
@@ -178,6 +206,19 @@ export default function JobDetailModal({
                     </p>
                   </div>
                 )}
+
+                {/* 페르소나 합성 결과 표시 */}
+                {job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED && job.synthesisResult && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm font-medium text-emerald-700">페르소나 업데이트 완료</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      기존 페르소나 데이터와 성공적으로 합성되었습니다.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -185,7 +226,7 @@ export default function JobDetailModal({
           {/* 액션 버튼 */}
           <div className="flex justify-between pt-4 border-t">
             <div className="flex gap-2">
-              {job.status === WorkflowStatus.FAILED && (
+              {(job.status === WorkflowStatus.FAILED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
                 <Button
                   onClick={() => {
                     onRetryJob(job.id);
@@ -199,7 +240,10 @@ export default function JobDetailModal({
                 </Button>
               )}
               
-              {(job.status === WorkflowStatus.COMPLETED || job.status === WorkflowStatus.FAILED) && (
+              {(job.status === WorkflowStatus.COMPLETED || 
+                job.status === WorkflowStatus.FAILED ||
+                job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED ||
+                job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
                 <Button
                   onClick={() => {
                     onRemoveJob(job.id);

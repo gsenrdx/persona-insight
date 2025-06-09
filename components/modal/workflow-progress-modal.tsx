@@ -11,7 +11,9 @@ import {
   User,
   Loader2,
   Plus,
-  MoreHorizontal
+  MoreHorizontal,
+  Sparkles,
+  Star
 } from "lucide-react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
@@ -67,6 +69,30 @@ const statusConfig = {
     bgColor: "bg-red-50",
     dotColor: "bg-red-400",
     buttonColor: "bg-red-50/80 hover:bg-red-100/80 text-red-700 border border-red-200/50 backdrop-blur-sm"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIZING]: {
+    icon: Sparkles,
+    label: "페르소나 합성중",
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
+    dotColor: "bg-purple-400",
+    buttonColor: "bg-purple-50/80 hover:bg-purple-100/80 text-purple-700 border border-purple-200/50 backdrop-blur-sm"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED]: {
+    icon: Star,
+    label: "페르소나 합성 완료",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
+    dotColor: "bg-emerald-400",
+    buttonColor: "bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-700 border border-emerald-200/50 backdrop-blur-sm"
+  },
+  [WorkflowStatus.PERSONA_SYNTHESIS_FAILED]: {
+    icon: XCircle,
+    label: "페르소나 합성 실패",
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    dotColor: "bg-rose-400",
+    buttonColor: "bg-rose-50/80 hover:bg-rose-100/80 text-rose-700 border border-rose-200/50 backdrop-blur-sm"
   }
 };
 
@@ -84,10 +110,18 @@ export default function WorkflowProgressSpeedDial({
   const [dismissingJobs, setDismissingJobs] = useState<Set<string>>(new Set());
   
   const activeJobs = jobs.filter(job => 
-    job.status === WorkflowStatus.PENDING || job.status === WorkflowStatus.PROCESSING
+    job.status === WorkflowStatus.PENDING || 
+    job.status === WorkflowStatus.PROCESSING ||
+    job.status === WorkflowStatus.PERSONA_SYNTHESIZING
   );
-  const completedJobs = jobs.filter(job => job.status === WorkflowStatus.COMPLETED);
-  const failedJobs = jobs.filter(job => job.status === WorkflowStatus.FAILED);
+  const completedJobs = jobs.filter(job => 
+    job.status === WorkflowStatus.COMPLETED ||
+    job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED
+  );
+  const failedJobs = jobs.filter(job => 
+    job.status === WorkflowStatus.FAILED ||
+    job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED
+  );
 
   // 최대 4개까지만 표시 (공간 제약)
   const displayJobs = jobs.slice(0, 4);
@@ -125,7 +159,7 @@ export default function WorkflowProgressSpeedDial({
   ) => {
     const threshold = 120; // 드래그 임계값
     
-    if (info.offset.x > threshold && job.status === WorkflowStatus.COMPLETED) {
+    if (info.offset.x > threshold && (job.status === WorkflowStatus.COMPLETED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED)) {
       // 스와이프 삭제 애니메이션
       setDismissingJobs(prev => new Set(prev).add(jobId));
       setTimeout(() => {
@@ -205,7 +239,7 @@ export default function WorkflowProgressSpeedDial({
               const StatusIcon = config.icon;
               const pendingPosition = pendingJobPositions.get(job.id);
               const isDismissing = dismissingJobs.has(job.id);
-              const isCompleted = job.status === WorkflowStatus.COMPLETED;
+              const isCompleted = job.status === WorkflowStatus.COMPLETED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED;
               
               return (
                 <motion.div
@@ -248,7 +282,7 @@ export default function WorkflowProgressSpeedDial({
                     >
                       <div className="flex items-center gap-2.5 w-full">
                         <div className="flex-shrink-0">
-                          {job.status === WorkflowStatus.PROCESSING ? (
+                          {(job.status === WorkflowStatus.PROCESSING || job.status === WorkflowStatus.PERSONA_SYNTHESIZING) ? (
                             <motion.div
                               animate={{ rotate: 360 }}
                               transition={{ 
@@ -289,7 +323,7 @@ export default function WorkflowProgressSpeedDial({
                     </Button>
 
                     {/* 액션 버튼 (호버시 표시) - 완료된 작업은 스와이프로 대체 */}
-                    {job.status === WorkflowStatus.FAILED && (
+                    {(job.status === WorkflowStatus.FAILED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
                       <div className="absolute -left-16 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <div className="flex flex-col gap-2">
                           <Button
