@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const company_id = searchParams.get('company_id')
+    const project_id = searchParams.get('project_id')
 
     if (!company_id) {
       return NextResponse.json(
@@ -13,15 +14,22 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log(`사용 가능한 연도 조회: company_id=${company_id}`)
+    console.log(`사용 가능한 연도 조회: company_id=${company_id}, project_id=${project_id}`)
 
     // 실제 인터뷰가 존재하는 연도들을 조회
-    const { data: interviews, error } = await supabase
+    let query = supabase
       .from('interviewees')
       .select('session_date')
       .eq('company_id', company_id)
       .not('interview_detail', 'is', null)
       .not('session_date', 'is', null)
+
+    // 프로젝트 필터링 추가
+    if (project_id) {
+      query = query.eq('project_id', project_id)
+    }
+
+    const { data: interviews, error } = await query
 
     if (error) {
       console.error("연도 조회 오류:", error)

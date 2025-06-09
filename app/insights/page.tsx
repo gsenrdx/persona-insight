@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
 type Keyword = {
   name: string;
@@ -49,6 +50,7 @@ type InsightData = {
 }
 
 export default function InsightsPage() {
+  const { profile } = useAuth()
   const [currentInsight, setCurrentInsight] = useState(0)
   const [showDetailAnalysis, setShowDetailAnalysis] = useState(true)
   const [showRelatedKeywords, setShowRelatedKeywords] = useState(true)
@@ -61,18 +63,24 @@ export default function InsightsPage() {
   const [availableYears, setAvailableYears] = useState<string[]>([])
   const years = availableYears
   
-  // 임시 company_id (실제로는 로그인한 사용자의 company_id를 사용해야 함)
-  // TODO: 실제 로그인 구현 시 사용자의 실제 company_id로 변경 필요
-  const TEMP_COMPANY_ID = "baa84a1e-ba44-46ad-a18a-cefbeb96776d"
-  
   // 사용 가능한 연도 먼저 로드
   useEffect(() => {
+    if (!profile?.company_id || !profile?.current_project_id) {
+      return
+    }
+
     async function loadAvailableYears() {
       try {
-        const response = await fetch(`/api/insights/years?company_id=${TEMP_COMPANY_ID}`)
+        if (!profile?.company_id || !profile?.current_project_id) return;
+        
+        console.log('연도 데이터 로드 중 - 프로젝트:', profile.current_project?.name, 'ID:', profile.current_project_id);
+        
+        const response = await fetch(`/api/insights/years?company_id=${profile.company_id}&project_id=${profile.current_project_id}`)
         if (response.ok) {
           const data = await response.json()
           setAvailableYears(data.years || [])
+          
+          console.log('연도 데이터 로드 완료:', data.years?.length || 0, '개');
         } else {
           console.error("연도 조회 실패")
           // 오류 시 현재 연도 기준 3년으로 fallback
@@ -88,17 +96,23 @@ export default function InsightsPage() {
     }
     
     loadAvailableYears()
-  }, [])
+  }, [profile?.company_id, profile?.current_project_id])
 
   // 인사이트 데이터 로드 (사용 가능한 연도가 로드된 후에 실행)
   useEffect(() => {
     if (availableYears.length === 0) return // 연도가 로드되지 않았으면 대기
+    if (!profile?.company_id || !profile?.current_project_id) return
     
     async function loadInsights() {
       try {
         setLoading(true)
+        
+        if (!profile?.company_id || !profile?.current_project_id) return;
+        
+        console.log('인사이트 데이터 로드 중 - 프로젝트:', profile.current_project?.name);
+        
         const yearDataPromises = availableYears.map(async (year) => {
-          const response = await fetch(`/api/insights?company_id=${TEMP_COMPANY_ID}&year=${year}`)
+          const response = await fetch(`/api/insights?company_id=${profile.company_id}&project_id=${profile.current_project_id}&year=${year}`)
           if (response.ok) {
             const data = await response.json()
             return { year, data }
@@ -117,6 +131,8 @@ export default function InsightsPage() {
         })
         
         setInsightData(newInsightData)
+        
+        console.log('인사이트 데이터 로드 완료');
       } catch (error) {
         console.error("인사이트 데이터 로드 실패:", error)
         // 오류 시 빈 데이터로 초기화
@@ -131,7 +147,7 @@ export default function InsightsPage() {
     }
     
     loadInsights()
-  }, [availableYears])
+  }, [availableYears, profile?.company_id, profile?.current_project_id])
   
 
   
@@ -207,6 +223,21 @@ export default function InsightsPage() {
     count: insightData[year]?.intervieweeCount || 0
   }))
 
+  // 프로필이나 프로젝트 정보가 없을 때
+  if (!profile?.company_id || !profile?.current_project_id) {
+    return (
+      <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30 dark:from-blue-950/5 dark:to-blue-900/10">
+        <div className="container mx-auto px-4 py-8 relative z-10">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-muted-foreground">프로젝트를 선택해주세요</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // 로딩 중일 때 표시
   if (loading) {
     return (
@@ -255,10 +286,20 @@ export default function InsightsPage() {
         {/* 연도별 선택과 인터뷰 고객 수를 묶어서 표시 */}
         <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">연간 인터뷰 현황</CardTitle>
-            <CardDescription>
-              원하는 연도를 선택하여 데이터를 확인하세요 (복수 선택 가능)
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold">연간 인터뷰 현황</CardTitle>
+                <CardDescription>
+                  원하는 연도를 선택하여 데이터를 확인하세요 (복수 선택 가능)
+                </CardDescription>
+              </div>
+              {profile?.current_project && (
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">현재 프로젝트</div>
+                  <div className="font-medium text-primary">{profile.current_project.name}</div>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {/* 연도 선택 드롭다운과 태그를 같은 줄에 배치 */}

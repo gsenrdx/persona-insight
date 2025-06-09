@@ -138,6 +138,13 @@ export default function LoginPageContent() {
       }
 
       if (authData.user) {
+        console.log('로그인 성공 - auth context 상태 업데이트 대기중...')
+        
+        // auth context의 상태 변경을 위해 적절한 지연 시간 제공
+        // onAuthStateChange 리스너가 처리할 시간을 줌
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 페이지 새로고침으로 최신 상태 보장
         router.refresh()
         router.push('/')
       }

@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const company_id = searchParams.get('company_id')
+    const project_id = searchParams.get('project_id')
 
     // company_id가 필수로 제공되어야 함
     if (!company_id) {
@@ -14,11 +15,18 @@ export async function GET(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('interviewees')
       .select('*')
       .eq('company_id', company_id) // 회사 필터링 추가
       .order('session_date', { ascending: false })
+
+    // 프로젝트 필터링 추가
+    if (project_id) {
+      query = query.eq('project_id', project_id)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error("Supabase 오류:", error)

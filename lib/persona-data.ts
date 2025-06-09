@@ -1,7 +1,7 @@
 import { PersonaData, PersonaApiResponse, getPersonaTypeInfo } from "@/types/persona"
 
 // 모든 페르소나 가져오기
-export async function fetchPersonas(company_id?: string): Promise<PersonaCardData[]> {
+export async function fetchPersonas(company_id?: string, project_id?: string): Promise<PersonaCardData[]> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
@@ -12,7 +12,12 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
       return []
     }
 
-    const response = await fetch(`${baseUrl}/api/supabase/persona?company_id=${company_id}`)
+    let url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
+    if (project_id) {
+      url += `&project_id=${project_id}`
+    }
+
+    const response = await fetch(url)
 
     if (!response.ok) {
       // 400 Bad Request와 같은 클라이언트 오류도 처리
@@ -54,7 +59,7 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
 }
 
 // 특정 ID의 페르소나 가져오기
-export async function fetchPersonaById(id: string, company_id?: string): Promise<PersonaCardData | null> {
+export async function fetchPersonaById(id: string, company_id?: string, project_id?: string): Promise<PersonaCardData | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
@@ -65,7 +70,12 @@ export async function fetchPersonaById(id: string, company_id?: string): Promise
       return null
     }
     
-    const response = await fetch(`${baseUrl}/api/supabase/persona?company_id=${company_id}`)
+    let url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
+    if (project_id) {
+      url += `&project_id=${project_id}`
+    }
+    
+    const response = await fetch(url)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch personas: ${response.status} ${response.statusText}`)

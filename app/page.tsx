@@ -8,6 +8,7 @@ import { PieChart } from "lucide-react"
 import AuthGuard from "@/components/auth/auth-guard"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
+import { ProjectHeader } from "@/components/project"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
   const params = await searchParams
@@ -21,14 +22,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
       <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
       <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       
-      <header className="container mx-auto px-4 py-8 relative z-10">
+            <header className="container mx-auto px-4 py-8 relative z-10">
         <div className="flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-baseline">
-              <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-              <CompanyBranding />
-            </div>
-          </Link>
+          <div className="flex flex-col gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex items-baseline">
+                <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
+                <CompanyBranding />
+              </div>
+            </Link>
+            <ProjectHeader />
+          </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
               <Link href="/interviews" className="flex items-center gap-1">
@@ -44,6 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
                 종합 인사이트
               </Link>
             </Button>
+
             <ModeToggle />
             <UserMenu />
           </div>

@@ -129,10 +129,10 @@ export default function InterviewDetailPage() {
   const [imageLoading, setImageLoading] = useState(true)
 
   useEffect(() => {
-    if (profile?.company_id) {
+    if (profile?.company_id && profile?.current_project_id) {
       fetchInterviewDetail()
     }
-  }, [params.id, profile?.company_id])
+  }, [params.id, profile?.company_id, profile?.current_project_id])
 
   const fetchInterviewDetail = async () => {
     try {
@@ -140,12 +140,14 @@ export default function InterviewDetailPage() {
       setImageError(false)
       setImageLoading(true)
       
-      if (!profile?.company_id) {
-        setError('회사 정보를 찾을 수 없습니다')
+      if (!profile?.company_id || !profile?.current_project_id) {
+        setError('회사 또는 프로젝트 정보를 찾을 수 없습니다')
         return
       }
 
-      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}`)
+      console.log('인터뷰 상세 데이터 로드 중 - 프로젝트:', profile?.current_project?.name, 'ID:', profile?.current_project_id);
+
+      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}&project_id=${profile.current_project_id}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')
@@ -157,6 +159,7 @@ export default function InterviewDetailPage() {
       
       if (index >= 0 && index < interviews.length) {
         setInterview(interviews[index])
+        console.log('인터뷰 상세 데이터 로드 완료:', interviews[index].user_type);
       } else {
         throw new Error('해당 인터뷰를 찾을 수 없습니다')
       }

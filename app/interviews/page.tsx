@@ -62,21 +62,23 @@ export default function InterviewsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (profile?.company_id) {
+    if (profile?.company_id && profile?.current_project_id) {
       fetchInterviews()
     }
-  }, [profile?.company_id])
+  }, [profile?.company_id, profile?.current_project_id])
 
   const fetchInterviews = async () => {
     try {
       setLoading(true)
       
-      if (!profile?.company_id) {
-        setError('회사 정보를 찾을 수 없습니다')
+      if (!profile?.company_id || !profile?.current_project_id) {
+        setError('회사 또는 프로젝트 정보를 찾을 수 없습니다')
         return
       }
 
-      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}`)
+      console.log('인터뷰 데이터 로드 중 - 프로젝트:', profile?.current_project?.name, 'ID:', profile?.current_project_id);
+
+      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}&project_id=${profile.current_project_id}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')
@@ -84,6 +86,8 @@ export default function InterviewsPage() {
       
       const result: IntervieweeApiResponse = await response.json()
       setInterviews(result.data || [])
+      
+      console.log('인터뷰 데이터 로드 완료:', result.data?.length || 0, '개');
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다')
     } finally {

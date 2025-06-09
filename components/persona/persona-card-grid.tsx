@@ -14,13 +14,11 @@ import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workf
 import { useAuth } from "@/hooks/use-auth"
 import FloatingActionButton from "./floating-action-button"
 
-// 전역 변수로 한 번 로드한 데이터 캐싱
-let cachedAllPersonas: PersonaCardData[] | null = null;
-let cachedCompanyId: string | null = null;
+// 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
 
 export default function PersonaCardGrid() {
   const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
-  const [allPersonas, setAllPersonas] = useState<PersonaCardData[]>(cachedAllPersonas || [])
+  const [allPersonas, setAllPersonas] = useState<PersonaCardData[]>([])
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
   const [isLoading, setIsLoading] = useState(true) // 초기에는 로딩 상태
   const [error, setError] = useState<string | null>(null)
@@ -105,40 +103,50 @@ export default function PersonaCardGrid() {
     handleButtonClick
   ]);
 
-  // 최초 한 번만 모든 데이터 로드
+  // 프로젝트나 회사가 변경될 때마다 페르소나 데이터 새로 로드
   useEffect(() => {
-    // 프로필이 아직 로드되지 않았으면 대기
-    if (!profile?.company_id) {
+    // 프로필이 아직 로드되지 않았거나 프로젝트가 선택되지 않았으면 대기
+    if (!profile?.company_id || !profile?.current_project_id) {
       setIsLoading(true);
+      // 프로젝트가 없으면 모든 데이터 클리어
+      setAllPersonas([]);
+      setFilteredPersonas([]);
       return;
     }
 
-    // 이미 캐시된 데이터가 있고 같은 회사의 데이터인 경우 사용
-    if (cachedAllPersonas && cachedCompanyId === profile.company_id) {
-      setAllPersonas(cachedAllPersonas);
-      setIsLoading(false);
-      return;
-    }
+    // 프로젝트가 변경되면 즉시 이전 데이터 클리어하여 깜빡임 방지
+    setAllPersonas([]);
+    setFilteredPersonas([]);
 
     async function loadAllPersonas() {
       try {
         setIsLoading(true)
         setError(null)
-        // 모든 페이지 데이터를 한번에 로드 (회사별)
-        const data = await fetchPersonas(profile?.company_id || undefined)
-        cachedAllPersonas = data; // 전역 캐시에 저장
-        cachedCompanyId = profile?.company_id || null; // 회사 ID 캐시
+        
+        console.log('페르소나 데이터 로드 중 - 프로젝트:', profile?.current_project?.name, 'ID:', profile?.current_project_id);
+        
+        // 모든 페이지 데이터를 한번에 로드 (회사별, 프로젝트별)
+        const data = await fetchPersonas(
+          profile?.company_id || undefined, 
+          profile?.current_project_id || undefined
+        )
+        
         setAllPersonas(data)
+        
+        console.log('페르소나 데이터 로드 완료:', data.length, '개');
       } catch (error) {
         console.error("Failed to fetch personas:", error)
         setError("데이터를 불러오는 중 오류가 발생했습니다.")
+        // 에러 시에도 데이터 클리어
+        setAllPersonas([]);
+        setFilteredPersonas([]);
       } finally {
         setIsLoading(false)
       }
     }
 
     loadAllPersonas();
-  }, [profile?.company_id]) // profile.company_id가 변경될 때만 실행
+  }, [profile?.company_id, profile?.current_project_id]) // company_id와 current_project_id가 변경될 때 실행
 
   // 검색어와 필터에 따라 클라이언트 측에서 필터링
   useEffect(() => {
@@ -190,7 +198,6 @@ export default function PersonaCardGrid() {
             <p className="text-muted-foreground mb-6">{error}</p>
             <Button
               onClick={() => {
-                cachedAllPersonas = null; // 캐시 초기화
                 setIsLoading(true);
                 setError(null);
                 window.location.reload(); // 페이지 새로고침
@@ -283,7 +290,7 @@ export default function PersonaCardGrid() {
         initial="hidden"
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-24"
-        key={selectedKeywords.join(',')} // 선택된 키워드 변경 시만 애니메이션 재생
+        key={`${profile?.current_project_id}-${selectedKeywords.join(',')}`} // 프로젝트 ID와 선택된 키워드 변경 시 애니메이션 재생
       >
         {filteredPersonas.map((persona) => (
           <motion.div key={persona.id} variants={item} className="h-full">

@@ -221,14 +221,29 @@ export async function POST(req: NextRequest) {
       upload_file_id: fileId
     };
     
+    // main_topics에서 회사별 토픽 조회 및 string 변환
+    let topicsString = '';
+    try {
+      const { data: topicsData, error: topicsError } = await supabase
+        .from('main_topics')
+        .select('topic_name')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+      if (!topicsError && topicsData && topicsData.length > 0) {
+        topicsString = topicsData.map(t => t.topic_name).join(', ');
+      }
+    } catch (e) {
+      console.error('[워크플로우] 토픽 조회 실패:', e);
+    }
+
     // 2단계: workflow API 호출 (blocking 모드로 변경)
     const workflowRequestBody = {
       inputs: {
         file_input: fileObject,
         preprocess_type: 'interviewee',
-        // 문제 발생 시 아래 두 줄을 주석 처리하고 테스트
         // company_name: companyName,
-        // company_info: companyInfo
+        // company_info: companyInfo,
+        topics: topicsString // <-- 토픽 string 추가
       },
       mode: 'blocking', // 스트리밍 모드 대신 블로킹 모드 사용
       user: userName,

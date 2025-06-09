@@ -57,8 +57,16 @@ export default function LoginForm({ onSwitchToSignup, onClose }: LoginFormProps)
       }
 
       if (authData.user) {
-        router.refresh()
+        console.log('로그인 성공 - auth context 상태 업데이트 대기중...')
+        
+        // 모달을 닫아서 사용자에게 로그인이 진행중임을 알림
         onClose()
+        
+        // auth context의 상태 변경을 위해 적절한 지연 시간 제공
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 페이지 새로고침으로 최신 상태 보장
+        router.refresh()
       }
     } catch (err) {
       setError('네트워크 오류가 발생했어요')

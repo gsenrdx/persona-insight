@@ -202,6 +202,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const company_id = searchParams.get('company_id')
+    const project_id = searchParams.get('project_id')
     const year = searchParams.get('year') || new Date().getFullYear().toString()
 
     // 입력 검증
@@ -219,16 +220,23 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log(`인사이트 조회 시작: company_id=${company_id}, year=${year}`)
+    console.log(`인사이트 조회 시작: company_id=${company_id}, project_id=${project_id}, year=${year}`)
 
     // 인터뷰 데이터 조회 (interview_detail은 jsonb 컬럼이므로 함께 조회)
-    const { data: interviews, error: interviewError } = await supabase
+    let query = supabase
       .from('interviewees')
       .select('*')
       .eq('company_id', company_id)
       .gte('session_date', `${year}-01-01`)
       .lte('session_date', `${year}-12-31`)
       .order('session_date', { ascending: false })
+
+    // 프로젝트 필터링 추가
+    if (project_id) {
+      query = query.eq('project_id', project_id)
+    }
+
+    const { data: interviews, error: interviewError } = await query
 
     if (interviewError) {
       console.error("인터뷰 조회 오류:", interviewError)
