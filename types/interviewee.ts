@@ -44,6 +44,7 @@ export interface LegacyIntervieweeData {
   value_orientation_scores: ValueOrientationScore[] | null
   interviewee_summary: string
   interviewee_style: string
+  interviewee_fake_name: string
   interview_detail: InterviewDetailItem[] | null
   thumbnail: string
 } 

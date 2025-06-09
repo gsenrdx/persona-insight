@@ -375,9 +375,16 @@ export default function InterviewsPage() {
                       >
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between mb-2">
-                            <Badge variant="outline" className="bg-primary/5 border-primary/20">
-                              {interview.user_type}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-primary/5 border-primary/20">
+                                {interview.user_type}
+                              </Badge>
+                              {interview.interviewee_fake_name && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {interview.interviewee_fake_name}
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center text-xs text-muted-foreground">
                               <CalendarDays className="h-3 w-3 mr-1" />
                               {interview.session_date}

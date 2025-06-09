@@ -320,19 +320,25 @@ export default function InterviewDetailPage() {
                   <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 )}
               </div>
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{typeInfo.title}</h1>
-                  <Badge variant="outline" className="text-xs">
-                    <CalendarDays className="h-3 w-3 mr-1" />
-                    {interview.session_date}
+                          <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{typeInfo.title}</h1>
+                <Badge variant="outline" className="text-xs">
+                  <CalendarDays className="h-3 w-3 mr-1" />
+                  {interview.session_date}
+                </Badge>
+                {interview.interviewee_fake_name && (
+                  <Badge variant="secondary" className="text-xs">
+                    <User className="h-3 w-3 mr-1" />
+                    {interview.interviewee_fake_name}
                   </Badge>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{typeInfo.subtitle}</p>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {interview.user_description}
-                </h2>
+                )}
               </div>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{typeInfo.subtitle}</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {interview.user_description}
+              </h2>
+            </div>
             </div>
 
             {/* 써머리 - 오른쪽에 배치 */}

@@ -14,6 +14,64 @@ interface UpstreamLine {
   [key: string]: unknown
 }
 
+/**
+ * interview_detail에서 main_topic을 추출하여 main_topics 테이블에 저장
+ * 중복된 토픽은 건너뛰기
+ */
+async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, companyId: string | null) {
+  if (!companyId || !Array.isArray(interviewDetail)) {
+    console.log('[메인 토픽 저장] 유효하지 않은 데이터:', { companyId, interviewDetail: typeof interviewDetail });
+    return;
+  }
+
+  try {
+    console.log('[메인 토픽 저장] 시작 - 회사 ID:', companyId);
+    
+    // interview_detail에서 topic_name 추출
+    const topicNames = interviewDetail
+      .filter(topic => topic && typeof topic === 'object' && topic.topic_name)
+      .map(topic => topic.topic_name.trim())
+      .filter(name => name.length > 0);
+
+    console.log('[메인 토픽 저장] 추출된 토픽들:', topicNames);
+
+    if (topicNames.length === 0) {
+      console.log('[메인 토픽 저장] 추출할 토픽이 없음');
+      return;
+    }
+
+    // 각 토픽을 개별적으로 저장 시도 (중복 체크)
+    for (const topicName of topicNames) {
+      try {
+        const { data: insertedTopic, error: topicError } = await supabase
+          .from('main_topics')
+          .insert([{
+            topic_name: topicName,
+            company_id: companyId,
+          }])
+          .select('*');
+
+        if (topicError) {
+          // 유니크 제약조건 위배 (중복)인 경우
+          if (topicError.code === '23505') {
+            console.log(`[메인 토픽 저장] 이미 존재하는 토픽 건너뛰기: "${topicName}"`);
+          } else {
+            console.error(`[메인 토픽 저장] 토픽 저장 오류 (${topicName}):`, topicError);
+          }
+        } else {
+          console.log(`[메인 토픽 저장] 새 토픽 저장 성공: "${topicName}" (ID: ${insertedTopic?.[0]?.id})`);
+        }
+      } catch (individualError) {
+        console.error(`[메인 토픽 저장] 개별 토픽 처리 오류 (${topicName}):`, individualError);
+      }
+    }
+
+    console.log('[메인 토픽 저장] 완료');
+  } catch (error) {
+    console.error('[메인 토픽 저장] 전체 프로세스 오류:', error);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File;
@@ -230,6 +288,7 @@ export async function POST(req: NextRequest) {
       summary: output.summary || output.interviewee_summary || "요약이 없습니다.",
       date: output.date || output.session_date || "날짜 정보가 없습니다.",
       interviewee_style: output.interviewee_style || "스타일 정보가 없습니다.",
+      interviewee_fake_name: output.interviewee_fake_name || null,
       charging_pattern_scores: output.charging_pattern_scores || [
         {
           "home_centric_score": 0,
@@ -258,6 +317,7 @@ export async function POST(req: NextRequest) {
         value_orientation_scores: output.value_orientation_scores || null,
         interviewee_summary: output.interviewee_summary || null,
         interviewee_style: output.interviewee_style || null,
+        interviewee_fake_name: output.interviewee_fake_name || null,
         interview_detail: (() => {
           // interviewee_detail 파싱 처리 개선
           try {
@@ -436,6 +496,9 @@ export async function POST(req: NextRequest) {
         } else {
           console.log('[인터뷰이 저장] 저장된 interview_detail 내용:', savedDetail);
         }
+
+        // main_topics 테이블에 토픽 추출 및 저장
+        await extractAndSaveMainTopics(supabase, savedDetail, companyId);
       }
     } catch (saveError) {
       console.error('[인터뷰이 저장] 예외 발생:', saveError);

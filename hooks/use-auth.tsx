@@ -15,10 +15,16 @@ interface Profile {
   last_login_at: string | null
   created_at: string
   updated_at: string
+  current_project_id: string | null
   company?: {
     id: string
     name: string
     domains: string[]
+  } | null
+  current_project?: {
+    id: string
+    name: string
+    description: string | null
   } | null
 }
 
@@ -29,6 +35,7 @@ interface AuthContextType {
   error: string | null
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  switchProject: (projectId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -38,12 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isInitialized, setIsInitialized] = useState(false)
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log('프로필 조회 시도 - userId:', userId)
-      
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -52,30 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id,
             name,
             domains
+          ),
+          current_project:projects(
+            id,
+            name,
+            description
           )
         `)
         .eq('id', userId)
+        .single()
 
       if (error) {
-        console.error('프로필 로드 실패 (DB 오류):', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        })
         throw new Error(`프로필 로드 실패: ${error.message}`)
       }
 
-      if (!data || data.length === 0) {
-        console.error('프로필 로드 실패: RLS 정책에 의해 접근이 거부되었거나 해당 프로필이 존재하지 않습니다.')
-        throw new Error('프로필을 찾을 수 없습니다. 관리자에게 문의해주세요.')
+      if (!data) {
+        throw new Error('프로필을 찾을 수 없습니다.')
       }
 
-      const profile = data[0]
-      console.log('프로필 로드 성공:', profile)
-      return profile as Profile
+      return data as Profile
+
     } catch (err) {
-      console.error('프로필 로드 중 예외 발생:', err)
       throw err
     }
   }
@@ -106,97 +107,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const initializeAuth = async () => {
+  const switchProject = async (projectId: string) => {
     try {
       setError(null)
-      console.log('인증 상태 초기화 시작')
       
-      // 현재 세션 확인
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('세션 조회 실패:', sessionError)
-        throw new Error('세션 확인 중 오류가 발생했습니다.')
+      if (!user?.id) {
+        throw new Error('로그인이 필요합니다.')
       }
 
-      if (session?.user) {
-        console.log('기존 세션 발견:', session.user.id)
-        setUser(session.user)
-        
-        // 프로필 로드
-        try {
-          const profileData = await fetchProfile(session.user.id)
-          setProfile(profileData)
-          console.log('인증 상태 초기화 완료 - 로그인됨')
-        } catch (profileError) {
-          console.error('프로필 로드 실패:', profileError)
-          // 프로필 로드 실패 시에도 사용자는 로그인된 상태로 유지
-          // 하지만 에러 상태를 설정하여 UI에서 적절히 처리할 수 있도록 함
-          const errorMessage = profileError instanceof Error ? profileError.message : '프로필 로드에 실패했습니다.'
-          setError(errorMessage)
-        }
-      } else {
-        console.log('세션 없음 - 로그아웃 상태')
-        setUser(null)
-        setProfile(null)
+      // profiles 테이블의 current_project_id 업데이트
+      const { error } = await supabase
+        .from('profiles')
+        .update({ current_project_id: projectId })
+        .eq('id', user.id)
+
+      if (error) {
+        console.error('프로젝트 전환 실패:', error)
+        throw new Error('프로젝트 전환에 실패했습니다.')
       }
+
+      // 프로필 새로고침
+      await refreshProfile()
     } catch (err) {
-      console.error('인증 초기화 실패:', err)
-      const errorMessage = err instanceof Error ? err.message : '인증 상태 확인에 실패했습니다.'
+      const errorMessage = err instanceof Error ? err.message : '프로젝트 전환에 실패했습니다.'
       setError(errorMessage)
-      setUser(null)
-      setProfile(null)
-    } finally {
-      setLoading(false)
-      setIsInitialized(true)
+      console.error('프로젝트 전환 실패:', err)
     }
   }
 
   useEffect(() => {
-    // 초기화가 이미 진행 중이면 중복 실행 방지
-    if (isInitialized) return
+    setLoading(true);
 
-    console.log('AuthProvider 초기화 시작')
-    initializeAuth()
-
-    // 인증 상태 변경 리스너 설정
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('인증 상태 변경:', event, session?.user?.id)
-        
-        // 초기화가 완료된 후에만 상태 변경 처리
-        if (!isInitialized) return
+        // SIGNED_IN 이벤트는 무시 (INITIAL_SESSION에서 처리)
+        if (event === 'SIGNED_IN') {
+          return;
+        }
 
-        setError(null)
-
-        if (session?.user) {
-          setUser(session.user)
-          
-          // SIGNED_IN 이벤트에서만 프로필을 새로 로드
-          // TOKEN_REFRESHED 등에서는 기존 프로필 유지
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            try {
-              const profileData = await fetchProfile(session.user.id)
-              setProfile(profileData)
-            } catch (profileError) {
-              console.error('프로필 로드 실패:', profileError)
-              const errorMessage = profileError instanceof Error ? profileError.message : '프로필 로드에 실패했습니다.'
-              setError(errorMessage)
-            }
+        try {
+          if (session?.user) {
+            setUser(session.user);
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+            setError(null);
+          } else {
+            setUser(null);
+            setProfile(null);
+            setError(null);
           }
-        } else {
-          // 로그아웃 시
-          setUser(null)
-          setProfile(null)
+        } catch (error) {
+          setError(error instanceof Error ? error.message : '프로필 로드에 실패했습니다.');
+          setProfile(null);
+        } finally {
+          setLoading(false);
         }
       }
-    )
+    );
 
     return () => {
-      console.log('AuthProvider 정리')
-      subscription.unsubscribe()
-    }
-  }, [isInitialized])
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const value = {
     user,
@@ -205,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     signOut,
     refreshProfile,
+    switchProject,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

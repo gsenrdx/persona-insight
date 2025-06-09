@@ -415,6 +415,19 @@ const JobDetailPanel = React.memo(({
                      </div>
                    )}
 
+                   {/* 인터뷰 대상자 가짜 이름 */}
+                   {analysisResult?.interviewee_fake_name && (
+                     <div className="bg-white border border-gray-200 rounded-lg p-3">
+                       <h5 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                         <User className="h-4 w-4 text-blue-600" />
+                         인터뷰 대상자
+                       </h5>
+                       <p className="text-xs text-gray-700 leading-relaxed">
+                         {analysisResult.interviewee_fake_name}
+                       </p>
+                     </div>
+                   )}
+
                    {/* 충전 패턴 점수 */}
                    {chargingPatternScore && (
                      <div className="bg-white border border-gray-200 rounded-lg p-3">

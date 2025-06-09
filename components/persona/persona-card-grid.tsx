@@ -1,18 +1,18 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import PersonaCard, { PersonaCardProps } from "./persona-card"
 import { useInView } from "react-intersection-observer"
 import { fetchPersonas, PersonaCardData } from "@/lib/persona-data"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertOctagon, RefreshCw, SearchX, Plus, Clock, Play } from "lucide-react"
+import { Loader2, AlertOctagon, RefreshCw, SearchX } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AddInterviewModal, WorkflowProgressModal } from "@/components/modal"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 import { useAuth } from "@/hooks/use-auth"
+import FloatingActionButton from "./floating-action-button"
 
 // 전역 변수로 한 번 로드한 데이터 캐싱
 let cachedAllPersonas: PersonaCardData[] | null = null;
@@ -27,9 +27,6 @@ export default function PersonaCardGrid() {
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
   const searchParams = useSearchParams()
-  
-  // Button ref for positioning
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // 워크플로우 큐 관리
   const {
@@ -63,8 +60,8 @@ export default function PersonaCardGrid() {
     // 통합된 모달에서 내부적으로 처리
   };
 
-  // Handle button click
-  const handleButtonClick = () => {
+  // Handle button click - useCallback으로 메모이제이션
+  const handleButtonClick = useCallback(() => {
     if (isProcessing) {
       setIsProgressModalOpen(true);
     } else {
@@ -74,20 +71,39 @@ export default function PersonaCardGrid() {
         setIsAddInterviewModalOpen(true);
       }
     }
-  };
+  }, [isProcessing, jobs.length]);
 
-  // Handle add more action
-  const handleAddMore = () => {
+  // Handle add more action - useCallback으로 메모이제이션
+  const handleAddMore = useCallback(() => {
     setIsProgressModalOpen(false);
     setIsAddInterviewModalOpen(true);
-  };
+  }, []);
 
-  // 전체 진행률 계산 (활성 작업들의 평균)
+  // 전체 진행률 계산 (활성 작업들의 평균) - 메모이제이션 개선
   const overallProgress = useMemo(() => {
     if (activeJobs.length === 0) return 0;
     const totalProgress = activeJobs.reduce((sum, job) => sum + job.progress, 0);
-    return totalProgress / activeJobs.length;
-  }, [activeJobs]);
+    return Math.round(totalProgress / activeJobs.length);
+  }, [activeJobs.length, activeJobs.map(job => job.progress).join(',')]);
+
+  // FloatingActionButton 메모이제이션을 위한 props 계산
+  const buttonProps = useMemo(() => ({
+    isProcessing,
+    activeJobsLength: activeJobs.length,
+    jobsLength: jobs.length,
+    completedJobsLength: completedJobs.length,
+    failedJobsLength: failedJobs.length,
+    overallProgress,
+    onButtonClick: handleButtonClick
+  }), [
+    isProcessing, 
+    activeJobs.length, 
+    jobs.length, 
+    completedJobs.length, 
+    failedJobs.length, 
+    overallProgress,
+    handleButtonClick
+  ]);
 
   // 최초 한 번만 모든 데이터 로드
   useEffect(() => {
@@ -162,117 +178,7 @@ export default function PersonaCardGrid() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
   }
 
-  // 플로팅 액션 버튼 컴포넌트
-  const FloatingActionButton = () => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className="fixed bottom-8 right-8 z-50"
-          >
-            <AnimatePresence mode="wait">
-              {isProcessing ? (
-                <motion.div
-                  key="processing"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="relative overflow-hidden"
-                >
-                  <Button
-                    ref={buttonRef}
-                    onClick={handleButtonClick}
-                    className="rounded-full shadow-lg px-5 py-2.5 h-[48px] bg-primary text-primary-foreground border-0 min-w-[140px] max-w-[220px] backdrop-blur-sm relative overflow-hidden"
-                  >
-                    {/* 프로그레스 배경 (물결 효과) */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20"
-                      animate={{
-                        x: ['-100%', '100%'],
-                        opacity: [0.3, 0.8, 0.3]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                      style={{
-                        width: `${Math.max(overallProgress, 10)}%`,
-                        background: 'linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 100%)'
-                      }}
-                    />
-                    
-                    {/* 진행률 바 */}
-                    <motion.div
-                      className="absolute left-0 top-0 h-full bg-white/20 transition-all duration-500 ease-out"
-                      style={{ width: `${overallProgress}%` }}
-                    />
-                    
-                    <div className="flex items-center gap-2.5 w-full relative z-10">
-                      <div className="relative">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        >
-                          <Loader2 className="h-4 w-4 flex-shrink-0" />
-                        </motion.div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate">처리중</span>
-                        <Badge variant="secondary" className="bg-white/20 text-white border-0 px-2 py-0.5 text-xs">
-                          {activeJobs.length}개
-                        </Badge>
-                      </div>
-                    </div>
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="idle"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Button
-                    ref={buttonRef}
-                    onClick={handleButtonClick}
-                    className="rounded-full shadow-lg px-5 py-2.5 h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground border-0 min-w-[140px] max-w-[220px] backdrop-blur-sm"
-                  >
-                    <div className="flex items-center gap-2.5 w-full">
-                      <Plus className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate">페르소나 추가하기</span>
-                        {jobs.length > 0 && (
-                          <Badge variant="secondary" className="bg-white/20 text-white border-0 px-2 py-0.5 text-xs">
-                            {completedJobs.length + failedJobs.length}/{jobs.length}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent side="left" className="bg-gray-900 text-white border-gray-700">
-          <p className="text-sm">
-            {isProcessing 
-              ? `${activeJobs.length}개 파일 처리 중... 클릭하여 진행 상황 확인`
-              : jobs.length > 0
-              ? "진행 상황 확인 또는 새 페르소나 추가"
-              : "새 고객 인터뷰로 페르소나 생성"
-            }
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+
 
   if (error) {
     return (
@@ -297,7 +203,7 @@ export default function PersonaCardGrid() {
             </Button>
           </div>
         </div>
-        <FloatingActionButton />
+        <FloatingActionButton {...buttonProps} />
       </>
     )
   }
@@ -309,7 +215,7 @@ export default function PersonaCardGrid() {
           <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
           <p className="text-muted-foreground">페르소나 데이터 로드 중...</p>
         </div>
-        <FloatingActionButton />
+        <FloatingActionButton {...buttonProps} />
       </>
     )
   }
@@ -341,7 +247,7 @@ export default function PersonaCardGrid() {
             )}
           </div>
         </div>
-        <FloatingActionButton />
+        <FloatingActionButton {...buttonProps} />
 
         {/* Modals */}
         <WorkflowProgressModal
@@ -398,7 +304,7 @@ export default function PersonaCardGrid() {
         ))}
       </motion.div>
 
-      <FloatingActionButton />
+      <FloatingActionButton {...buttonProps} />
 
       {/* Modals */}
       <WorkflowProgressModal
