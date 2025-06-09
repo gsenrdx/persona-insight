@@ -11,6 +11,153 @@ body {
     text-wrap: balance;
   }
   
+  /* 토스트 슬라이드 애니메이션 */
+  .toast-slide-in {
+    animation: slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  /* 토스트 나가는 애니메이션 */
+  [data-state="closed"] .toast-slide-in {
+    animation: slideOutToRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes slideOutToRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+  
+  /* 토스트 UI - 애플 스타일 깔끔한 디자인 */
+  .toast-slide-in {
+    border-radius: 16px !important;
+    padding: 16px 20px !important;
+    font-weight: 500 !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 
+                0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    backdrop-filter: blur(20px) !important;
+    max-width: 380px !important;
+    min-width: 300px !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    font-family: var(--font-sans) !important;
+  }
+  
+  .toast-slide-in:hover {
+    transform: translateY(-1px) scale(1.01) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 
+                0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  }
+  
+  /* 성공 토스트 - 차분한 초록 */
+  [data-type="success"].toast-slide-in {
+    background: rgba(240, 253, 244, 0.95) !important;
+    color: #166534 !important;
+    border-color: #bbf7d0 !important;
+  }
+  
+  /* 에러 토스트 - 차분한 빨강 */
+  [data-type="error"].toast-slide-in {
+    background: rgba(254, 242, 242, 0.95) !important;
+    color: #991b1b !important;
+    border-color: #fecaca !important;
+  }
+  
+  /* 정보 토스트 - 차분한 파랑 */
+  [data-type="info"].toast-slide-in {
+    background: rgba(239, 246, 255, 0.95) !important;
+    color: #1e40af !important;
+    border-color: #bfdbfe !important;
+  }
+  
+  /* 경고 토스트 - 차분한 주황 */
+  [data-type="warning"].toast-slide-in {
+    background: rgba(255, 251, 235, 0.95) !important;
+    color: #92400e !important;
+    border-color: #fed7aa !important;
+  }
+  
+  /* 기본 토스트 - 프로젝트 컬러 */
+  [data-type="default"].toast-slide-in {
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* 다크 모드 토스트 */
+  .dark [data-type="success"].toast-slide-in {
+    background: rgba(6, 78, 59, 0.95) !important;
+    color: #86efac !important;
+    border-color: #065f46 !important;
+  }
+  
+  .dark [data-type="error"].toast-slide-in {
+    background: rgba(127, 29, 29, 0.95) !important;
+    color: #fca5a5 !important;
+    border-color: #991b1b !important;
+  }
+  
+  .dark [data-type="info"].toast-slide-in {
+    background: rgba(30, 58, 138, 0.95) !important;
+    color: #93c5fd !important;
+    border-color: #1e40af !important;
+  }
+  
+  .dark [data-type="warning"].toast-slide-in {
+    background: rgba(146, 64, 14, 0.95) !important;
+    color: #fbbf24 !important;
+    border-color: #92400e !important;
+  }
+  
+  .dark [data-type="default"].toast-slide-in {
+    background: rgba(24, 24, 27, 0.95) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* 토스트 닫기 버튼 - 애플 스타일 */
+  .toast-slide-in [data-close-button] {
+    opacity: 0.6 !important;
+    transition: all 0.15s ease !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+    background: transparent !important;
+  }
+  
+  .toast-slide-in [data-close-button]:hover {
+    opacity: 1 !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    transform: scale(1.1) !important;
+  }
+  
+  .dark .toast-slide-in [data-close-button]:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* 토스트 아이콘 */
+  .toast-slide-in [data-icon] {
+    margin-right: 10px !important;
+    flex-shrink: 0 !important;
+    opacity: 0.9 !important;
+  }
+  
   /* 스크롤바 스타일 */
   .custom-scrollbar::-webkit-scrollbar {
     width: 5px;

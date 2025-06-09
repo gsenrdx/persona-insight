@@ -82,7 +82,7 @@ export default function ProjectSelector({ open, onProjectSelected, onClose }: Pr
       setNewProjectPassword('')
       setShowCreateForm(false)
       
-      toast.success('프로젝트가 성공적으로 생성되었습니다')
+      toast.success('프로젝트가 성공적으로 생성되었습니다!')
     } catch (err) {
       // 에러는 React Query mutation에서 자동으로 처리됨
       console.error('프로젝트 생성 실패:', err)
@@ -94,7 +94,6 @@ export default function ProjectSelector({ open, onProjectSelected, onClose }: Pr
     try {
       await switchProject(project.id)
       toast.success(`${project.name} 프로젝트로 전환되었습니다`)
-      onProjectSelected()
     } catch (err) {
       console.error('프로젝트 전환 실패:', err)
       toast.error('프로젝트 전환에 실패했습니다')

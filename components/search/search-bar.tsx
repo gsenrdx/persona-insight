@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 export default function SearchBar() {
   const router = useRouter()
@@ -17,7 +17,6 @@ export default function SearchBar() {
   const [isFocused, setIsFocused] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const debouncedQuery = useDebounce(query, 300)
-  const { toast } = useToast()
 
   useEffect(() => {
     // 빈 쿼리일 때만 URL 파라미터 제거
@@ -79,11 +78,7 @@ export default function SearchBar() {
           
           router.push(`/?${resultParams.toString()}`, {scroll: false})
         } else {
-          toast({
-            title: "적합한 페르소나를 찾을 수 없습니다",
-            description: "다른 검색어를 입력해 보세요.",
-            variant: "destructive",
-          })
+          toast.error("적합한 페르소나를 찾을 수 없습니다. 다른 검색어를 입력해 보세요.")
           // 검색 의도 파라미터 제거
           const clearParams = new URLSearchParams(searchParams.toString())
           clearParams.delete("searchIntent")
@@ -91,11 +86,7 @@ export default function SearchBar() {
         }
       } catch (error) {
         console.error('페르소나 검색 오류:', error)
-        toast({
-          title: "오류가 발생했습니다",
-          description: "잠시 후 다시 시도해 주세요.",
-          variant: "destructive",
-        })
+        toast.error("오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         // 검색 의도 파라미터 제거
         const clearParams = new URLSearchParams(searchParams.toString())
         clearParams.delete("searchIntent")
