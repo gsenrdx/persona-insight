@@ -172,14 +172,14 @@ export default function PersonaCard({
             
             {/* 페르소나 이미지 배경 그라데이션 */}
             <div className={cn(
-              "absolute bottom-0 right-0 w-48 h-48 rounded-full -mr-16 -mb-16 z-0 overflow-hidden",
+              "absolute bottom-0 right-0 w-32 h-32 rounded-full -mr-10 -mb-10 z-0 overflow-hidden",
               isDark
                 ? "bg-gradient-to-br from-indigo-600/20 to-indigo-900/10" 
                 : "bg-gradient-to-br from-indigo-100 to-indigo-300/40"
             )} />
             
-            {/* 페르소나 이미지 - 크기 통일 (400x400) */}
-            <div className="absolute -bottom-5 -right-5 w-48 h-48 z-10 pointer-events-none">
+            {/* 페르소나 이미지 - 크기 통일 (250x250) */}
+            <div className="absolute -bottom-2 -right-2 w-32 h-32 z-10 pointer-events-none">
               <motion.div
                 initial={{ y: 0 }}
                 animate={{ y: [0, -5, 0] }}
@@ -191,17 +191,17 @@ export default function PersonaCard({
                 className="w-full h-full"
               >
                 <Image
-                  src={image || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(name)} persona`}
+                  src={image || `/placeholder.svg?height=250&width=250&query=${encodeURIComponent(name)} persona`}
                   alt={`${name} 페르소나 이미지`}
-                  width={400}
-                  height={400}
+                  width={250}
+                  height={250}
                   className={cn(
                     "w-full h-full object-cover object-center",
                     isDark
                       ? "drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]" 
                       : "drop-shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
                   )}
-                  sizes="(max-width: 768px) 180px, 180px"
+                  sizes="(max-width: 768px) 128px, 128px"
                 />
               </motion.div>
             </div>
@@ -240,7 +240,7 @@ export default function PersonaCard({
                         isDark ? "bg-zinc-800" : "bg-zinc-100"
                       )}>
                         <Image
-                          src={image || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(name)} persona`}
+                          src={image || `/placeholder.svg?height=250&width=250&query=${encodeURIComponent(name)} persona`}
                           alt={`${name} 페르소나 이미지`}
                           fill
                           className="object-cover object-center"

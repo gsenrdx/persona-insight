@@ -383,8 +383,19 @@ export async function POST(req: NextRequest) {
         thumbnail: (() => {
           try {
             if (output.thumbnail && typeof output.thumbnail === 'string') {
-              const thumbnailData = JSON.parse(output.thumbnail);
-              return thumbnailData.success ? thumbnailData.imageUrl : null;
+              // JSON 형태인지 확인 후 파싱 시도
+              if (output.thumbnail.startsWith('{') || output.thumbnail.startsWith('[')) {
+                try {
+                  const thumbnailData = JSON.parse(output.thumbnail);
+                  return thumbnailData.success ? thumbnailData.imageUrl : thumbnailData.imageUrl || thumbnailData;
+                } catch {
+                  // JSON 파싱 실패 시 문자열 그대로 반환 (URL일 가능성)
+                  return output.thumbnail;
+                }
+              } else {
+                // JSON이 아닌 일반 문자열 (URL)인 경우 그대로 반환
+                return output.thumbnail;
+              }
             }
             return output.thumbnail || null;
           } catch (parseError) {

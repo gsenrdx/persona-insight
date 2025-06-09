@@ -25,6 +25,22 @@ export interface WorkflowJob {
   synthesisResult?: any;
 }
 
+// 직렬화 가능한 Job 인터페이스 (localStorage용)
+interface SerializableWorkflowJob {
+  id: string;
+  fileName: string;
+  fileData?: string; // Base64 인코딩된 파일 데이터
+  fileType?: string;
+  status: WorkflowStatus;
+  progress: number;
+  startTime?: string;
+  endTime?: string;
+  result?: any;
+  error?: string;
+  personaType?: string;
+  synthesisResult?: any;
+}
+
 interface UseWorkflowQueueReturn {
   jobs: WorkflowJob[];
   activeJobs: WorkflowJob[];
@@ -39,6 +55,92 @@ interface UseWorkflowQueueReturn {
 }
 
 const MAX_CONCURRENT_JOBS = 5; // 동시 처리 가능한 최대 작업 수
+const STORAGE_KEY = 'workflow_queue_jobs';
+
+// 파일을 Base64로 변환
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
+// Base64를 파일로 변환
+const base64ToFile = (base64: string, fileName: string, fileType: string): File => {
+  const byteCharacters = atob(base64.split(',')[1]);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new File([byteArray], fileName, { type: fileType });
+};
+
+// Job을 직렬화 가능한 형태로 변환
+const serializeJob = async (job: WorkflowJob): Promise<SerializableWorkflowJob> => {
+  const fileData = await fileToBase64(job.file);
+  return {
+    id: job.id,
+    fileName: job.fileName,
+    fileData,
+    fileType: job.file.type,
+    status: job.status,
+    progress: job.progress,
+    startTime: job.startTime?.toISOString(),
+    endTime: job.endTime?.toISOString(),
+    result: job.result,
+    error: job.error,
+    personaType: job.personaType,
+    synthesisResult: job.synthesisResult
+  };
+};
+
+// 직렬화된 Job을 원래 형태로 변환
+const deserializeJob = (serializedJob: SerializableWorkflowJob): WorkflowJob => {
+  const file = serializedJob.fileData 
+    ? base64ToFile(serializedJob.fileData, serializedJob.fileName, serializedJob.fileType || 'application/octet-stream')
+    : new File([], serializedJob.fileName); // 파일 데이터가 없는 경우 빈 파일 생성
+
+  return {
+    id: serializedJob.id,
+    fileName: serializedJob.fileName,
+    file,
+    status: serializedJob.status,
+    progress: serializedJob.progress,
+    startTime: serializedJob.startTime ? new Date(serializedJob.startTime) : undefined,
+    endTime: serializedJob.endTime ? new Date(serializedJob.endTime) : undefined,
+    result: serializedJob.result,
+    error: serializedJob.error,
+    personaType: serializedJob.personaType,
+    synthesisResult: serializedJob.synthesisResult
+  };
+};
+
+// localStorage에 jobs 저장
+const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
+  try {
+    const serializedJobs = await Promise.all(jobs.map(serializeJob));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializedJobs));
+  } catch (error) {
+    console.error('Failed to save jobs to localStorage:', error);
+  }
+};
+
+// localStorage에서 jobs 로드
+const loadJobsFromStorage = (): WorkflowJob[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    
+    const serializedJobs: SerializableWorkflowJob[] = JSON.parse(stored);
+    return serializedJobs.map(deserializeJob);
+  } catch (error) {
+    console.error('Failed to load jobs from localStorage:', error);
+    return [];
+  }
+};
 
 // 상태별 메시지 반환 함수
 export function getWorkflowStatusMessage(status: WorkflowStatus): string {
@@ -64,6 +166,29 @@ export function getWorkflowStatusMessage(status: WorkflowStatus): string {
 
 export function useWorkflowQueue(): UseWorkflowQueueReturn {
   const [jobs, setJobs] = useState<WorkflowJob[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // 초기화: localStorage에서 jobs 로드
+  useEffect(() => {
+    const savedJobs = loadJobsFromStorage();
+    if (savedJobs.length > 0) {
+      // 처리 중이던 작업들은 PENDING 상태로 되돌림 (재시작을 위해)
+      const restoredJobs = savedJobs.map(job => 
+        job.status === WorkflowStatus.PROCESSING || job.status === WorkflowStatus.PERSONA_SYNTHESIZING
+          ? { ...job, status: WorkflowStatus.PENDING, progress: 0, startTime: undefined }
+          : job
+      );
+      setJobs(restoredJobs);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // jobs가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    if (isInitialized) {
+      saveJobsToStorage(jobs);
+    }
+  }, [jobs, isInitialized]);
 
   // 상태별 작업 필터링
   const activeJobs = jobs.filter(job => 
@@ -97,8 +222,6 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       if (sessionError || !session?.access_token) {
         throw new Error('인증 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
-
-
 
       // 워크플로우 결과에서 selected_interviewee 데이터 추출
       console.log('[페르소나 합성] job.result:', job.result);
@@ -282,6 +405,8 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
 
   // 큐 처리 로직
   useEffect(() => {
+    if (!isInitialized) return;
+    
     const pendingJobs = jobs.filter(job => job.status === WorkflowStatus.PENDING);
     const processingJobs = jobs.filter(job => job.status === WorkflowStatus.PROCESSING);
     
@@ -292,10 +417,10 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
     jobsToStart.forEach(job => {
       processWorkflow(job);
     });
-  }, [jobs, processWorkflow]);
+  }, [jobs, processWorkflow, isInitialized]);
 
   // 작업 추가
-  const addJobs = useCallback((files: File[]) => {
+  const addJobs = useCallback(async (files: File[]) => {
     const newJobs: WorkflowJob[] = files.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       fileName: file.name,
