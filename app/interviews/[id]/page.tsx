@@ -351,13 +351,13 @@ export default function InterviewDetailPage() {
       </div>
 
       {/* 메인 2단 구조 */}
-      <div className="container mx-auto px-4 py-8 mb-8">
+      <div className="container mx-auto px-4 py-8 pb-16">
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="grid grid-cols-1 lg:grid-cols-5 gap-6"
-          style={{ height: 'calc(100vh - 280px)' }}
+          style={{ minHeight: 'calc(100vh - 320px)' }}
         >
           {/* 왼쪽: 통합 정보 (인터뷰 정보 + 충전/서비스 데이터) */}
           <motion.div variants={itemVariants} className="lg:col-span-2">
