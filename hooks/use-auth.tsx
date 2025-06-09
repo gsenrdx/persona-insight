@@ -140,11 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // SIGNED_IN 이벤트는 무시 (INITIAL_SESSION에서 처리)
-        if (event === 'SIGNED_IN') {
-          return;
-        }
-
+        // 모든 이벤트(INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED 등)를 처리하여
+        // 로그인 직후(SIGNED_IN)에도 AuthContext 상태가 즉시 업데이트되도록 합니다.
         try {
           if (session?.user) {
             setUser(session.user);
