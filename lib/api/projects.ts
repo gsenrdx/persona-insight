@@ -29,6 +29,11 @@ export interface CreateProjectData {
   visibility: 'public' | 'private'
   join_method: 'open' | 'invite_only' | 'password'
   password?: string
+  purpose?: string
+  target_audience?: string
+  research_method?: string
+  start_date?: string
+  end_date?: string
 }
 
 export interface ProjectMember {

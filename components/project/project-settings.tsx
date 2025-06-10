@@ -25,6 +25,11 @@ interface Project {
   member_count?: number
   interview_count?: number
   persona_count?: number
+  purpose?: string
+  target_audience?: string
+  research_method?: string
+  start_date?: string
+  end_date?: string
 }
 
 interface ProjectSettingsProps {
@@ -40,7 +45,12 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     name: project.name,
     description: project.description,
     visibility: project.visibility,
-    join_method: project.join_method
+    join_method: project.join_method,
+    purpose: project.purpose || '',
+    target_audience: project.target_audience || '',
+    research_method: project.research_method || '',
+    start_date: project.start_date || '',
+    end_date: project.end_date || ''
   })
   const [loading, setLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -107,7 +117,12 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       name: project.name,
       description: project.description,
       visibility: project.visibility,
-      join_method: project.join_method
+      join_method: project.join_method,
+      purpose: project.purpose || '',
+      target_audience: project.target_audience || '',
+      research_method: project.research_method || '',
+      start_date: project.start_date || '',
+      end_date: project.end_date || ''
     })
     setEditMode(false)
   }
@@ -249,6 +264,93 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                   {project.join_method === 'password' && '비밀번호'}
                 </div>
               )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="purpose">프로젝트 목적</Label>
+              {editMode ? (
+                <Textarea
+                  id="purpose"
+                  value={editData.purpose}
+                  onChange={(e) => setEditData(prev => ({ ...prev, purpose: e.target.value }))}
+                  placeholder="프로젝트의 목적을 입력하세요"
+                  rows={2}
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md min-h-[60px]">
+                  {project.purpose || '프로젝트 목적이 설정되지 않았습니다.'}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="target_audience">대상 사용자</Label>
+              {editMode ? (
+                <Textarea
+                  id="target_audience"
+                  value={editData.target_audience}
+                  onChange={(e) => setEditData(prev => ({ ...prev, target_audience: e.target.value }))}
+                  placeholder="연구 대상이 되는 사용자 그룹을 설명해주세요"
+                  rows={2}
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md min-h-[60px]">
+                  {project.target_audience || '대상 사용자가 설정되지 않았습니다.'}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="research_method">연구 방법</Label>
+              {editMode ? (
+                <Textarea
+                  id="research_method"
+                  value={editData.research_method}
+                  onChange={(e) => setEditData(prev => ({ ...prev, research_method: e.target.value }))}
+                  placeholder="사용할 연구 방법론을 설명해주세요"
+                  rows={2}
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md min-h-[60px]">
+                  {project.research_method || '연구 방법이 설정되지 않았습니다.'}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="start_date">시작일</Label>
+                {editMode ? (
+                  <Input
+                    id="start_date"
+                    type="date"
+                    value={editData.start_date}
+                    onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+                    className="h-11"
+                  />
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    {project.start_date || '시작일이 설정되지 않았습니다.'}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="end_date">종료일</Label>
+                {editMode ? (
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={editData.end_date}
+                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                    className="h-11"
+                  />
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    {project.end_date || '종료일이 설정되지 않았습니다.'}
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

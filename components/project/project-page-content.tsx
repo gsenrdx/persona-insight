@@ -290,6 +290,11 @@ export function ProjectPageContent() {
   const [newProjectJoinMethod, setNewProjectJoinMethod] = useState<'open' | 'invite_only' | 'password'>('open')
   const [newProjectPassword, setNewProjectPassword] = useState('')
   const [allowAnyoneToJoin, setAllowAnyoneToJoin] = useState(true)
+  const [newProjectPurpose, setNewProjectPurpose] = useState('')
+  const [newProjectTargetAudience, setNewProjectTargetAudience] = useState('')
+  const [newProjectResearchMethod, setNewProjectResearchMethod] = useState('')
+  const [newProjectStartDate, setNewProjectStartDate] = useState('')
+  const [newProjectEndDate, setNewProjectEndDate] = useState('')
   
   // 편집 관련
   const [editingProject, setEditingProject] = useState<ProjectEditData | null>(null)
@@ -327,7 +332,12 @@ export function ProjectPageContent() {
       created_by: profile.id,
       visibility: newProjectVisibility,
       join_method: newProjectVisibility === 'public' && allowAnyoneToJoin ? 'open' : newProjectJoinMethod,
-      password: newProjectJoinMethod === 'password' ? newProjectPassword : undefined
+      password: newProjectJoinMethod === 'password' ? newProjectPassword : undefined,
+      purpose: newProjectPurpose.trim() || undefined,
+      target_audience: newProjectTargetAudience.trim() || undefined,
+      research_method: newProjectResearchMethod.trim() || undefined,
+      start_date: newProjectStartDate || undefined,
+      end_date: newProjectEndDate || undefined
     }
 
     try {
@@ -340,6 +350,11 @@ export function ProjectPageContent() {
       setNewProjectJoinMethod('open')
       setNewProjectPassword('')
       setAllowAnyoneToJoin(true)
+      setNewProjectPurpose('')
+      setNewProjectTargetAudience('')
+      setNewProjectResearchMethod('')
+      setNewProjectStartDate('')
+      setNewProjectEndDate('')
       setShowCreateForm(false)
       
       toast.success('프로젝트가 성공적으로 생성되었습니다!')
@@ -519,6 +534,62 @@ export function ProjectPageContent() {
                 onChange={(e) => setNewProjectDescription(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project-purpose" className="text-sm font-medium">프로젝트 목적 (선택)</Label>
+              <Textarea
+                id="project-purpose"
+                placeholder="이 프로젝트를 통해 달성하고자 하는 목적을 설명해주세요"
+                value={newProjectPurpose}
+                onChange={(e) => setNewProjectPurpose(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project-target-audience" className="text-sm font-medium">대상 사용자 (선택)</Label>
+              <Textarea
+                id="project-target-audience"
+                placeholder="연구 대상이 되는 사용자 그룹을 설명해주세요"
+                value={newProjectTargetAudience}
+                onChange={(e) => setNewProjectTargetAudience(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project-research-method" className="text-sm font-medium">연구 방법 (선택)</Label>
+              <Textarea
+                id="project-research-method"
+                placeholder="사용할 연구 방법론을 설명해주세요"
+                value={newProjectResearchMethod}
+                onChange={(e) => setNewProjectResearchMethod(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="project-start-date" className="text-sm font-medium">시작일 (선택)</Label>
+                <Input
+                  id="project-start-date"
+                  type="date"
+                  value={newProjectStartDate}
+                  onChange={(e) => setNewProjectStartDate(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-end-date" className="text-sm font-medium">종료일 (선택)</Label>
+                <Input
+                  id="project-end-date"
+                  type="date"
+                  value={newProjectEndDate}
+                  onChange={(e) => setNewProjectEndDate(e.target.value)}
+                  className="h-11"
+                />
+              </div>
             </div>
 
             <div className="space-y-4">

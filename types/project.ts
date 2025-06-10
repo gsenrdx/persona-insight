@@ -11,6 +11,11 @@ export interface Project {
   visibility: 'public' | 'private'
   join_method: 'open' | 'invite_only' | 'password'
   password?: string | null
+  purpose?: string | null
+  target_audience?: string | null
+  research_method?: string | null
+  start_date?: string | null
+  end_date?: string | null
 }
 
 export interface CreateProjectData {
@@ -20,6 +25,11 @@ export interface CreateProjectData {
   visibility: 'public' | 'private'
   join_method: 'open' | 'invite_only' | 'password'
   password?: string
+  purpose?: string
+  target_audience?: string
+  research_method?: string
+  start_date?: string
+  end_date?: string
 }
 
 export interface UpdateProjectData {
@@ -30,6 +40,11 @@ export interface UpdateProjectData {
   visibility?: 'public' | 'private'
   join_method?: 'open' | 'invite_only' | 'password'
   password?: string
+  purpose?: string
+  target_audience?: string
+  research_method?: string
+  start_date?: string
+  end_date?: string
 }
 
 export interface ProjectApiResponse {

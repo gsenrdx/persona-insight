@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, use } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -124,12 +124,13 @@ function FeatureItem({ icon: Icon, title, description, score }: {
 }
 
 interface InterviewDetailPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function InterviewDetailPage({ params }: InterviewDetailPageProps) {
   const { profile } = useAuth()
   const router = useRouter()
+  const resolvedParams = use(params)
   const [interview, setInterview] = useState<IntervieweeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,10 +141,10 @@ export default function InterviewDetailPage({ params }: InterviewDetailPageProps
   const projectId = useSearchParams()?.get('project_id')
 
   useEffect(() => {
-    if (params.id) {
+    if (resolvedParams.id) {
       fetchInterview()
     }
-  }, [params.id])
+  }, [resolvedParams.id])
 
   const fetchInterview = async () => {
     try {
@@ -152,7 +153,7 @@ export default function InterviewDetailPage({ params }: InterviewDetailPageProps
       setImageError(false)
       setImageLoading(true)
       
-      const response = await fetch(`/api/supabase/interviewee/${params.id}`)
+      const response = await fetch(`/api/supabase/interviewee/${resolvedParams.id}`)
       
       if (!response.ok) {
         throw new Error('인터뷰 데이터를 가져오는데 실패했습니다')
@@ -453,7 +454,7 @@ export default function InterviewDetailPage({ params }: InterviewDetailPageProps
                   </div>
                 )}
 
-                {index < interview.interview_detail.length - 1 && <Separator />}
+                {index < (interview.interview_detail?.length || 0) - 1 && <Separator />}
               </div>
             ))}
           </CardContent>

@@ -7,26 +7,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { User, LogOut, Building2, AlertTriangle, RefreshCw, Crown, Shield } from 'lucide-react'
+import { LogOut, ArrowUpRight, ChevronRight, ChevronDown, AlertCircle, Clock } from 'lucide-react'
 import ProfileModal from './profile-modal'
-
-const ROLE_LABELS = {
-  super_admin: '시스템 관리자',
-  company_admin: '회사 관리자',
-  company_user: '일반 사용자',
-} as const
-
-const ROLE_ICONS = {
-  super_admin: Crown,
-  company_admin: Shield,
-  company_user: User,
-} as const
 
 export default function UserMenu() {
   const { user, profile, error, signOut, refreshProfile } = useAuth()
@@ -43,140 +28,66 @@ export default function UserMenu() {
       setLoading(false)
     }
   }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'super_admin':
-        return 'destructive'
-      case 'company_admin':
-        return 'default'
-      default:
-        return 'secondary'
-    }
-  }
-
-  const getRoleIcon = (role: string) => {
-    return ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User
+  
+  // 버전 정보
+  const version = 'v1.0.1'
+  const updateDate = '2025.06.10'
+  const updateLink = 'https://example.com/changelog'
+  
+  const handleUpdateClick = () => {
+    window.open(updateLink, '_blank')
   }
 
   if (!user) return null
 
-  // 에러가 있는 경우 에러 메뉴 표시
-  if (error || !profile) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="relative h-10 text-amber-600 border-amber-200 hover:bg-amber-50">
-            <AlertTriangle className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-64" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium leading-none text-amber-700">프로필 로드 실패</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-              {error && (
-                <p className="text-xs text-amber-600">{error}</p>
-              )}
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={refreshProfile}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            <span>다시 시도</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            onClick={handleSignOut}
-            disabled={loading}
-            className="text-red-600 focus:text-red-600"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>로그아웃</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-
+  // 정상 프로필 표시
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-9 px-3 text-sm font-medium">
-            <div className="flex items-center gap-1.5">
-              {(() => {
-                const RoleIcon = getRoleIcon(profile.role)
-                return <RoleIcon className="h-4 w-4" />
-              })()}
-              {profile.name}
-            </div>
+          <Button variant="ghost" className="flex items-center gap-1 h-8 py-1 px-2 text-left">
+            <div className="font-medium text-sm">{profile?.name || '최정규'}</div>
+            <ChevronDown className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile.avatar_url || ''} alt={profile.name} />
-                  <AvatarFallback className="bg-primary/10 text-xs">
-                    {getInitials(profile.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium leading-none">{profile.name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
-                  <div className="flex items-center gap-1">
-                    {(() => {
-                      const RoleIcon = getRoleIcon(profile.role)
-                      return <RoleIcon className="h-3 w-3" />
-                    })()}
-                    {ROLE_LABELS[profile.role]}
-                  </div>
-                </Badge>
-                {profile.company && (
-                  <Badge variant="outline" className="text-xs">
-                    <Building2 className="mr-1 h-3 w-3" />
-                    {profile.company.name}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
-            <User className="mr-2 h-4 w-4" />
-            <span>프로필</span>
+        <DropdownMenuContent className="w-48 p-0 shadow-md" align="end" alignOffset={-5} sideOffset={8}>
+        <DropdownMenuItem 
+            onClick={() => setProfileModalOpen(true)}
+            className="flex justify-between items-center px-3 py-2 text-xs"
+          >
+            <span>내 정보 수정</span>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          <DropdownMenuItem className="flex justify-between items-center px-3 py-2 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span>업데이트 일자</span>
+            </div>
+            <span className="text-gray-500">{updateDate}</span>
+          </DropdownMenuItem>
+        
+          <DropdownMenuItem 
+            onClick={handleUpdateClick}
+            className="flex justify-between items-center px-3 py-2 text-xs"
+          >
+            <span>업데이트 소식</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator className="m-0" />
+          
+          <DropdownMenuSeparator className="m-0" />
+          
+          <DropdownMenuItem className="flex justify-between items-center px-3 py-2 text-xs">
+            <span>관리 메뉴</span>
+            <ChevronRight className="h-3 w-3" />
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator className="m-0" />
+          
           <DropdownMenuItem 
             onClick={handleSignOut}
             disabled={loading}
-            className="text-red-600 focus:text-red-600"
+            className="text-red-600 focus:text-red-600 px-3 py-2 text-xs"
           >
-            <LogOut className="mr-2 h-4 w-4" />
             <span>로그아웃</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
