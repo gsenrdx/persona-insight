@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { ModeToggle } from "@/components/shared"
+import { Navigation } from "@/components/shared"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
+import UserMenu from "@/components/auth/user-menu"
+import CompanyBranding from "@/components/auth/company-branding"
 
 type Keyword = {
   name: string;
@@ -63,19 +65,19 @@ export default function InsightsPage() {
   const [availableYears, setAvailableYears] = useState<string[]>([])
   const years = availableYears
   
-  // 사용 가능한 연도 먼저 로드
+  // 사용 가능한 연도 먼저 로드 (회사 단위)
   useEffect(() => {
-    if (!profile?.company_id || !profile?.current_project_id) {
+    if (!profile?.company_id) {
       return
     }
 
     async function loadAvailableYears() {
       try {
-        if (!profile?.company_id || !profile?.current_project_id) return;
+        if (!profile?.company_id) return;
         
-        console.log('연도 데이터 로드 중 - 프로젝트:', profile.current_project?.name, 'ID:', profile.current_project_id);
+        console.log('연도 데이터 로드 중 - 회사 단위:', profile.company?.name, 'ID:', profile.company_id);
         
-        const response = await fetch(`/api/insights/years?company_id=${profile.company_id}&project_id=${profile.current_project_id}`)
+        const response = await fetch(`/api/insights/years?company_id=${profile.company_id}`)
         if (response.ok) {
           const data = await response.json()
           setAvailableYears(data.years || [])
@@ -96,23 +98,23 @@ export default function InsightsPage() {
     }
     
     loadAvailableYears()
-  }, [profile?.company_id, profile?.current_project_id])
+  }, [profile?.company_id])
 
-  // 인사이트 데이터 로드 (사용 가능한 연도가 로드된 후에 실행)
+  // 인사이트 데이터 로드 (사용 가능한 연도가 로드된 후에 실행) - 회사 단위
   useEffect(() => {
     if (availableYears.length === 0) return // 연도가 로드되지 않았으면 대기
-    if (!profile?.company_id || !profile?.current_project_id) return
+    if (!profile?.company_id) return
     
     async function loadInsights() {
       try {
         setLoading(true)
         
-        if (!profile?.company_id || !profile?.current_project_id) return;
+        if (!profile?.company_id) return;
         
-        console.log('인사이트 데이터 로드 중 - 프로젝트:', profile.current_project?.name);
+        console.log('인사이트 데이터 로드 중 - 회사 단위:', profile.company?.name);
         
         const yearDataPromises = availableYears.map(async (year) => {
-          const response = await fetch(`/api/insights?company_id=${profile.company_id}&project_id=${profile.current_project_id}&year=${year}`)
+          const response = await fetch(`/api/insights?company_id=${profile.company_id}&year=${year}`)
           if (response.ok) {
             const data = await response.json()
             return { year, data }
@@ -147,7 +149,7 @@ export default function InsightsPage() {
     }
     
     loadInsights()
-  }, [availableYears, profile?.company_id, profile?.current_project_id])
+  }, [availableYears, profile?.company_id])
   
 
   
@@ -223,14 +225,14 @@ export default function InsightsPage() {
     count: insightData[year]?.intervieweeCount || 0
   }))
 
-  // 프로필이나 프로젝트 정보가 없을 때
-  if (!profile?.company_id || !profile?.current_project_id) {
+  // 프로필이나 회사 정보가 없을 때
+  if (!profile?.company_id) {
     return (
       <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30 dark:from-blue-950/5 dark:to-blue-900/10">
         <div className="container mx-auto px-4 py-8 relative z-10">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <p className="text-muted-foreground">프로젝트를 선택해주세요</p>
+              <p className="text-muted-foreground">회사 정보를 찾을 수 없습니다</p>
             </div>
           </div>
         </div>
@@ -267,17 +269,12 @@ export default function InsightsPage() {
           <Link href="/" className="flex items-center gap-2">
             <div className="flex items-baseline">
               <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-              <span className="ml-2 text-xs text-muted-foreground">by MISO</span>
+              <CompanyBranding />
             </div>
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-              <Link href="/" className="flex items-center gap-1">
-                <MessageCircle className="h-4 w-4" />
-                고객과 대화하기
-              </Link>
-            </Button>
-            <ModeToggle />
+            <Navigation />
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -293,10 +290,10 @@ export default function InsightsPage() {
                   원하는 연도를 선택하여 데이터를 확인하세요 (복수 선택 가능)
                 </CardDescription>
               </div>
-              {profile?.current_project && (
+              {profile?.company && (
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground">현재 프로젝트</div>
-                  <div className="font-medium text-primary">{profile.current_project.name}</div>
+                  <div className="text-sm text-muted-foreground">회사</div>
+                  <div className="font-medium text-primary">{profile.company.name}</div>
                 </div>
               )}
             </div>

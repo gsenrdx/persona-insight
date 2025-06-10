@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,7 +26,12 @@ import {
   MessageCircle,
   Battery,
   Car,
-  Home
+  Home,
+  Calendar,
+  Clock,
+  FileText,
+  Edit,
+  Trash2
 } from "lucide-react"
 import { IntervieweeData, IntervieweeApiResponse } from "@/types/interviewee"
 import { useAuth } from "@/hooks/use-auth"
@@ -118,9 +123,12 @@ function FeatureItem({ icon: Icon, title, description, score }: {
   )
 }
 
-export default function InterviewDetailPage() {
+interface InterviewDetailPageProps {
+  params: { id: string }
+}
+
+export default function InterviewDetailPage({ params }: InterviewDetailPageProps) {
   const { profile } = useAuth()
-  const params = useParams()
   const router = useRouter()
   const [interview, setInterview] = useState<IntervieweeData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -128,41 +136,30 @@ export default function InterviewDetailPage() {
   const [imageError, setImageError] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
 
-  useEffect(() => {
-    if (profile?.company_id && profile?.current_project_id) {
-      fetchInterviewDetail()
-    }
-  }, [params.id, profile?.company_id, profile?.current_project_id])
+  // URL에서 project_id 가져오기
+  const projectId = useSearchParams()?.get('project_id')
 
-  const fetchInterviewDetail = async () => {
+  useEffect(() => {
+    if (params.id) {
+      fetchInterview()
+    }
+  }, [params.id])
+
+  const fetchInterview = async () => {
     try {
       setLoading(true)
+      setError(null)
       setImageError(false)
       setImageLoading(true)
       
-      if (!profile?.company_id || !profile?.current_project_id) {
-        setError('회사 또는 프로젝트 정보를 찾을 수 없습니다')
-        return
-      }
-
-      console.log('인터뷰 상세 데이터 로드 중 - 프로젝트:', profile?.current_project?.name, 'ID:', profile?.current_project_id);
-
-      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}&project_id=${profile.current_project_id}`)
+      const response = await fetch(`/api/supabase/interviewee/${params.id}`)
       
       if (!response.ok) {
-        throw new Error('데이터를 가져오는데 실패했습니다')
+        throw new Error('인터뷰 데이터를 가져오는데 실패했습니다')
       }
       
-      const result: IntervieweeApiResponse = await response.json()
-      const interviews = result.data || []
-      const index = parseInt(params.id as string)
-      
-      if (index >= 0 && index < interviews.length) {
-        setInterview(interviews[index])
-        console.log('인터뷰 상세 데이터 로드 완료:', interviews[index].user_type);
-      } else {
-        throw new Error('해당 인터뷰를 찾을 수 없습니다')
-      }
+      const result = await response.json()
+      setInterview(result.data)
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다')
     } finally {
@@ -170,18 +167,36 @@ export default function InterviewDetailPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!interview || !confirm('정말로 이 인터뷰를 삭제하시겠습니까?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/supabase/interviewee/${interview.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('인터뷰 삭제에 실패했습니다')
+      }
+
+      alert('인터뷰가 삭제되었습니다')
+      router.back()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다')
+    }
+  }
+
   if (loading) {
     return (
-      <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="container mx-auto px-4 py-4">
-            <Skeleton className="h-8 w-64" />
-          </div>
-        </header>
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-96 w-full" />
-            <Skeleton className="h-96 w-full" />
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-40 bg-gray-200 rounded"></div>
           </div>
         </div>
       </div>
@@ -190,19 +205,10 @@ export default function InterviewDetailPage() {
 
   if (error || !interview) {
     return (
-      <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="container mx-auto px-4 py-4">
-            <Button variant="ghost" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              돌아가기
-            </Button>
-          </div>
-        </header>
-        <div className="container mx-auto px-4 py-8">
-          <Alert variant="destructive">
-            <AlertDescription>{error || '인터뷰 데이터를 찾을 수 없습니다'}</AlertDescription>
-          </Alert>
+      <div className="container mx-auto py-6">
+        <div className="text-center py-8">
+          <p className="text-red-500 mb-4">{error || '인터뷰를 찾을 수 없습니다'}</p>
+          <Button variant="outline" onClick={() => router.back()}>뒤로가기</Button>
         </div>
       </div>
     )
@@ -257,326 +263,202 @@ export default function InterviewDetailPage() {
     acc + (detail.need?.length || 0), 0) || 0
 
   return (
-    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="container mx-auto py-6 space-y-6">
       {/* 헤더 */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => router.back()}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                돌아가기
-              </Button>
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/interviews">인터뷰 목록</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{typeInfo.title} 상세</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" asChild>
-                <Link href="/">홈으로</Link>
-              </Button>
-              <ModeToggle />
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => router.back()}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            뒤로가기
+          </Button>
+          <h1 className="text-2xl font-bold">{interview.interviewee_fake_name || '이름 없음'}</h1>
         </div>
-      </header>
-
-      {/* 프로필 헤더 + 써머리 */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-start gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 rounded-full flex items-center justify-center overflow-hidden relative">
-                {interview.thumbnail && !imageError ? (
-                  <>
-                    {/* 이미지 로딩 중 Skeleton */}
-                    {imageLoading && (
-                      <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 animate-pulse rounded-full" />
-                    )}
-                    
-                    {/* 실제 이미지 */}
-                    <img
-                      src={interview.thumbnail}
-                      alt={`${typeInfo.title} 프로필 이미지`}
-                      className={`w-full h-full object-cover rounded-full transition-opacity duration-500 ${
-                        imageLoading ? 'opacity-0' : 'opacity-100'
-                      }`}
-                      crossOrigin="anonymous"
-                      onError={() => {
-                        setImageError(true)
-                        setImageLoading(false)
-                      }}
-                      onLoad={() => {
-                        setImageLoading(false)
-                      }}
-                    />
-                  </>
-                ) : (
-                  <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                )}
-              </div>
-                          <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{typeInfo.title}</h1>
-                <Badge variant="outline" className="text-xs">
-                  <CalendarDays className="h-3 w-3 mr-1" />
-                  {interview.session_date}
-                </Badge>
-                {interview.interviewee_fake_name && (
-                  <Badge variant="secondary" className="text-xs">
-                    <User className="h-3 w-3 mr-1" />
-                    {interview.interviewee_fake_name}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{typeInfo.subtitle}</p>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {interview.user_description}
-              </h2>
-            </div>
-            </div>
-
-            {/* 써머리 - 오른쪽에 배치 */}
-            <div className="flex-1 ml-8">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
-                  인터뷰 요약
-                </h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {interview.interviewee_summary}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Edit className="w-4 h-4 mr-2" />
+            수정
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700">
+            <Trash2 className="w-4 h-4 mr-2" />
+            삭제
+          </Button>
         </div>
       </div>
 
-      {/* 메인 2단 구조 */}
-      <div className="container mx-auto px-4 py-8 pb-16">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 lg:grid-cols-5 gap-6"
-          style={{ minHeight: 'calc(100vh - 320px)' }}
-        >
-          {/* 왼쪽: 통합 정보 (인터뷰 정보 + 충전/서비스 데이터) */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white h-full overflow-y-auto">
-              <div className="space-y-6">
-                {/* 기본 정보 섹션 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 text-white">User Research</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium mb-2 text-white">사용자 타입</h4>
-                      <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                        {interview.user_type} 타입
-                      </Badge>
+      {/* 기본 정보 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">기본 정보</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">인터뷰 날짜:</span>
+              <span className="text-sm">{new Date(interview.session_date).toLocaleDateString('ko-KR')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">사용자 유형:</span>
+              <Badge variant="secondary">{interview.user_type}</Badge>
+            </div>
+          </div>
+          
+          {interview.user_description && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">사용자 설명</h4>
+              <p className="text-sm text-gray-800">{interview.user_description}</p>
+            </div>
+          )}
+
+          {interview.interviewee_summary && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">인터뷰 요약</h4>
+              <p className="text-sm text-gray-800">{interview.interviewee_summary}</p>
+            </div>
+          )}
+
+          {interview.interviewee_style && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">인터뷰 스타일</h4>
+              <p className="text-sm text-gray-800">{interview.interviewee_style}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 충전 패턴 점수 */}
+      {interview.charging_pattern_scores && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">충전 패턴 점수</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.isArray(interview.charging_pattern_scores) ? 
+                interview.charging_pattern_scores.map((score, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">홈 중심 점수:</span>
+                      <span className="text-sm font-medium">{score.home_centric_score}</span>
                     </div>
-
-                    {allKeywords.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 text-white">주요 키워드</h4>
-                        <div className="flex flex-wrap gap-1">
-                          {allKeywords.map((keyword, index) => (
-                            <Badge key={index} variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                              {keyword}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <h4 className="text-sm font-medium mb-2 text-white">분석 통계</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white">분석 주제</span>
-                          <span className="font-semibold text-white">{interview.interview_detail?.length || 0}개</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white">페인포인트</span>
-                          <span className="font-semibold text-white">{totalPainPoints}개</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white">니즈</span>
-                          <span className="font-semibold text-white">{totalNeeds}개</span>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">로드 중심 점수:</span>
+                      <span className="text-sm font-medium">{score.road_centric_score}</span>
                     </div>
                   </div>
-                </div>
+                )) : (
+                <p className="text-sm text-gray-500">데이터가 없습니다</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-                {/* 충전 패턴 및 서비스 선호도 - 실제 데이터가 있을 때만 표시 */}
-                {(interview.charging_pattern_scores?.[0] || interview.value_orientation_scores?.[0] || interview.interviewee_style) && (
-                  <>
-                    {/* 구분선 */}
-                    <div className="border-t border-white/20"></div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4 text-white">충전 인프라 & 서비스 선호도</h3>
-                      
-                      <div className="space-y-4">
-                        {interview.charging_pattern_scores?.[0] && (
-                          <div>
-                            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-white">
-                              <Battery className="h-4 w-4" />
-                              충전 패턴
-                            </h4>
-                            <div className="space-y-2">
-                              <ScoreSlider 
-                                label="완속(AC)" 
-                                value={interview.charging_pattern_scores[0].home_centric_score} 
-                                color="blue"
-                              />
-                              <ScoreSlider 
-                                label="급속(DC)" 
-                                value={interview.charging_pattern_scores[0].road_centric_score} 
-                                color="blue"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {interview.value_orientation_scores?.[0] && (
-                          <div>
-                            <h4 className="font-medium mb-2 text-sm text-white">가치 지향성</h4>
-                            <p className="text-xs text-white/90 mb-3 leading-relaxed">
-                              사용자의 가치 지향성 기반 분석 결과
-                            </p>
-                            <div className="space-y-2">
-                              <ScoreSlider 
-                                label="기술/브랜드 중심" 
-                                value={interview.value_orientation_scores[0].tech_brand_driven_score} 
-                                color="blue"
-                              />
-                              <ScoreSlider 
-                                label="비용 중심" 
-                                value={interview.value_orientation_scores[0].cost_driven_score} 
-                                color="blue"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {interview.interviewee_style && (
-                          <div>
-                            <h4 className="font-medium mb-2 text-sm text-white">인터뷰 스타일</h4>
-                            <div className="bg-white/10 rounded-lg p-3">
-                              <p className="text-xs text-white leading-relaxed">
-                                {interview.interviewee_style}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+      {/* 가치 지향 점수 */}
+      {interview.value_orientation_scores && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">가치 지향 점수</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.isArray(interview.value_orientation_scores) ? 
+                interview.value_orientation_scores.map((score, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">비용 중심 점수:</span>
+                      <span className="text-sm font-medium">{score.cost_driven_score}</span>
                     </div>
-                  </>
-                )}
-
-                <div className="pt-4 border-t border-white/20">
-                  <p className="text-xs text-white">Persona Insight Analysis</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* 오른쪽: 상세 인터뷰 분석 (넓은 공간 활용) */}
-          <motion.div variants={itemVariants} className="lg:col-span-3">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 h-full flex flex-col">
-              <div className="p-6 flex-shrink-0">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-                 Interview Detail
-                </h3>
-              </div>
-              
-              <div className="flex-1 px-6 pb-6 overflow-y-auto">
-                {interview.interview_detail && interview.interview_detail.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {interview.interview_detail.map((detail, index) => (
-                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
-                        <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-3 text-base">
-                          {detail.topic_name}
-                        </h4>
-                        
-                        {detail.keyword_cluster && detail.keyword_cluster.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {detail.keyword_cluster.slice(0, 4).map((keyword: string, idx: number) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                <Hash className="h-2 w-2 mr-1" />
-                                {keyword}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Pain Points */}
-                        {detail.painpoint && detail.painpoint.length > 0 && (
-                          <div className="mb-4">
-                            <h5 className="flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 mb-2 text-sm">
-                              <AlertTriangle className="h-3 w-3" />
-                              Pain Points ({detail.painpoint.length})
-                            </h5>
-                            <ul className="space-y-1">
-                              {detail.painpoint.slice(0, 3).map((point: string, idx: number) => (
-                                <li key={idx} className="text-xs text-red-600 dark:text-red-300 leading-relaxed">
-                                  • {point}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Needs */}
-                        {detail.need && detail.need.length > 0 && (
-                          <div className="mb-4">
-                            <h5 className="flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 mb-2 text-sm">
-                              <Lightbulb className="h-3 w-3" />
-                              Needs ({detail.need.length})
-                            </h5>
-                            <ul className="space-y-1">
-                              {detail.need.slice(0, 3).map((need: string, idx: number) => (
-                                <li key={idx} className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
-                                  • {need}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Insight Quotes */}
-                        {detail.insight_quote && detail.insight_quote.length > 0 && (
-                          <div>
-                            <h5 className="flex items-center gap-2 font-semibold text-amber-600 dark:text-amber-400 mb-2 text-sm">
-                              <Quote className="h-3 w-3" />
-                              핵심 인용구 ({detail.insight_quote.length})
-                            </h5>
-                            <blockquote className="text-xs text-amber-700 dark:text-amber-300 italic border-l-2 border-amber-400 pl-3 leading-relaxed">
-                              "{detail.insight_quote[0]}"
-                            </blockquote>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">기술/브랜드 중심 점수:</span>
+                      <span className="text-sm font-medium">{score.tech_brand_driven_score}</span>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">상세 인터뷰 데이터가 없습니다.</p>
-                )}
-              </div>
+                )) : (
+                <p className="text-sm text-gray-500">데이터가 없습니다</p>
+              )}
             </div>
-          </motion.div>
-        </motion.div>
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 인터뷰 상세 내용 */}
+      {interview.interview_detail && Array.isArray(interview.interview_detail) && interview.interview_detail.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">인터뷰 상세 내용</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {interview.interview_detail.map((detail, index) => (
+              <div key={index} className="space-y-4">
+                <h4 className="font-medium text-gray-900">{detail.topic_name}</h4>
+                
+                {detail.painpoint && detail.painpoint.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-red-600 mb-2">페인포인트</h5>
+                    <ul className="space-y-1">
+                      {detail.painpoint.map((pain, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                          <span className="w-1 h-1 bg-red-400 rounded-full mt-2 flex-shrink-0"></span>
+                          {pain}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {detail.need && detail.need.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-blue-600 mb-2">니즈</h5>
+                    <ul className="space-y-1">
+                      {detail.need.map((need, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                          <span className="w-1 h-1 bg-blue-400 rounded-full mt-2 flex-shrink-0"></span>
+                          {need}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {detail.insight_quote && detail.insight_quote.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-green-600 mb-2">인사이트 인용구</h5>
+                    <div className="space-y-2">
+                      {detail.insight_quote.map((quote, idx) => (
+                        <blockquote key={idx} className="text-sm text-gray-700 italic border-l-2 border-green-200 pl-3">
+                          "{quote}"
+                        </blockquote>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {detail.keyword_cluster && detail.keyword_cluster.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-purple-600 mb-2">키워드 클러스터</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {detail.keyword_cluster.map((keyword, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {index < interview.interview_detail.length - 1 && <Separator />}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 } 

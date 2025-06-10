@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
   try {
-    const { selectedInterviewee, personaType } = await req.json();
+    const { selectedInterviewee, personaType, projectId } = await req.json();
     
     if (!selectedInterviewee || !personaType) {
       return NextResponse.json({ 
@@ -11,7 +11,13 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('[페르소나 합성 API] 요청 데이터:', { selectedInterviewee, personaType });
+    if (!projectId) {
+      return NextResponse.json({ 
+        error: 'projectId가 필요합니다.' 
+      }, { status: 400 });
+    }
+
+    console.log('[페르소나 합성 API] 요청 데이터:', { selectedInterviewee, personaType, projectId });
 
     // Authorization 헤더에서 사용자 정보 추출
     const authorization = req.headers.get('authorization');
@@ -77,7 +83,8 @@ export async function POST(req: NextRequest) {
         thumbnail
       `)
       .eq('company_id', companyId)
-      .eq('persona_type', personaType);
+      .eq('persona_type', personaType)
+      .eq('project_id', projectId);
 
     if (personasError) {
       console.error('페르소나 데이터 조회 실패:', personasError);
@@ -227,6 +234,7 @@ export async function POST(req: NextRequest) {
               return null;
             })(),
             company_id: companyId,
+            project_id: projectId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
@@ -272,6 +280,7 @@ export async function POST(req: NextRequest) {
             .update(updateData)
             .eq('company_id', companyId)
             .eq('persona_type', personaType)
+            .eq('project_id', projectId)
             .select();
 
           if (updateError) {

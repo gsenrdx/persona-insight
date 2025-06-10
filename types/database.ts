@@ -50,6 +50,7 @@ export type Database = {
           interviewee_fake_name: string | null
           interviewee_style: string | null
           interviewee_summary: string | null
+          project_id: string | null
           session_date: string
           thumbnail: string | null
           updated_at: string | null
@@ -67,6 +68,7 @@ export type Database = {
           interviewee_fake_name?: string | null
           interviewee_style?: string | null
           interviewee_summary?: string | null
+          project_id?: string | null
           session_date: string
           thumbnail?: string | null
           updated_at?: string | null
@@ -84,6 +86,7 @@ export type Database = {
           interviewee_fake_name?: string | null
           interviewee_style?: string | null
           interviewee_summary?: string | null
+          project_id?: string | null
           session_date?: string
           thumbnail?: string | null
           updated_at?: string | null
@@ -97,6 +100,55 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviewees_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      main_topics: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          project_id: string | null
+          topic_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          topic_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          topic_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "main_topics_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "main_topics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -114,6 +166,7 @@ export type Database = {
           persona_style: string
           persona_summary: string
           persona_type: string
+          project_id: string | null
           thumbnail: string | null
           updated_at: string | null
         }
@@ -129,6 +182,7 @@ export type Database = {
           persona_style: string
           persona_summary: string
           persona_type: string
+          project_id?: string | null
           thumbnail?: string | null
           updated_at?: string | null
         }
@@ -144,6 +198,7 @@ export type Database = {
           persona_style?: string
           persona_summary?: string
           persona_type?: string
+          project_id?: string | null
           thumbnail?: string | null
           updated_at?: string | null
         }
@@ -153,6 +208,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -194,6 +256,104 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          joined_at: string | null
+          project_id: string
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          project_id: string
+          role?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          project_id?: string
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          join_method: string | null
+          master_id: string | null
+          name: string
+          password: string | null
+          updated_at: string | null
+          visibility: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          join_method?: string | null
+          master_id?: string | null
+          name: string
+          password?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          join_method?: string | null
+          master_id?: string | null
+          name?: string
+          password?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

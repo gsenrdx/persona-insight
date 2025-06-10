@@ -2,13 +2,10 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { PersonaCardGrid } from "@/components/persona"
 import { SearchBar, SearchResult } from "@/components/search"
-import { TagList, SkeletonCardGrid, ModeToggle } from "@/components/shared"
-import { Button } from "@/components/ui/button"
-import { PieChart } from "lucide-react"
+import { TagList, SkeletonCardGrid, Navigation } from "@/components/shared"
 import AuthGuard from "@/components/auth/auth-guard"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
-import { ProjectHeader } from "@/components/project"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
   const params = await searchParams
@@ -22,7 +19,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
       <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
       <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       
-            <header className="container mx-auto px-4 py-8 relative z-10">
+                  <header className="container mx-auto px-4 py-8 relative z-10">
         <div className="flex justify-between items-center">
           <div className="flex flex-col gap-3">
             <Link href="/" className="flex items-center gap-2">
@@ -31,25 +28,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
                 <CompanyBranding />
               </div>
             </Link>
-            <ProjectHeader />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-              <Link href="/interviews" className="flex items-center gap-1">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                인터뷰 데이터
-              </Link>
-            </Button>
-            <Button variant="outline" className="text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-              <Link href="/insights" className="flex items-center gap-1">
-                <PieChart className="h-4 w-4" />
-                종합 인사이트
-              </Link>
-            </Button>
-
-            <ModeToggle />
+            <Navigation />
             <UserMenu />
           </div>
         </div>

@@ -75,14 +75,20 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File;
+  const projectId = formData.get('projectId') as string;
   
   if (!file) {
     return new Response('파일이 제공되지 않았습니다.', { status: 400 });
   }
 
+  if (!projectId) {
+    return new Response('프로젝트 ID가 제공되지 않았습니다.', { status: 400 });
+  }
+
   console.log('[MISO Workflow API 요청] 파일 크기:', file.size);
   console.log('[MISO Workflow API 요청] 파일명:', file.name);
   console.log('[MISO Workflow API 요청] 파일 타입:', file.type);
+  console.log('[MISO Workflow API 요청] 프로젝트 ID:', projectId);
 
   // 환경변수에서 API 정보 가져오기
   const MISO_API_URL = process.env.MISO_API_URL || 'https://api.holdings.miso.gs';
@@ -479,6 +485,7 @@ export async function POST(req: NextRequest) {
           }
         })(),
         company_id: companyId,
+        project_id: projectId,
         created_by: userId,
         created_at: new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString(),
         updated_at: new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString()

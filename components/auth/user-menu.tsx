@@ -13,13 +13,19 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { User, LogOut, Building2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { User, LogOut, Building2, AlertTriangle, RefreshCw, Crown, Shield } from 'lucide-react'
 import ProfileModal from './profile-modal'
 
 const ROLE_LABELS = {
   super_admin: '시스템 관리자',
   company_admin: '회사 관리자',
   company_user: '일반 사용자',
+} as const
+
+const ROLE_ICONS = {
+  super_admin: Crown,
+  company_admin: Shield,
+  company_user: User,
 } as const
 
 export default function UserMenu() {
@@ -56,6 +62,10 @@ export default function UserMenu() {
       default:
         return 'secondary'
     }
+  }
+
+  const getRoleIcon = (role: string) => {
+    return ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User
   }
 
   if (!user) return null
@@ -109,13 +119,14 @@ export default function UserMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={profile.avatar_url || ''} alt={profile.name} />
-              <AvatarFallback className="bg-primary/10">
-                {getInitials(profile.name)}
-              </AvatarFallback>
-            </Avatar>
+          <Button variant="ghost" className="relative h-9 px-3 text-sm font-medium">
+            <div className="flex items-center gap-1.5">
+              {(() => {
+                const RoleIcon = getRoleIcon(profile.role)
+                return <RoleIcon className="h-4 w-4" />
+              })()}
+              {profile.name}
+            </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-80" align="end" forceMount>
@@ -137,7 +148,13 @@ export default function UserMenu() {
               </div>
               <div className="flex flex-wrap gap-1">
                 <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
-                  {ROLE_LABELS[profile.role]}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const RoleIcon = getRoleIcon(profile.role)
+                      return <RoleIcon className="h-3 w-3" />
+                    })()}
+                    {ROLE_LABELS[profile.role]}
+                  </div>
                 </Badge>
                 {profile.company && (
                   <Badge variant="outline" className="text-xs">

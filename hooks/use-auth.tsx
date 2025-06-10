@@ -15,16 +15,10 @@ interface Profile {
   last_login_at: string | null
   created_at: string
   updated_at: string
-  current_project_id: string | null
   company?: {
     id: string
     name: string
     domains: string[]
-  } | null
-  current_project?: {
-    id: string
-    name: string
-    description: string | null
   } | null
 }
 
@@ -35,7 +29,6 @@ interface AuthContextType {
   error: string | null
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
-  switchProject: (projectId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -56,11 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id,
             name,
             domains
-          ),
-          current_project:projects(
-            id,
-            name,
-            description
           )
         `)
         .eq('id', userId)
@@ -107,33 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const switchProject = async (projectId: string) => {
-    try {
-      setError(null)
-      
-      if (!user?.id) {
-        throw new Error('로그인이 필요합니다.')
-      }
 
-      // profiles 테이블의 current_project_id 업데이트
-      const { error } = await supabase
-        .from('profiles')
-        .update({ current_project_id: projectId })
-        .eq('id', user.id)
-
-      if (error) {
-        console.error('프로젝트 전환 실패:', error)
-        throw new Error('프로젝트 전환에 실패했습니다.')
-      }
-
-      // 프로필 새로고침
-      await refreshProfile()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '프로젝트 전환에 실패했습니다.'
-      setError(errorMessage)
-      console.error('프로젝트 전환 실패:', err)
-    }
-  }
 
   useEffect(() => {
     let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'];
@@ -197,7 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     signOut,
     refreshProfile,
-    switchProject,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

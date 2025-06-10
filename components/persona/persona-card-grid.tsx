@@ -103,18 +103,18 @@ export default function PersonaCardGrid() {
     handleButtonClick
   ]);
 
-  // 프로젝트나 회사가 변경될 때마다 페르소나 데이터 새로 로드
+  // 회사가 변경될 때마다 페르소나 데이터 새로 로드 (프로젝트 필터링 제거)
   useEffect(() => {
-    // 프로필이 아직 로드되지 않았거나 프로젝트가 선택되지 않았으면 대기
-    if (!profile?.company_id || !profile?.current_project_id) {
+    // 프로필이 아직 로드되지 않았거나 회사 정보가 없으면 대기
+    if (!profile?.company_id) {
       setIsLoading(true);
-      // 프로젝트가 없으면 모든 데이터 클리어
+      // 회사 정보가 없으면 모든 데이터 클리어
       setAllPersonas([]);
       setFilteredPersonas([]);
       return;
     }
 
-    // 프로젝트가 변경되면 즉시 이전 데이터 클리어하여 깜빡임 방지
+    // 회사가 변경되면 즉시 이전 데이터 클리어하여 깜빡임 방지
     setAllPersonas([]);
     setFilteredPersonas([]);
 
@@ -123,12 +123,12 @@ export default function PersonaCardGrid() {
         setIsLoading(true)
         setError(null)
         
-        console.log('페르소나 데이터 로드 중 - 프로젝트:', profile?.current_project?.name, 'ID:', profile?.current_project_id);
+        console.log('페르소나 데이터 로드 중 - 회사 단위:', profile?.company?.name, 'ID:', profile?.company_id);
         
-        // 모든 페이지 데이터를 한번에 로드 (회사별, 프로젝트별)
+        // 회사 단위로 모든 페르소나 로드 (프로젝트 필터링 없음)
         const data = await fetchPersonas(
           profile?.company_id || undefined, 
-          profile?.current_project_id || undefined
+          undefined // project_id를 undefined로 설정하여 회사 전체 페르소나 로드
         )
         
         setAllPersonas(data)
@@ -146,7 +146,7 @@ export default function PersonaCardGrid() {
     }
 
     loadAllPersonas();
-  }, [profile?.company_id, profile?.current_project_id]) // company_id와 current_project_id가 변경될 때 실행
+  }, [profile?.company_id]) // company_id만 의존성으로 설정
 
   // 검색어와 필터에 따라 클라이언트 측에서 필터링
   useEffect(() => {
@@ -290,7 +290,7 @@ export default function PersonaCardGrid() {
         initial="hidden"
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-24"
-        key={`${profile?.current_project_id}-${selectedKeywords.join(',')}`} // 프로젝트 ID와 선택된 키워드 변경 시 애니메이션 재생
+        key={`${profile?.company_id}-${selectedKeywords.join(',')}`} // 회사 ID와 선택된 키워드 변경 시 애니메이션 재생
       >
         {filteredPersonas.map((persona) => (
           <motion.div key={persona.id} variants={item} className="h-full">

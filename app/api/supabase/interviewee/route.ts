@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from('interviewees')
       .select('*')
-      .eq('company_id', company_id) // 회사 필터링 추가
+      .eq('company_id', company_id)
       .order('session_date', { ascending: false })
 
     // 프로젝트 필터링 추가

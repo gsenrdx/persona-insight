@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { ProjectSelector } from '@/components/project'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -15,7 +14,6 @@ interface AuthGuardProps {
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { user, profile, loading, error, refreshProfile } = useAuth()
   const router = useRouter()
-  const [showProjectSelector, setShowProjectSelector] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -23,14 +21,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [user, loading, router])
 
-  useEffect(() => {
-    // 로그인은 되어있지만 프로젝트가 선택되지 않은 경우
-    if (user && profile && !loading && !profile.current_project_id) {
-      setShowProjectSelector(true)
-    } else {
-      setShowProjectSelector(false)
-    }
-  }, [user, profile, loading])
+  // 더 이상 현재 프로젝트 선택을 체크하지 않음
+  // 인터뷰 페이지는 URL에서 project_id를 받기 때문에 별도 체크 불필요
 
   // 로딩 중일 때
   if (loading) {
@@ -115,14 +107,5 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // 로그인된 경우 자식 컴포넌트 렌더링
-  return (
-    <>
-      {children}
-      <ProjectSelector 
-        open={showProjectSelector} 
-        onProjectSelected={() => setShowProjectSelector(false)}
-        onClose={() => setShowProjectSelector(false)}
-      />
-    </>
-  )
+  return <>{children}</>
 } 

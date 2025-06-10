@@ -1,2 +1,2 @@
-export { default as ProjectSelector } from './project-selector'
-export { default as ProjectHeader } from './project-header' 
+export { ProjectPageContent } from './project-page-content'
+export { default as InterviewList } from './interview-list' 
