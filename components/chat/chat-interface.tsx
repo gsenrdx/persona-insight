@@ -4,11 +4,12 @@ import { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { useChat, type Message } from "ai/react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown } from "lucide-react"
+import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2 } from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 import { AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { MindmapModal } from "@/components/mindmap"
 
 interface ChatInterfaceProps {
   personaId: string
@@ -19,6 +20,37 @@ interface ChatInterfaceProps {
 interface MisoStreamData {
   misoConversationId?: string;
   [key: string]: any;
+}
+
+// 마인드맵 데이터 타입 정의
+interface ContentItem {
+  content: string;
+  quote: string;
+  relevance: number;
+}
+
+interface Subtopic {
+  title: string;
+  content_items: ContentItem[];
+}
+
+interface Topic {
+  id: string;
+  title: string;
+  color: string;
+  subtopics: Subtopic[];
+}
+
+interface RootNode {
+  text: string;
+  subtitle: string;
+}
+
+interface MindmapData {
+  title: string;
+  summary: string;
+  root_node: RootNode;
+  main_topics: Topic[];
 }
 
 // 확장된 메시지 타입 정의
@@ -43,6 +75,9 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [isCopied, setIsCopied] = useState<string | null>(null)
   const [repliedMessages, setRepliedMessages] = useState<Record<string, string>>({}) // 꼬리질문 관계 추적
+  const [isGeneratingMindmap, setIsGeneratingMindmap] = useState<boolean>(false)
+  const [mindmapModalOpen, setMindmapModalOpen] = useState<boolean>(false)
+  const [mindmapData, setMindmapData] = useState<MindmapData | null>(null)
 
   useEffect(() => {
     setIsClient(true)
@@ -79,89 +114,77 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   }, [])
 
   // 메시지 복사 함수
-  const handleCopyMessage = useCallback((messageId: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setIsCopied(messageId);
-    setTimeout(() => {
-      setIsCopied(null);
-    }, 2000);
+  const handleCopyMessage = useCallback(async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setIsCopied(messageId);
+      setTimeout(() => setIsCopied(null), 2000);
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
   }, []);
 
-  // 메시지 꼬리질문 함수
+  // 꼬리질문 기능
   const handleReplyMessage = useCallback((message: Message) => {
     setReplyingTo(message);
     focusInput();
   }, [focusInput]);
 
-  // 꼬리질문 취소 함수
   const cancelReply = useCallback(() => {
     setReplyingTo(null);
   }, []);
 
-  // API 요청 처리 함수
+  // 메시지 전송 함수
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!userInput.trim() || loading) return;
-    
-    let finalUserInput = userInput;
-    const userMessageId = Date.now().toString();
-    let isFollowUpQuestion = false;
-    let originalMessageId = "";
-    
-    // 꼬리질문 모드인 경우, 원본 메시지 ID와 내용 저장
-    if (replyingTo && replyingTo.role === "assistant") {
-      isFollowUpQuestion = true;
-      originalMessageId = replyingTo.id;
-      
-      // 원본 메시지에 대한 참조를 내부적으로 저장
-      setRepliedMessages(prev => ({
-        ...prev,
-        [userMessageId]: originalMessageId
-      }));
-      
-      // API 호출용 전체 입력 생성 (내부적으로만 사용)
-      finalUserInput = `"${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? '...' : ''}"에 대한 추가 질문: ${userInput}`;
-    }
-    
-    const userMessage: Message = {
-      id: userMessageId,
+
+    const newUserMessage: Message = {
+      id: Date.now().toString(),
       role: "user",
-      content: userInput, // 화면에 표시할 때는 사용자 입력만 보여줌
+      content: userInput.trim(),
       createdAt: new Date(),
     };
-    
-    // UI에 사용자 메시지 추가
-    setChatMessages(prev => [...prev, userMessage]);
+
+    // 꼬리질문인 경우 관계 추적
+    if (replyingTo) {
+      setRepliedMessages(prev => ({
+        ...prev,
+        [newUserMessage.id]: replyingTo.id
+      }));
+    }
+
+    setChatMessages(prev => [...prev, newUserMessage]);
     setLoading(true);
     setIsStreaming(false);
     setShowLoadingMsg(true); // 로딩 메시지 박스 표시
     setReplyingTo(null); // 꼬리질문 상태 초기화
     
     console.log("대화 전송 - conversationId:", misoConversationId);
-    
+
     try {
       // API에 보낼 메시지 생성
       const apiMessages = [...chatMessages];
       
       // 꼬리질문인 경우 API 메시지에 메타데이터 추가
-      if (isFollowUpQuestion) {
+      if (replyingTo) {
         apiMessages.push({
-          ...userMessage,
-          content: finalUserInput,
+          ...newUserMessage,
+          content: `"${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? '...' : ''}"에 대한 추가 질문: ${newUserMessage.content}`,
           metadata: {
             isFollowUpQuestion: true,
-            originalMessageId: originalMessageId
+            originalMessageId: replyingTo.id
           }
         } as ExtendedMessage);
       } else {
-        apiMessages.push(userMessage);
+        apiMessages.push(newUserMessage);
       }
-      
-      const response = await fetch("/api/chat", {
-        method: "POST",
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messages: apiMessages,
@@ -177,36 +200,36 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
           conversationId: misoConversationId
         }),
       });
-      
+
       if (!response.ok) {
-        throw new Error(`API 오류: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       // 스트림 처리
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let done = false;
       let fullText = "";
       let assistantMessage: Message = {
-        id: Date.now().toString(),
+        id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "",
         createdAt: new Date(),
       };
-      
+
       // 메시지 추가 및 스트리밍 시작
       setShowLoadingMsg(false); // 로딩 메시지 박스 숨김
       setChatMessages(prev => [...prev, assistantMessage]);
       setIsStreaming(true);
-      
+
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        
+
         if (value) {
           const chunkText = decoder.decode(value, { stream: true });
           const lines = chunkText.split("\n").filter(line => line.trim() !== "");
-          
+
           for (const line of lines) {
             // 데이터 파싱
             if (line.startsWith("0:")) {
@@ -248,13 +271,13 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       }
       
       scrollToBottom();
-      setUserInput("");
+
     } catch (error) {
       console.error("API 요청 오류:", error);
       setShowLoadingMsg(false); // 오류 발생 시 로딩 메시지 박스 숨김
       // 오류 메시지 UI에 표시
       setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
+        id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다.",
         createdAt: new Date(),
@@ -262,6 +285,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     } finally {
       setLoading(false);
       setIsStreaming(false);
+      setUserInput("");
       // 응답 완료 후 입력창으로 포커스 이동
       setTimeout(() => {
         focusInput();
@@ -288,8 +312,99 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     return chatMessages.find(msg => msg.id === repliedMessages[messageId]) || null;
   }, [chatMessages, repliedMessages]);
 
+  // 대화 요약 생성 함수
+  const handleGenerateMindmap = useCallback(async () => {
+    if (chatMessages.length <= 1 || isGeneratingMindmap) return; // 초기 메시지만 있으면 생성하지 않음
+    
+    setIsGeneratingMindmap(true);
+    
+    try {
+      // 현재 대화 내용 준비 (초기 인사 메시지 제외)
+      const conversationContent = chatMessages
+        .slice(1) // 첫 번째 인사 메시지 제외
+        .map(msg => `${msg.role === 'user' ? '사용자' : personaData.name}: ${msg.content}`)
+        .join('\n\n');
+
+      // Supabase 세션에서 JWT 토큰 가져오기
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('로그인이 필요합니다.');
+      }
+      
+      const response = await fetch('/api/mindmap/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          conversationContent,
+          personaName: personaData.name,
+          conversationId: misoConversationId
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '대화 요약 생성에 실패했습니다.');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.mindmapData) {
+        let finalMindmapData = result.mindmapData;
+        
+        // 서버에서 파싱에 실패한 경우 클라이언트에서 재시도
+        if (result.mindmapData.error === 'JSON 파싱 실패' && result.mindmapData.raw) {
+          try {
+            console.log('클라이언트에서 JSON 파싱 재시도...');
+            let cleanedData = result.mindmapData.raw.trim();
+            
+            // 마크다운 코드 블록 제거
+            cleanedData = cleanedData.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+            cleanedData = cleanedData.replace(/^```\s*/, '').replace(/\s*```$/i, '');
+            cleanedData = cleanedData.trim();
+            
+            if (cleanedData.startsWith('{') && cleanedData.endsWith('}')) {
+              finalMindmapData = JSON.parse(cleanedData);
+              console.log('클라이언트 JSON 파싱 성공!');
+            }
+          } catch (clientParseError) {
+            console.error('클라이언트 파싱도 실패:', clientParseError);
+            // 파싱 실패 시 원본 에러 정보 유지
+          }
+        }
+        
+        // 최종 데이터 확인
+        if (finalMindmapData && !finalMindmapData.error) {
+          console.log('대화 요약 데이터:', finalMindmapData);
+          setMindmapData(finalMindmapData);
+          setMindmapModalOpen(true);
+        } else {
+          console.warn('대화 요약 데이터 처리 실패:', finalMindmapData);
+          alert('대화 요약 생성은 완료되었지만 데이터 처리 중 문제가 발생했습니다.');
+        }
+      } else {
+        throw new Error(result.error || '대화 요약 데이터를 처리할 수 없습니다.');
+      }
+      
+    } catch (error) {
+      console.error('대화 요약 생성 오류:', error);
+      // 오류 토스트나 알림 표시
+      alert(`대화 요약 생성 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsGeneratingMindmap(false);
+    }
+  }, [chatMessages, personaData.name, misoConversationId, isGeneratingMindmap]);
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* CSS 정의 */}
       <style jsx global>{`
         .animate-pulse-subtle {
@@ -390,6 +505,32 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         
         .action-message:hover + .message-actions .border-dashed {
           border-color: #818cf8;
+        }
+        
+        .summary-fab {
+          transition: all 0.2s ease;
+        }
+        
+        .summary-fab:hover:not(.disabled) {
+          opacity: 0.9;
+        }
+        
+        .summary-fab.disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
       
@@ -574,6 +715,54 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
           </div>
         </form>
       </div>
+
+      {/* AI 요약 생성 버튼 */}
+      <AnimatePresence>
+        {chatMessages.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute bottom-20 right-4 md:bottom-24 md:right-6 z-10"
+          >
+            <Button
+              onClick={handleGenerateMindmap}
+              disabled={isGeneratingMindmap || chatMessages.length <= 1}
+              className={`
+                summary-fab px-4 py-2 h-10 rounded-lg bg-blue-600 
+                hover:bg-blue-700 text-white text-sm font-medium shadow-md 
+                border-0 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
+                ${isGeneratingMindmap || chatMessages.length <= 1 ? 'disabled' : ''}
+              `}
+            >
+              {isGeneratingMindmap ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 loading-spinner" />
+                  생성 중...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-2" />
+                  AI 요약
+                </>
+              )}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 대화 요약 모달 */}
+      <MindmapModal
+        isOpen={mindmapModalOpen}
+        onClose={() => {
+          setMindmapModalOpen(false);
+          setMindmapData(null);
+        }}
+        mindmapData={mindmapData}
+        personaName={personaData.name}
+        personaImage={personaData.image}
+      />
     </div>
   )
 }

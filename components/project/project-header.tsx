@@ -12,22 +12,47 @@ export default function ProjectHeader() {
   const [showProjectSelector, setShowProjectSelector] = useState(false)
 
   if (!profile?.current_project) {
-    return null
+    return (
+      <>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-500 font-medium">프로젝트:</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowProjectSelector(true)}
+            className="h-7 px-3 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+          >
+            프로젝트 선택
+          </Button>
+        </div>
+
+        <ProjectSelector 
+          open={showProjectSelector} 
+          onProjectSelected={() => setShowProjectSelector(false)}
+          onClose={() => setShowProjectSelector(false)}
+        />
+      </>
+    )
   }
 
   return (
     <>
-      <div className="flex items-center gap-2 text-sm">
-        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground">프로젝트:</span>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-xs text-gray-500 font-medium">프로젝트:</span>
+        </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowProjectSelector(true)}
-          className="h-auto p-1 text-foreground hover:bg-accent/50 font-medium"
+          className="h-7 px-3 text-xs font-medium text-gray-700 hover:bg-gray-100 gap-1.5 max-w-[180px]"
         >
-          {profile.current_project.name}
-          <ChevronDown className="h-3 w-3 ml-1" />
+          <span className="truncate">{profile.current_project.name}</span>
+          <ChevronDown className="h-3 w-3 opacity-50 flex-shrink-0" />
         </Button>
       </div>
 

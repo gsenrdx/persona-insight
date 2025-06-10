@@ -136,34 +136,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    setLoading(true);
+    let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'];
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // 모든 이벤트(INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED 등)를 처리하여
-        // 로그인 직후(SIGNED_IN)에도 AuthContext 상태가 즉시 업데이트되도록 합니다.
-        try {
-          if (session?.user) {
-            setUser(session.user);
+    (async () => {
+      try {
+        setLoading(true);
+
+        // 1) 먼저 현재 세션을 가져와 초기 상태를 설정합니다.
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          setUser(session.user);
+          try {
             const profileData = await fetchProfile(session.user.id);
             setProfile(profileData);
-            setError(null);
-          } else {
-            setUser(null);
-            setProfile(null);
-            setError(null);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : '프로필 로드에 실패했습니다.');
           }
-        } catch (error) {
-          setError(error instanceof Error ? error.message : '프로필 로드에 실패했습니다.');
+        } else {
+          setUser(null);
           setProfile(null);
-        } finally {
-          setLoading(false);
         }
+
+        // 2) 이후 변화에 대응하도록 리스너를 등록합니다.
+        const listener = supabase.auth.onAuthStateChange(async (_event, session) => {
+          try {
+            if (session?.user) {
+              setUser(session.user);
+              const profileData = await fetchProfile(session.user.id);
+              setProfile(profileData);
+              setError(null);
+            } else {
+              setUser(null);
+              setProfile(null);
+              setError(null);
+            }
+          } catch (error) {
+            setError(error instanceof Error ? error.message : '프로필 로드에 실패했습니다.');
+            setProfile(null);
+          }
+        });
+
+        subscription = listener.data.subscription;
+      } finally {
+        setLoading(false);
       }
-    );
+    })();
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
