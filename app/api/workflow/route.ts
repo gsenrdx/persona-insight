@@ -1,6 +1,110 @@
 import { NextRequest } from 'next/server'
 import { createDataStreamResponse } from 'ai'
 import { createClient } from '@supabase/supabase-js'
+import { 
+  createSystemPrompt, 
+  generateOutputConfig,
+  DEFAULT_X_AXIS,
+  DEFAULT_Y_AXIS,
+  DEFAULT_SCORING_GUIDELINES
+} from "@/lib/api/persona-criteria"
+
+// 기본 프롬프트 생성 (설정이 없을 때)
+function generateDefaultPrompt(): string {
+  return `## 출력 예시:
+### x_axis / array[object]
+\`\`\`
+[
+  {
+    "좌측_score": 60,
+    "우측_score": 40
+  }
+]
+\`\`\`
+### y_axis / array[object]
+\`\`\`
+y_axis = [
+  {
+    "하단_score": 80,
+    "상단_score": 20
+  }
+]
+\`\`\`
+또는 단서가 없을 경우:
+x_axis = null  
+y_axis = null
+
+<scoring_guideline>
+1. 근거 기반: 키워드, 맥락, 발언 강도 등 구체적 증거만 사용하고 추론이나 가정은 금지합니다.
+2. 극단 점수: 한쪽 증거만 명확할 때는 우세 90–100, 열세 0–10을 부여합니다.
+3. 상대적 우위: 양측 증거가 존재하면 우세 70–80, 열세 20–30으로 배분합니다. 40–60 점수는 지양하며, 양측이 완전히 동등할 때만 50/50을 사용합니다.
+4. 객체 단위 null: 단서 부재 시 해당 객체 전체를 null로 지정합니다.
+5. 종합 고려: 빈도뿐 아니라 맥락, 강조, 어조를 함께 평가합니다.
+</scoring_guideline>
+
+<x_axis>
+"좌측_score": 좌측 특성에 대한 설명
+
+"우측_score": 우측 특성에 대한 설명
+</x_axis>
+
+<y_axis>
+"하단_score": 하단 특성에 대한 설명
+
+"상단_score": 상단 특성에 대한 설명
+</y_axis>`
+}
+
+// 동적 프롬프트 생성
+function generateDynamicPrompt(config: any): string {
+  const outputConfig = config.output_config
+  const scoringGuidelines = config.scoring_guidelines
+  const xAxis = config.x_axis
+  const yAxis = config.y_axis
+
+  return `## 출력 예시:
+### ${outputConfig.x_axis_variable_name} / array[object]
+\`\`\`
+[
+  {
+    "${outputConfig.x_low_score_field}": 60,
+    "${outputConfig.x_high_score_field}": 40
+  }
+]
+\`\`\`
+### ${outputConfig.y_axis_variable_name} / array[object]
+\`\`\`
+${outputConfig.y_axis_variable_name} = [
+  {
+    "${outputConfig.y_low_score_field}": 80,
+    "${outputConfig.y_high_score_field}": 20
+  }
+]
+\`\`\`
+또는 단서가 없을 경우:
+${outputConfig.x_axis_variable_name} = null  
+${outputConfig.y_axis_variable_name} = null
+
+<scoring_guideline>
+1. 근거 기반: 키워드, 맥락, 발언 강도 등 구체적 증거만 사용하고 추론이나 가정은 금지합니다.
+2. 극단 점수: 한쪽 증거만 명확할 때는 우세 90–100, 열세 0–10을 부여합니다.
+3. 상대적 우위: 양측 증거가 존재하면 우세 70–80, 열세 20–30으로 배분합니다. 40–60 점수는 지양하며, 양측이 완전히 동등할 때만 50/50을 사용합니다.
+4. 객체 단위 null: 단서 부재 시 해당 객체 전체를 null로 지정합니다.
+5. 종합 고려: 빈도뿐 아니라 맥락, 강조, 어조를 함께 평가합니다.
+</scoring_guideline>
+
+<${outputConfig.x_axis_variable_name}>
+"${outputConfig.x_low_score_field}": ${xAxis.low_end_label}${scoringGuidelines.x_axis_low_description ? ` - ${scoringGuidelines.x_axis_low_description}` : ''}
+
+"${outputConfig.x_high_score_field}": ${xAxis.high_end_label}${scoringGuidelines.x_axis_high_description ? ` - ${scoringGuidelines.x_axis_high_description}` : ''}
+</${outputConfig.x_axis_variable_name}>
+
+<${outputConfig.y_axis_variable_name}>
+"${outputConfig.y_low_score_field}": ${yAxis.low_end_label}${scoringGuidelines.y_axis_low_description ? ` - ${scoringGuidelines.y_axis_low_description}` : ''}
+
+"${outputConfig.y_high_score_field}": ${yAxis.high_end_label}${scoringGuidelines.y_axis_high_description ? ` - ${scoringGuidelines.y_axis_high_description}` : ''}
+</${outputConfig.y_axis_variable_name}>`
+}
 
 export const runtime = 'edge'
 export const maxDuration = 60 // 시간 제한 60초로 연장
@@ -81,7 +185,9 @@ export async function POST(req: NextRequest) {
     return new Response('파일이 제공되지 않았습니다.', { status: 400 });
   }
 
-  if (!projectId) {
+  console.log('[MISO Workflow API 요청] 전달된 프로젝트 ID:', projectId);
+  
+  if (!projectId || projectId === 'undefined' || projectId === 'null') {
     return new Response('프로젝트 ID가 제공되지 않았습니다.', { status: 400 });
   }
 
@@ -242,6 +348,54 @@ export async function POST(req: NextRequest) {
       console.error('[워크플로우] 토픽 조회 실패:', e);
     }
 
+    // 페르소나 분류 기준 설정 조회 및 프롬프트 생성
+    let promptPersonaCriteria = '';
+    try {
+      // 회사 ID로 공통 설정 조회
+      const { data: config, error: configError } = await supabase
+        .from('persona_criteria_configurations')
+        .select('*')
+        .eq('company_id', companyId)
+        .is('project_id', null) // project_id가 없는 회사 공통 설정을 사용
+        .eq('is_active', true)
+        .single();
+
+      // 최종적으로 설정이 있으면 동적 프롬프트 생성, 없으면 기본값 사용
+      if (!configError && config) {
+        console.log('[워크플로우] 회사 공통 페르소나 분류 기준 설정 발견');
+        // jsonb 필드가 문자열로 반환되는 경우를 대비하여 파싱
+        const parsedConfig = {
+          ...config,
+          x_axis: typeof config.x_axis === 'string' ? JSON.parse(config.x_axis) : config.x_axis,
+          y_axis: typeof config.y_axis === 'string' ? JSON.parse(config.y_axis) : config.y_axis,
+          output_config: typeof config.output_config === 'string' ? JSON.parse(config.output_config) : config.output_config,
+          scoring_guidelines: typeof config.scoring_guidelines === 'string' ? JSON.parse(config.scoring_guidelines) : config.scoring_guidelines,
+        };
+        promptPersonaCriteria = createSystemPrompt(parsedConfig);
+      } else {
+        if (configError && configError.code !== 'PGRST116') { // PGRST116: 'exact-one' row was not found
+          console.error('[워크플로우] 회사 설정 조회 오류:', configError.message);
+        }
+        console.log('[워크플로우] 페르소나 분류 기준 설정 없음, 기본 설정으로 프롬프트 생성');
+        const defaultConfig = {
+          x_axis: DEFAULT_X_AXIS,
+          y_axis: DEFAULT_Y_AXIS,
+          output_config: generateOutputConfig(DEFAULT_X_AXIS, DEFAULT_Y_AXIS),
+          scoring_guidelines: DEFAULT_SCORING_GUIDELINES,
+        }
+        promptPersonaCriteria = createSystemPrompt(defaultConfig);
+      }
+    } catch (e) {
+      console.error('[워크플로우] 프롬프트 생성 실패:', e);
+      const defaultConfig = {
+        x_axis: DEFAULT_X_AXIS,
+        y_axis: DEFAULT_Y_AXIS,
+        output_config: generateOutputConfig(DEFAULT_X_AXIS, DEFAULT_Y_AXIS),
+        scoring_guidelines: DEFAULT_SCORING_GUIDELINES,
+      }
+      promptPersonaCriteria = createSystemPrompt(defaultConfig);
+    }
+
     // 2단계: workflow API 호출 (blocking 모드로 변경)
     const workflowRequestBody = {
       inputs: {
@@ -249,7 +403,8 @@ export async function POST(req: NextRequest) {
         preprocess_type: 'interviewee',
         // company_name: companyName,
         // company_info: companyInfo,
-        topics: topicsString // <-- 토픽 string 추가
+        topics: topicsString, // <-- 토픽 string 추가
+        prompt_persona_criteria: promptPersonaCriteria // <-- 프롬프트 추가
       },
       mode: 'blocking', // 스트리밍 모드 대신 블로킹 모드 사용
       user: userName,
@@ -272,11 +427,18 @@ export async function POST(req: NextRequest) {
     
     /* 오류 처리 */
     if (!workflowResponse.ok) {
-      const err = await workflowResponse.text().catch(() => '')
+      let errorMessage = '';
+      try {
+        errorMessage = await workflowResponse.text();
+      } catch (textError) {
+        console.error('응답 텍스트 읽기 실패:', textError);
+        errorMessage = '';
+      }
+      
       console.error('⛔ Workflow API 오류 상세 정보:');
       console.error('- 상태 코드:', workflowResponse.status);
       console.error('- 상태 텍스트:', workflowResponse.statusText);
-      console.error('- 응답 본문:', err);
+      console.error('- 응답 본문:', errorMessage);
       console.error('- 요청 URL:', `${MISO_API_URL}/ext/v1/workflows/run`);
       console.error('- API 키 존재 여부:', !!MISO_API_KEY);
       console.error('- 사용자 정보:', { userName, companyName, companyInfo });
@@ -286,7 +448,7 @@ export async function POST(req: NextRequest) {
         details: {
           status: workflowResponse.status,
           statusText: workflowResponse.statusText,
-          message: err,
+          message: errorMessage,
           timestamp: new Date().toISOString()
         }
       }), { 
@@ -296,8 +458,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 응답 결과 파싱
-    const workflowResult = await workflowResponse.json();
-    console.log('[MISO Workflow API] 분석 결과:', workflowResult);
+    let workflowResult;
+    try {
+      workflowResult = await workflowResponse.json();
+      console.log('[MISO Workflow API] 분석 결과:', workflowResult);
+    } catch (jsonError) {
+      console.error('⛔ JSON 파싱 오류:', jsonError);
+      return new Response('응답 파싱 중 오류가 발생했습니다.', { status: 500 });
+    }
     
     // 실제 API에서 반환될 응답 구조에 따라 파싱 로직 조정
     const output = workflowResult.data?.outputs || workflowResult.outputs || {}; // data 객체 내부의 outputs를 우선 확인
@@ -310,18 +478,8 @@ export async function POST(req: NextRequest) {
       date: output.date || output.session_date || "날짜 정보가 없습니다.",
       interviewee_style: output.interviewee_style || "스타일 정보가 없습니다.",
       interviewee_fake_name: output.interviewee_fake_name || null,
-      charging_pattern_scores: output.charging_pattern_scores || [
-        {
-          "home_centric_score": 0,
-          "road_centric_score": 0
-        }
-      ],
-      value_orientation_scores: output.value_orientation_scores || [
-        {
-          "cost_driven_score": 0,
-          "tech_brand_driven_score": 0
-        }
-      ]
+      x_axis: output.x_axis || null,
+      y_axis: output.y_axis || null,
     };
 
     // 3단계: 워크플로우 결과를 interviewees 테이블에 저장
@@ -334,8 +492,8 @@ export async function POST(req: NextRequest) {
         session_date: output.session_date || new Date().toISOString().split('T')[0],
         user_type: output.user_type || 'A',
         user_description: output.user_description || null,
-        charging_pattern_scores: output.charging_pattern_scores || null,
-        value_orientation_scores: output.value_orientation_scores || null,
+        x_axis: output.x_axis || null,
+        y_axis: output.y_axis || null,
         interviewee_summary: output.interviewee_summary || null,
         interviewee_style: output.interviewee_style || null,
         interviewee_fake_name: output.interviewee_fake_name || null,
