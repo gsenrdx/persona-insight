@@ -103,26 +103,36 @@ export default function PersonaCard({
           )}>
             {/* 페르소나 카드 - 애플 스타일 */}
             <div className="relative p-4 h-full flex flex-col z-10">
-              {/* 헤더 영역 - 페르소나 이름 (description) */}
+              {/* 헤더 영역 - 페르소나 이름 (title) */}
               <div className="mb-3 flex items-center justify-between">
                 <h3 className={cn(
-                  "text-base font-semibold leading-tight",
+                  "text-base font-semibold leading-tight flex-1",
                   isDark ? "text-white" : "text-zinc-900"
                 )}>
                   {name}
                 </h3>
+                {persona_type && (
+                  <div className={cn(
+                    "ml-2 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0",
+                    isDark 
+                      ? "bg-blue-600 text-white" 
+                      : "bg-blue-600 text-white"
+                  )}>
+                    {persona_type}
+                  </div>
+                )}
               </div>
               
-              {/* 인용구 - persona_summary (요약된 버전) */}
+              {/* 설명 - persona_description */}
               {summary && (
                 <div className="mb-4">
                   <p className={cn(
-                    "text-xs leading-relaxed italic line-clamp-3",
+                    "text-xs leading-relaxed line-clamp-3",
                     isDark 
                       ? "text-zinc-400" 
                       : "text-zinc-600"
                   )}>
-                    "{summary.length > 120 ? `${summary.substring(0, 120)}...` : summary}"
+                    {summary.length > 120 ? `${summary.substring(0, 120)}...` : summary}
                   </p>
                 </div>
               )}

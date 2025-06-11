@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
 import { Navigation } from "@/components/shared"
+import { PersonaCriteriaModal } from './persona-criteria-modal'
 
 // 프로젝트 수정을 위한 인터페이스
 interface ProjectEditData {
@@ -282,6 +283,7 @@ export function ProjectPageContent() {
   // 상태 관리
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showPersonaCriteriaModal, setShowPersonaCriteriaModal] = useState(false)
   
   // 새 프로젝트 생성 관련
   const [newProjectName, setNewProjectName] = useState('')
@@ -453,10 +455,19 @@ export function ProjectPageContent() {
             </h1>
             <p className="text-slate-600">팀과 함께 고객 인사이트를 발견하고 공유하세요</p>
           </div>
-          <Button onClick={() => setShowCreateForm(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            새 프로젝트
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm font-medium text-sm px-4 py-2 h-9"
+              onClick={() => setShowPersonaCriteriaModal(true)}
+            >
+              <Users className="h-3.5 w-3.5 mr-1.5" />
+              페르소나 분류 기준
+            </Button>
+            <Button onClick={() => setShowCreateForm(true)} className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm font-medium text-sm px-4 py-2 h-9">
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              새 프로젝트
+            </Button>
+          </div>
         </div>
 
         {/* 검색 바 */}
@@ -696,6 +707,11 @@ export function ProjectPageContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PersonaCriteriaModal 
+        open={showPersonaCriteriaModal}
+        onOpenChange={setShowPersonaCriteriaModal}
+      />
     </>
   )
 } 

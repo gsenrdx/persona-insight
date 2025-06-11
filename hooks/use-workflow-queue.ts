@@ -11,6 +11,13 @@ export enum WorkflowStatus {
   PERSONA_SYNTHESIS_FAILED = 'persona_synthesis_failed'
 }
 
+export interface ExtractionCriteria {
+  id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+}
+
 export interface WorkflowJob {
   id: string;
   fileName: string;
@@ -23,6 +30,8 @@ export interface WorkflowJob {
   error?: string;
   personaType?: string;
   synthesisResult?: any;
+  projectId?: string;
+  extractionCriteria?: ExtractionCriteria[];
 }
 
 // 직렬화 가능한 Job 인터페이스 (localStorage용)
@@ -39,6 +48,7 @@ interface SerializableWorkflowJob {
   error?: string;
   personaType?: string;
   synthesisResult?: any;
+  extractionCriteria?: ExtractionCriteria[];
 }
 
 interface UseWorkflowQueueReturn {
@@ -47,11 +57,12 @@ interface UseWorkflowQueueReturn {
   completedJobs: WorkflowJob[];
   failedJobs: WorkflowJob[];
   isProcessing: boolean;
-  addJobs: (files: File[]) => void;
+  addJobs: (files: File[], projectId: string, criteria: ExtractionCriteria[]) => void;
   removeJob: (jobId: string) => void;
   clearCompleted: () => void;
   clearAll: () => void;
   retryJob: (jobId: string) => void;
+  startPersonaSynthesis: (jobId: string) => void;
 }
 
 const MAX_CONCURRENT_JOBS = 5; // 동시 처리 가능한 최대 작업 수
@@ -93,7 +104,8 @@ const serializeJob = async (job: WorkflowJob): Promise<SerializableWorkflowJob> 
     result: job.result,
     error: job.error,
     personaType: job.personaType,
-    synthesisResult: job.synthesisResult
+    synthesisResult: job.synthesisResult,
+    extractionCriteria: job.extractionCriteria
   };
 };
 
@@ -114,7 +126,8 @@ const deserializeJob = (serializedJob: SerializableWorkflowJob): WorkflowJob => 
     result: serializedJob.result,
     error: serializedJob.error,
     personaType: serializedJob.personaType,
-    synthesisResult: serializedJob.synthesisResult
+    synthesisResult: serializedJob.synthesisResult,
+    extractionCriteria: serializedJob.extractionCriteria
   };
 };
 
@@ -324,6 +337,17 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       const formData = new FormData();
       formData.append('file', job.file);
       
+      // 프로젝트 ID가 있으면 추가
+      if (job.projectId) {
+        formData.append('projectId', job.projectId);
+        console.log('[워크플로우] 프로젝트 ID 전송:', job.projectId);
+      }
+
+      if (job.extractionCriteria) {
+        formData.append('extractionCriteria', JSON.stringify(job.extractionCriteria));
+        console.log('[워크플로우] 추출 기준 전송:', job.extractionCriteria);
+      }
+      
       const response = await fetch('/api/workflow', {
         method: 'POST',
         headers: {
@@ -355,7 +379,10 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
 
       const result = await response.json();
 
-      // 완료 상태로 변경
+      // 워크플로우 결과에서 user_type을 추출하여 personaType에 저장 (자동 합성은 하지 않음)
+      const userType = result?.type || result?.user_type;
+      
+      // 완료 상태로 변경 (자동 페르소나 합성 제거)
       setJobs(prev => prev.map(j => 
         j.id === job.id 
           ? { 
@@ -363,30 +390,13 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
               status: WorkflowStatus.COMPLETED, 
               progress: 100, 
               endTime: new Date(),
-              result 
+              result,
+              personaType: userType // 결과에서 추출한 user_type을 personaType으로 설정
             }
           : j
       ));
 
-      // 워크플로우 결과에서 user_type을 추출하여 페르소나 합성 시작
-      const userType = result?.type || result?.user_type;
-      if (userType) {
-        console.log('[워크플로우] 페르소나 합성을 시작합니다 - user_type:', userType);
-        
-        // 잠시 후 페르소나 합성 시작 (UI 업데이트를 위한 지연)
-        setTimeout(() => {
-          const updatedJob = { 
-            ...job, 
-            result, 
-            status: WorkflowStatus.COMPLETED,
-            personaType: userType // 결과에서 추출한 user_type을 personaType으로 설정
-          };
-          processPersonaSynthesis(updatedJob);
-        }, 1000);
-      } else {
-        console.log('[워크플로우] user_type을 찾을 수 없어 페르소나 합성을 건너뜁니다.');
-        console.log('[워크플로우] 결과 데이터:', result);
-      }
+      console.log('[워크플로우] 인터뷰 분석 완료 - user_type:', userType);
 
     } catch (error: any) {
       // 실패 상태로 변경
@@ -401,7 +411,7 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
           : j
       ));
     }
-  }, [processPersonaSynthesis]);
+  }, []);
 
   // 큐 처리 로직
   useEffect(() => {
@@ -419,14 +429,24 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
     });
   }, [jobs, processWorkflow, isInitialized]);
 
+  // 수동 페르소나 합성 시작
+  const startPersonaSynthesis = useCallback((jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (job && job.status === WorkflowStatus.COMPLETED && job.personaType) {
+      processPersonaSynthesis(job);
+    }
+  }, [jobs, processPersonaSynthesis]);
+
   // 작업 추가
-  const addJobs = useCallback(async (files: File[]) => {
+  const addJobs = useCallback(async (files: File[], projectId: string, criteria: ExtractionCriteria[]) => {
     const newJobs: WorkflowJob[] = files.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       fileName: file.name,
       file,
       status: WorkflowStatus.PENDING,
-      progress: 0
+      progress: 0,
+      projectId,
+      extractionCriteria: criteria
     }));
 
     setJobs(prev => [...prev, ...newJobs]);
@@ -469,6 +489,7 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
     removeJob,
     clearCompleted,
     clearAll,
-    retryJob
+    retryJob,
+    startPersonaSynthesis
   };
 } 

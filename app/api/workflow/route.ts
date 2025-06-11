@@ -109,6 +109,86 @@ ${outputConfig.y_axis_variable_name} = null
 export const runtime = 'edge'
 export const maxDuration = 60 // 시간 제한 60초로 연장
 
+// 페르소나 매칭 함수
+async function matchPersonaFromScores(
+  supabase: any,
+  companyId: string,
+  xAxisScores: any,
+  yAxisScores: any
+): Promise<{ personaId: string | null, personaDescription: string | null }> {
+  try {
+    // 점수가 없는 경우
+    if (!xAxisScores || !yAxisScores || !Array.isArray(xAxisScores) || !Array.isArray(yAxisScores)) {
+      console.log('[페르소나 매칭] 점수 데이터가 없습니다');
+      return { personaId: null, personaDescription: null };
+    }
+
+    // 첫 번째 점수 객체에서 점수 추출
+    const xScores = xAxisScores[0];
+    const yScores = yAxisScores[0];
+
+    if (!xScores || !yScores) {
+      console.log('[페르소나 매칭] 점수 객체가 비어있습니다');
+      return { personaId: null, personaDescription: null };
+    }
+
+    // 점수 값 찾기 (다양한 키 이름 지원)
+    let xCoordinate = 0;
+    let yCoordinate = 0;
+
+    // X축 점수 계산 (high score 사용)
+    const xHighKeys = Object.keys(xScores).filter(key => 
+      key.includes('high') || key.includes('우측') || key.endsWith('_score') && !key.includes('low') && !key.includes('좌측')
+    );
+    if (xHighKeys.length > 0) {
+      xCoordinate = xScores[xHighKeys[0]] || 0;
+    }
+
+    // Y축 점수 계산 (high score 사용)
+    const yHighKeys = Object.keys(yScores).filter(key => 
+      key.includes('high') || key.includes('상단') || key.endsWith('_score') && !key.includes('low') && !key.includes('하단')
+    );
+    if (yHighKeys.length > 0) {
+      yCoordinate = yScores[yHighKeys[0]] || 0;
+    }
+
+    console.log('[페르소나 매칭] 계산된 좌표:', { x: xCoordinate, y: yCoordinate });
+
+    // 해당 좌표에 맞는 페르소나 찾기 (x_min <= x <= x_max, y_min <= y <= y_max)
+    const { data: personas, error } = await supabase
+      .from('personas')
+      .select('id, persona_type, persona_title, persona_description, x_min, x_max, y_min, y_max')
+      .eq('company_id', companyId)
+      .lte('x_min', xCoordinate)
+      .gte('x_max', xCoordinate)
+      .lte('y_min', yCoordinate)
+      .gte('y_max', yCoordinate)
+      .limit(1);
+
+    console.log('[페르소나 매칭] 쿼리 결과:', { data: personas, error });
+
+    if (error) {
+      console.error('[페르소나 매칭] 조회 오류:', error);
+      return { personaId: null, personaDescription: null };
+    }
+
+    if (personas && personas.length > 0) {
+      const matchedPersona = personas[0];
+      console.log('[페르소나 매칭] 매칭된 페르소나:', matchedPersona);
+      return { 
+        personaId: matchedPersona.id,
+        personaDescription: matchedPersona.persona_description 
+      };
+    }
+
+    console.log('[페르소나 매칭] 매칭되는 페르소나가 없습니다');
+    return { personaId: null, personaDescription: null };
+  } catch (error) {
+    console.error('[페르소나 매칭] 예외 발생:', error);
+    return { personaId: null, personaDescription: null };
+  }
+}
+
 interface UpstreamLine {
   /** 서버가 보내는 이벤트 타입 */
   event?: 'agent_message'
@@ -487,11 +567,28 @@ export async function POST(req: NextRequest) {
       console.log('[인터뷰이 저장] 시작 - 사용자:', userId, '회사:', companyId);
       console.log('[인터뷰이 저장] 원본 output 데이터:', JSON.stringify(output, null, 2));
       
+      // 페르소나 매칭 시도
+      let matchedPersonaId = null;
+      let matchedPersonaDescription = null;
+      
+      if (output.x_axis && output.y_axis && companyId) {
+        console.log('[페르소나 매칭] 시작 - 회사 ID:', companyId);
+        const matchResult = await matchPersonaFromScores(
+          supabase,
+          companyId,
+          output.x_axis,
+          output.y_axis
+        );
+        matchedPersonaId = matchResult.personaId;
+        matchedPersonaDescription = matchResult.personaDescription;
+        console.log('[페르소나 매칭] 결과:', { matchedPersonaId, matchedPersonaDescription });
+      }
+
       // 데이터 변환 및 검증
       const intervieweeData = {
         session_date: output.session_date || new Date().toISOString().split('T')[0],
-        user_type: output.user_type || 'A',
-        user_description: output.user_description || null,
+        user_type: matchedPersonaId || output.user_type || null,
+        user_description: matchedPersonaDescription || output.user_description || null,
         x_axis: output.x_axis || null,
         y_axis: output.y_axis || null,
         interviewee_summary: output.interviewee_summary || null,

@@ -55,6 +55,7 @@ export interface WorkflowProgressModalProps {
   onClearAll: () => void;
   onAddMore: () => void;
   onJobClick?: (job: WorkflowJob) => void;
+  onStartPersonaSynthesis?: (jobId: string) => void;
 }
 
 const statusConfig = {
@@ -267,12 +268,14 @@ const JobDetailPanel = React.memo(({
   job, 
   onClose, 
   onRetryJob, 
-  onRemoveJob 
+  onRemoveJob,
+  onStartPersonaSynthesis
 }: { 
   job: WorkflowJob;
   onClose: () => void;
   onRetryJob: (jobId: string) => void;
   onRemoveJob: (jobId: string) => void;
+  onStartPersonaSynthesis?: (jobId: string) => void;
 }) => {
   const config = statusConfig[job.status];
   const StatusIcon = config.icon;
@@ -511,6 +514,20 @@ const JobDetailPanel = React.memo(({
         job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED) && (
         <div className="p-4 border-t border-gray-100">
           <div className="flex gap-2">
+            {/* 페르소나 합성 버튼 - 인터뷰 분석 완료 시에만 표시 */}
+            {job.status === WorkflowStatus.COMPLETED && job.personaType && onStartPersonaSynthesis && (
+              <Button
+                onClick={() => {
+                  onStartPersonaSynthesis(job.id);
+                }}
+                size="sm"
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-8 text-xs"
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                페르소나 반영
+              </Button>
+            )}
+            
             {(job.status === WorkflowStatus.FAILED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
               <Button
                 onClick={() => {
@@ -555,7 +572,8 @@ export default function WorkflowProgressModal({
   onClearCompleted,
   onClearAll,
   onAddMore,
-  onJobClick
+  onJobClick,
+  onStartPersonaSynthesis
 }: WorkflowProgressModalProps) {
   const [selectedTab, setSelectedTab] = useState<'all' | 'active' | 'completed' | 'failed'>('all');
   const [selectedJob, setSelectedJob] = useState<WorkflowJob | null>(null);
@@ -742,6 +760,7 @@ export default function WorkflowProgressModal({
                 onClose={handleCloseDetail}
                 onRetryJob={onRetryJob}
                 onRemoveJob={onRemoveJob}
+                onStartPersonaSynthesis={onStartPersonaSynthesis}
               />
             </div>
           )}

@@ -24,8 +24,9 @@ export interface PersonaMatrixItem {
   xIndex: number
   yIndex: number
   title: string
-  subtitle: string
   description: string
+  personaType?: string
+  thumbnail?: string
 }
 
 export interface OutputConfig {
@@ -168,65 +169,125 @@ export async function deletePersonaCriteria(configId: string): Promise<void> {
   }
 }
 
-// 동적 시스템 프롬프트 생성
-export async function generateSystemPrompt(
-  companyId: string,
-  projectId?: string
-): Promise<string> {
-  const response = await fetch('/api/supabase/persona-criteria/prompt', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ company_id: companyId, project_id: projectId }),
-  })
+// 시스템 프롬프트 생성 (중앙화된 로직)
+export function createSystemPrompt(config: {
+  x_axis: Axis;
+  y_axis: Axis;
+  output_config: OutputConfig;
+  scoring_guidelines: ScoringGuidelines;
+}): string {
+  const { x_axis, y_axis, output_config, scoring_guidelines } = config
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || '시스템 프롬프트 생성에 실패했습니다.')
+  return `<output_instructions>
+**중요** : 다음 두 개의 항목을 각각 별도로 추출하십시오. 각 항목은 **배열 형태의 JSON 객체 (array[object])**로 출력되어야 하며, 내부 점수 합계는 항상 100(정수)입니다. 
+- 정보가 전혀 없어 판단이 불가능한 경우 해당 항목은 null로 설정하십시오. 
+## 출력 예시:
+### ${output_config.x_axis_variable_name} / array[object]
+\`\`\`
+[
+  {
+    "${output_config.x_low_score_field}": 60,
+    "${output_config.x_high_score_field}": 40
   }
+]
+\`\`\`
+### ${output_config.y_axis_variable_name} / array[object]
+\`\`\`
+${output_config.y_axis_variable_name} = [
+  {
+    "${output_config.y_low_score_field}": 80,
+    "${output_config.y_high_score_field}": 20
+  }
+]
+\`\`\`
+또는 단서가 없을 경우:
+${output_config.x_axis_variable_name} = null  
+${output_config.y_axis_variable_name} = null
+</output_instructions>
 
-  const data = await response.json()
-  return data.prompt
+<scoring_guideline>
+1. 근거 기반: 키워드, 맥락, 발언 강도 등 구체적 증거만 사용하고 추론이나 가정은 금지합니다.
+2. 극단 점수: 한쪽 증거만 명확할 때는 우세 90–100, 열세 0–10을 부여합니다.
+3. 상대적 우위: 양측 증거가 존재하면 우세 70–80, 열세 20–30으로 배분합니다. 40–60 점수는 지양하며, 양측이 완전히 동등할 때만 50/50을 사용합니다.
+4. 객체 단위 null: 단서 부재 시 해당 객체 전체를 null로 지정합니다.
+5. 종합 고려: 빈도뿐 아니라 맥락, 강조, 어조를 함께 평가합니다.
+</scoring_guideline>
+
+<${output_config.x_axis_variable_name}>
+"${output_config.x_low_score_field}": ${x_axis.low_end_label}${scoring_guidelines.x_axis_low_description ? ` - ${scoring_guidelines.x_axis_low_description}` : ''}
+
+"${output_config.x_high_score_field}": ${x_axis.high_end_label}${scoring_guidelines.x_axis_high_description ? ` - ${scoring_guidelines.x_axis_high_description}` : ''}
+</${output_config.x_axis_variable_name}>
+
+<${output_config.y_axis_variable_name}>
+"${output_config.y_low_score_field}": ${y_axis.low_end_label}${scoring_guidelines.y_axis_low_description ? ` - ${scoring_guidelines.y_axis_low_description}` : ''}
+
+"${output_config.y_high_score_field}": ${y_axis.high_end_label}${scoring_guidelines.y_axis_high_description ? ` - ${scoring_guidelines.y_axis_high_description}` : ''}
+</${output_config.y_axis_variable_name}>`
 }
 
-// 기본 설정값들
+// 기본 설정값들 - 범용적으로 변경
 export const DEFAULT_X_AXIS: Axis = {
-  name: '충전 패턴 축',
-  description: '사용자가 주로 어떤 상황과 방식으로 전기차를 충전하는지에 대한 패턴을 나타냅니다.',
-  low_end_label: '루틴형',
-  high_end_label: '즉시형',
+  name: 'X축',
+  description: 'X축에 대한 설명을 입력하세요.',
+  low_end_label: '좌측',
+  high_end_label: '우측',
   segments: [
-    { name: '가로 유형 1', description: '', is_unclassified: false },
-    { name: '가로 유형 2', description: '', is_unclassified: false },
-    { name: '가로 유형 3', description: '', is_unclassified: false },
+    { name: 'X축 구분 1', description: '', is_unclassified: false },
+    { name: 'X축 구분 2', description: '', is_unclassified: false },
+    { name: 'X축 구분 3', description: '', is_unclassified: false },
   ],
 }
 
 export const DEFAULT_Y_AXIS: Axis = {
-  name: '가치 지향',
-  description: '사용자가 충전 서비스에서 어떤 가치를 가장 중요하게 생각하는지를 나타냅니다.',
-  low_end_label: '가성비',
-  high_end_label: '속도/경험',
+  name: 'Y축',
+  description: 'Y축에 대한 설명을 입력하세요.',
+  low_end_label: '하단',
+  high_end_label: '상단',
   segments: [
-    { name: '세로 유형 1', description: '', is_unclassified: false },
-    { name: '세로 유형 2', description: '', is_unclassified: false },
-    { name: '세로 유형 3', description: '', is_unclassified: false },
+    { name: 'Y축 구분 1', description: '', is_unclassified: false },
+    { name: 'Y축 구분 2', description: '', is_unclassified: false },
+    { name: 'Y축 구분 3', description: '', is_unclassified: false },
   ],
 }
 
 export const DEFAULT_OUTPUT_CONFIG: OutputConfig = {
-  x_axis_variable_name: 'charging_pattern_scores',
-  y_axis_variable_name: 'value_orientation_scores',
-  x_low_score_field: 'home_centric_score',
-  x_high_score_field: 'road_centric_score',
-  y_low_score_field: 'cost_driven_score',
-  y_high_score_field: 'tech_brand_driven_score',
+  x_axis_variable_name: 'x_axis_scores',
+  y_axis_variable_name: 'y_axis_scores',
+  x_low_score_field: 'low_score',
+  x_high_score_field: 'high_score',
+  y_low_score_field: 'low_score',
+  y_high_score_field: 'high_score',
 }
 
 export const DEFAULT_SCORING_GUIDELINES: ScoringGuidelines = {
-  x_axis_low_description: '사용자가 예측 가능한 단거리 운행에 집중하며 자택·직장의 완속 충전에 주로 의존하는 성향. 상승 요소: 규칙적·계획적 충전 루틴, 충전 스트레스의 부재, 장거리 운행 필요성이 미약함. 하락 요소: 이동 중 급속 충전에 빈번히 의존하거나 외부 인프라 부족을 호소할 경우.',
-  x_axis_high_description: '사용자가 장거리 및 즉흥적 운행을 자주 수행하며 고속도로·외부 급속 충전을 핵심 수단으로 삼는 성향. 상승 요소: 장거리 주행 빈도, 충전 속도와 접근성의 중요성, 여행·출장 중심 운행 패턴이 강조될수록. 하락 요소: 거의 집에서만 충전하거나 장거리 운행을 회피한다는 진술이 뚜렷하면.',
-  y_axis_low_description: '사용자가 충전 및 서비스 선택 시 경제적 이득과 비용 효율성을 최우선으로 고려하는 정도. 상승 요소: 할인, 무료, 포인트 적립 등 금전적 혜택에 민감하거나 가격 변동에 즉각 반응할수록. 하락 요소: 프리미엄 기능이나 브랜드 가치를 위해 추가 비용을 감수하려는 의향이 드러나면.',
-  y_axis_high_description: '사용자가 최신 기술, 브랜드, 프리미엄 경험을 중시하여 비용보다 혁신성·사용자 경험·이미지를 우선시하는 정도. 상승 요소: 혁신적 기능 기대, 사용 편의성 및 디자인 호평, 특정 브랜드에 대한 신뢰가 강조될수록. 하락 요소: 브랜드 무관 또는 단순 저비용 선호 발언이 두드러지면.',
+  x_axis_low_description: '',
+  x_axis_high_description: '',
+  y_axis_low_description: '',
+  y_axis_high_description: '',
+}
+
+// 축 설정에 따른 output_config 자동 생성 함수
+export function generateOutputConfig(xAxis: Axis, yAxis: Axis): OutputConfig {
+  return {
+    x_axis_variable_name: 'x_axis',
+    y_axis_variable_name: 'y_axis',
+    x_low_score_field: `${xAxis.low_end_label.toLowerCase().replace(/\s+/g, '_')}_score`,
+    x_high_score_field: `${xAxis.high_end_label.toLowerCase().replace(/\s+/g, '_')}_score`,
+    y_low_score_field: `${yAxis.low_end_label.toLowerCase().replace(/\s+/g, '_')}_score`,
+    y_high_score_field: `${yAxis.high_end_label.toLowerCase().replace(/\s+/g, '_')}_score`,
+  }
+}
+
+// 페르소나 매트릭스 좌표 생성 함수
+export function generatePersonaMatrixCoordinates(xSegmentCount: number, ySegmentCount: number): Array<{xIndex: number, yIndex: number, label: string}> {
+  const coordinates = []
+  for (let y = 0; y < ySegmentCount; y++) {
+    for (let x = 0; x < xSegmentCount; x++) {
+      // 알파벳 + 숫자 형태로 좌표 생성 (A1, A2, B1, B2...)
+      const label = String.fromCharCode(65 + y) + (x + 1)
+      coordinates.push({ xIndex: x, yIndex: y, label })
+    }
+  }
+  return coordinates
 } 

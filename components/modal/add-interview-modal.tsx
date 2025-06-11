@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder } from "lucide-react";
+import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder, FolderOpen, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export interface ExtractionCriteria {
   id: string;
@@ -20,7 +28,7 @@ export interface ExtractionCriteria {
 export interface AddInterviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFilesSubmit: (files: File[], criteria: ExtractionCriteria[]) => void;
+  onFilesSubmit: (files: File[], criteria: ExtractionCriteria[], projectId?: string) => void;
 }
 
 // 10MB 크기 제한 (바이트 단위)
@@ -71,7 +79,7 @@ const SUGGESTED_CRITERIA = [
 ];
 
 export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }: AddInterviewModalProps) {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드, 2: 분석 기준
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +89,44 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   const [editingCriteria, setEditingCriteria] = useState<string | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   
+  // 프로젝트 관련 상태
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { profile } = useAuth();
+
+  // 프로젝트 목록 가져오기
+  const fetchProjects = async () => {
+    if (!profile?.company_id || !profile?.id) return;
+    
+    try {
+      setLoadingProjects(true);
+      const response = await fetch(`/api/supabase/projects?company_id=${profile.company_id}&user_id=${profile.id}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch projects:', errorText);
+        throw new Error('프로젝트를 불러올 수 없습니다.');
+      }
+      
+      const result = await response.json();
+      setProjects(result.data || []);
+    } catch (error) {
+      console.error('프로젝트 로드 실패:', error);
+      setError('프로젝트 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  // 모달이 열릴 때 프로젝트 목록 가져오기
+  useEffect(() => {
+    if (open && profile?.company_id && profile?.id) {
+      fetchProjects();
+    }
+  }, [open, profile?.company_id, profile?.id]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -237,7 +282,14 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   };
 
   const handleNextStep = () => {
-    if (currentStep === 1) {
+    if (currentStep === 0) {
+      if (!selectedProjectId) {
+        setError("프로젝트를 선택해주세요");
+        return;
+      }
+      setError(null);
+      setCurrentStep(1);
+    } else if (currentStep === 1) {
       if (files.length === 0) {
         setError("분석할 파일을 먼저 선택해주세요");
         return;
@@ -251,6 +303,9 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
     if (currentStep === 2) {
       setCurrentStep(1);
       setError(null);
+    } else if (currentStep === 1) {
+      setCurrentStep(0);
+      setError(null);
     }
   };
 
@@ -260,15 +315,21 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
       return;
     }
     
-    onFilesSubmit(files, extractionCriteria);
+    if (!selectedProjectId) {
+      setError("프로젝트를 선택해주세요");
+      return;
+    }
     
-    setCurrentStep(1);
+    onFilesSubmit(files, extractionCriteria, selectedProjectId);
+    
+    setCurrentStep(0);
     setFiles([]);
     setExtractionCriteria(DEFAULT_CRITERIA);
     setNewCriteriaName('');
     setNewCriteriaDescription('');
     setEditingCriteria(null);
     setShowFileList(false);
+    setSelectedProjectId('');
     setError(null);
     onOpenChange(false);
   };
@@ -276,13 +337,14 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   const handleModalClose = (newOpen: boolean) => {
     onOpenChange(newOpen);
     if (!newOpen) {
-      setCurrentStep(1);
+      setCurrentStep(0);
       setFiles([]);
       setExtractionCriteria(DEFAULT_CRITERIA);
       setNewCriteriaName('');
       setNewCriteriaDescription('');
       setEditingCriteria(null);
       setShowFileList(false);
+      setSelectedProjectId('');
       setError(null);
     }
   };
@@ -350,6 +412,47 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
       </motion.div>
     );
   };
+
+  // 0단계: 프로젝트 선택
+  const ProjectSelectionStep = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+          <FolderOpen className="h-6 w-6 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">프로젝트를 선택해주세요</h3>
+          <p className="text-sm text-gray-600 mt-1">분석 결과가 저장될 프로젝트를 선택해주세요</p>
+        </div>
+      </div>
+      
+      {loadingProjects ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="ml-2 text-sm text-gray-600">프로젝트 목록 로딩 중...</span>
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-xl">
+          <FolderOpen className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+          <p className="text-sm text-gray-600 mb-2">사용 가능한 프로젝트가 없습니다</p>
+          <p className="text-xs text-gray-500">프로젝트를 먼저 생성해주세요</p>
+        </div>
+      ) : (
+        <Select onValueChange={setSelectedProjectId} value={selectedProjectId}>
+          <SelectTrigger className="w-full h-11 text-sm">
+            <SelectValue placeholder="프로젝트를 선택하세요..." />
+          </SelectTrigger>
+          <SelectContent>
+            {projects.map((project) => (
+              <SelectItem key={project.id} value={project.id}>
+                {project.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
 
   // 1단계: 파일 업로드
   const FileUploadStep = () => (
@@ -617,6 +720,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
+              {currentStep === 0 && <ProjectSelectionStep />}
               {currentStep === 1 && <FileUploadStep />}
               {currentStep === 2 && <CriteriaSetupStep />}
             </motion.div>
@@ -669,10 +773,13 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
               </Button>
             </div>
             
-            {currentStep === 1 ? (
+            {currentStep < 2 ? (
               <Button
                 onClick={handleNextStep}
-                disabled={files.length === 0}
+                disabled={
+                  (currentStep === 0 && !selectedProjectId) ||
+                  (currentStep === 1 && files.length === 0)
+                }
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >

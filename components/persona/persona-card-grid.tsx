@@ -37,7 +37,8 @@ export default function PersonaCardGrid() {
     removeJob,
     clearCompleted,
     clearAll,
-    retryJob
+    retryJob,
+    startPersonaSynthesis
   } = useWorkflowQueue();
 
   // searchParams를 문자열로 변환하여 의존성 배열에 안전하게 사용
@@ -267,13 +268,15 @@ export default function PersonaCardGrid() {
           onClearAll={clearAll}
           onAddMore={handleAddMore}
           onJobClick={handleJobClick}
+          onStartPersonaSynthesis={startPersonaSynthesis}
         />
 
         <AddInterviewModal 
           open={isAddInterviewModalOpen}
           onOpenChange={setIsAddInterviewModalOpen}
-          onFilesSubmit={(files) => {
-            addJobs(files);
+          onFilesSubmit={(files, criteria, projectId) => {
+            // projectId는 모달 로직에 의해 보장됩니다.
+            addJobs(files, projectId!, criteria);
             if (files.length > 0) {
               setIsProgressModalOpen(true);
             }
@@ -324,13 +327,15 @@ export default function PersonaCardGrid() {
         onClearAll={clearAll}
         onAddMore={handleAddMore}
         onJobClick={handleJobClick}
+        onStartPersonaSynthesis={startPersonaSynthesis}
       />
 
       <AddInterviewModal 
         open={isAddInterviewModalOpen}
         onOpenChange={setIsAddInterviewModalOpen}
-        onFilesSubmit={(files) => {
-          addJobs(files);
+        onFilesSubmit={(files, criteria, projectId) => {
+          // projectId는 모달 로직에 의해 보장됩니다.
+          addJobs(files, projectId!, criteria);
           if (files.length > 0) {
             setIsProgressModalOpen(true);
           }

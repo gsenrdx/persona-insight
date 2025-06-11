@@ -41,7 +41,6 @@ export type Database = {
       }
       interviewees: {
         Row: {
-          charging_pattern_scores: Json | null
           company_id: string
           created_at: string | null
           created_by: string | null
@@ -56,10 +55,10 @@ export type Database = {
           updated_at: string | null
           user_description: string | null
           user_type: string
-          value_orientation_scores: Json | null
+          x_axis: Json | null
+          y_axis: Json | null
         }
         Insert: {
-          charging_pattern_scores?: Json | null
           company_id: string
           created_at?: string | null
           created_by?: string | null
@@ -74,10 +73,10 @@ export type Database = {
           updated_at?: string | null
           user_description?: string | null
           user_type: string
-          value_orientation_scores?: Json | null
+          x_axis?: Json | null
+          y_axis?: Json | null
         }
         Update: {
-          charging_pattern_scores?: Json | null
           company_id?: string
           created_at?: string | null
           created_by?: string | null
@@ -92,7 +91,8 @@ export type Database = {
           updated_at?: string | null
           user_description?: string | null
           user_type?: string
-          value_orientation_scores?: Json | null
+          x_axis?: Json | null
+          y_axis?: Json | null
         }
         Relationships: [
           {
@@ -153,54 +153,138 @@ export type Database = {
           },
         ]
       }
-      personas: {
+      persona_criteria_configurations: {
         Row: {
           company_id: string
           created_at: string | null
+          created_by: string | null
           id: string
-          insight: string
-          insight_quote: string
-          needs: string
-          painpoints: string
-          persona_description: string
-          persona_style: string
-          persona_summary: string
-          persona_type: string
+          is_active: boolean | null
+          output_config: Json
+          persona_matrix: Json
           project_id: string | null
-          thumbnail: string | null
+          scoring_guidelines: Json
+          unclassified_cells: Json
           updated_at: string | null
+          x_axis: Json
+          y_axis: Json
         }
         Insert: {
           company_id: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_active?: boolean | null
+          output_config?: Json
+          persona_matrix?: Json
+          project_id?: string | null
+          scoring_guidelines?: Json
+          unclassified_cells?: Json
+          updated_at?: string | null
+          x_axis?: Json
+          y_axis?: Json
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          output_config?: Json
+          persona_matrix?: Json
+          project_id?: string | null
+          scoring_guidelines?: Json
+          unclassified_cells?: Json
+          updated_at?: string | null
+          x_axis?: Json
+          y_axis?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_criteria_configurations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_criteria_configurations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personas: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          criteria_configuration_id: string | null
+          id: string
           insight: string
           insight_quote: string
+          matrix_position: Json | null
           needs: string
           painpoints: string
           persona_description: string
           persona_style: string
           persona_summary: string
+          persona_title: string | null
+          persona_type: string
+          project_id: string | null
+          thumbnail: string | null
+          updated_at: string | null
+          x_max: number | null
+          x_min: number | null
+          y_max: number | null
+          y_min: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          criteria_configuration_id?: string | null
+          id?: string
+          insight: string
+          insight_quote: string
+          matrix_position?: Json | null
+          needs: string
+          painpoints: string
+          persona_description: string
+          persona_style: string
+          persona_summary: string
+          persona_title?: string | null
           persona_type: string
           project_id?: string | null
           thumbnail?: string | null
           updated_at?: string | null
+          x_max?: number | null
+          x_min?: number | null
+          y_max?: number | null
+          y_min?: number | null
         }
         Update: {
           company_id?: string
           created_at?: string | null
+          criteria_configuration_id?: string | null
           id?: string
           insight?: string
           insight_quote?: string
+          matrix_position?: Json | null
           needs?: string
           painpoints?: string
           persona_description?: string
           persona_style?: string
           persona_summary?: string
+          persona_title?: string | null
           persona_type?: string
           project_id?: string | null
           thumbnail?: string | null
           updated_at?: string | null
+          x_max?: number | null
+          x_min?: number | null
+          y_max?: number | null
+          y_min?: number | null
         }
         Relationships: [
           {
@@ -208,6 +292,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personas_criteria_configuration_id_fkey"
+            columns: ["criteria_configuration_id"]
+            isOneToOne: false
+            referencedRelation: "persona_criteria_configurations"
             referencedColumns: ["id"]
           },
           {
@@ -314,12 +405,17 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          end_date: string | null
           id: string
           is_active: boolean | null
           join_method: string | null
           master_id: string | null
           name: string
           password: string | null
+          purpose: string | null
+          research_method: string | null
+          start_date: string | null
+          target_audience: string | null
           updated_at: string | null
           visibility: string | null
         }
@@ -328,12 +424,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           join_method?: string | null
           master_id?: string | null
           name: string
           password?: string | null
+          purpose?: string | null
+          research_method?: string | null
+          start_date?: string | null
+          target_audience?: string | null
           updated_at?: string | null
           visibility?: string | null
         }
@@ -342,12 +443,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           join_method?: string | null
           master_id?: string | null
           name?: string
           password?: string | null
+          purpose?: string | null
+          research_method?: string | null
+          start_date?: string | null
+          target_audience?: string | null
           updated_at?: string | null
           visibility?: string | null
         }
@@ -366,7 +472,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_company_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       user_role: "super_admin" | "company_admin" | "company_user"
@@ -490,11 +599,13 @@ export const Constants = {
   },
 } as const
 
-// 편리한 타입 별칭들
+// 편의를 위한 타입 별칭들
+export type PersonaRow = Tables<'personas'>
+export type PersonaInsert = TablesInsert<'personas'>
+export type PersonaUpdate = TablesUpdate<'personas'>
 export type IntervieweeRow = Tables<'interviewees'>
 export type IntervieweeInsert = TablesInsert<'interviewees'>
 export type IntervieweeUpdate = TablesUpdate<'interviewees'>
-
-export type PersonaRow = Tables<'personas'>
-export type PersonaInsert = TablesInsert<'personas'>
-export type PersonaUpdate = TablesUpdate<'personas'> 
+export type ProjectRow = Tables<'projects'>
+export type ProjectInsert = TablesInsert<'projects'>
+export type ProjectUpdate = TablesUpdate<'projects'>
