@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       )
     }
 
-    // 사용자가 소속된 프로젝트 조회
+    // 사용자가 소속된 프로젝트 조회 (통계 정보 포함)
     // 1. 회사의 공개 프로젝트 (모든 회사 구성원이 볼 수 있음)
     // 2. 사용자가 멤버로 등록된 비공개 프로젝트
     const { data, error } = await supabaseAdmin
@@ -58,7 +58,9 @@ export async function GET(request: Request) {
           role,
           joined_at,
           user_id
-        )
+        ),
+        interviewees(count),
+        personas(count)
       `)
       .eq('company_id', company_id)
       .eq('is_active', true)
@@ -73,7 +75,12 @@ export async function GET(request: Request) {
       // fallback: 기본 쿼리로 회사의 모든 프로젝트 조회 (멤버십 정보 없이)
       const { data: fallbackData, error: fallbackError } = await supabaseAdmin
         .from('projects')
-        .select('*')
+        .select(`
+          *,
+          project_members(count),
+          interviewees(count),
+          personas(count)
+        `)
         .eq('company_id', company_id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -86,16 +93,40 @@ export async function GET(request: Request) {
         )
       }
 
-      return NextResponse.json({ data: fallbackData })
+      // fallback 데이터 변환
+      const transformedFallbackData = (fallbackData || []).map((project: any) => ({
+        ...project,
+        member_count: project.project_members?.[0]?.count || 0,
+        interview_count: project.interviewees?.[0]?.count || 0,
+        persona_count: project.personas?.[0]?.count || 0,
+        project_members: undefined,
+        interviewees: undefined,
+        personas: undefined
+      }))
+
+      return NextResponse.json({ data: transformedFallbackData })
     }
 
-    // 데이터 변환: 멤버십 정보를 프로젝트 객체에 직접 포함
+    // 데이터 변환: 멤버십 정보와 통계 정보를 프로젝트 객체에 직접 포함
     const transformedData = data.map((project: any) => {
       const membership = project.project_members?.find((pm: any) => pm.user_id === user_id)
+      
+      // 프로젝트 멤버 수 계산
+      const memberCount = project.project_members?.length || 0
+      
+      // 인터뷰 및 페르소나 수 계산
+      const interviewCount = project.interviewees?.[0]?.count || 0
+      const personaCount = project.personas?.[0]?.count || 0
+      
       return {
         ...project,
         membership,
-        project_members: undefined // 중복 데이터 제거
+        member_count: memberCount,
+        interview_count: interviewCount,
+        persona_count: personaCount,
+        project_members: undefined, // 중복 데이터 제거
+        interviewees: undefined, // 중복 데이터 제거
+        personas: undefined // 중복 데이터 제거
       }
     })
 

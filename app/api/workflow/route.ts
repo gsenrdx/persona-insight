@@ -587,8 +587,9 @@ export async function POST(req: NextRequest) {
       // 데이터 변환 및 검증
       const intervieweeData = {
         session_date: output.session_date || new Date().toISOString().split('T')[0],
-        user_type: matchedPersonaId || output.user_type || null,
+        user_type: output.user_type || 'general',
         user_description: matchedPersonaDescription || output.user_description || null,
+        persona_id: matchedPersonaId, // 매칭된 페르소나 ID를 전용 필드에 저장
         x_axis: output.x_axis || null,
         y_axis: output.y_axis || null,
         interviewee_summary: output.interviewee_summary || null,

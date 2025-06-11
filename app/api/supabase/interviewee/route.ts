@@ -17,7 +17,15 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('interviewees')
-      .select('*')
+      .select(`
+        *,
+        personas!persona_id(
+          id,
+          persona_type,
+          persona_title,
+          persona_description
+        )
+      `)
       .eq('company_id', company_id)
       .order('session_date', { ascending: false })
 
