@@ -16,19 +16,84 @@ interface InsightData {
 
 // 기존 interview_detail 데이터를 대시보드 인사이트로 변환
 function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
-  console.log(`인사이트 변환 시작: ${interviews.length}건의 인터뷰`)
+  console.log(`인사이트 변환 시작: ${interviews?.length || 0}건의 인터뷰`)
   
-  if (!interviews || interviews.length === 0) {
-    console.log("변환할 인터뷰 데이터가 없음")
-    return []
-  }
+  try {
+    if (!interviews || !Array.isArray(interviews) || interviews.length === 0) {
+      console.log("변환할 인터뷰 데이터가 없거나 배열이 아님")
+      return []
+    }
 
-  const insightMap = new Map()
-  const allKeywords: KeywordFrequency = {}
-  let totalDetails = 0
+    const insightMap = new Map()
+    const allKeywords: KeywordFrequency = {}
+    let totalDetails = 0
   
   interviews.forEach((interview, idx) => {
-    const details = interview.interview_detail || []
+    // interview_detail이 배열인지 확인하고 안전하게 처리
+    let details = interview.interview_detail || []
+    
+    // interview_detail이 배열이 아닌 경우 처리
+    if (!Array.isArray(details)) {
+      console.log(`인터뷰 ${idx + 1}: interview_detail이 배열이 아님 (${typeof details}), 처리 시도`)
+      
+      if (typeof details === 'string') {
+        try {
+          // 마크다운 코드 블록과 불필요한 문자 제거
+          let cleanedDetails = details.trim()
+          
+          // ```로 시작하고 끝나는 마크다운 제거
+          cleanedDetails = cleanedDetails.replace(/^```[\s\S]*?\n/, '').replace(/\n```[\s\S]*$/, '')
+          
+          // 첫 번째 [ 찾기
+          let jsonStartIndex = cleanedDetails.indexOf('[')
+          if (jsonStartIndex === -1) {
+            console.log(`인터뷰 ${idx + 1}: JSON 배열 시작 찾을 수 없음`)
+            details = []
+          } else {
+            // 매칭되는 ] 찾기 (중첩된 배열 고려)
+            let bracketCount = 0
+            let jsonEndIndex = -1
+            
+            for (let i = jsonStartIndex; i < cleanedDetails.length; i++) {
+              if (cleanedDetails[i] === '[') {
+                bracketCount++
+              } else if (cleanedDetails[i] === ']') {
+                bracketCount--
+                if (bracketCount === 0) {
+                  jsonEndIndex = i
+                  break
+                }
+              }
+            }
+            
+            if (jsonEndIndex === -1) {
+              console.log(`인터뷰 ${idx + 1}: JSON 배열 끝 찾을 수 없음`)
+              details = []
+            } else {
+              // 첫 번째 완전한 JSON 배열만 추출
+              cleanedDetails = cleanedDetails.substring(jsonStartIndex, jsonEndIndex + 1)
+              
+              // JSON 파싱
+              const parsedDetails = JSON.parse(cleanedDetails)
+              if (Array.isArray(parsedDetails)) {
+                details = parsedDetails
+                console.log(`인터뷰 ${idx + 1}: JSON 파싱 성공, ${details.length}개 detail 발견`)
+              } else {
+                console.log(`인터뷰 ${idx + 1}: 파싱된 데이터가 배열이 아님`)
+                details = []
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`인터뷰 ${idx + 1}: JSON 파싱 실패:`, error)
+          details = []
+        }
+      } else {
+        console.log(`인터뷰 ${idx + 1}: string이 아닌 타입, 빈 배열로 처리`)
+        details = []
+      }
+    }
+    
     console.log(`인터뷰 ${idx + 1}: interview_detail 개수 = ${details.length}`)
     
     if (details.length > 0) {
@@ -72,23 +137,31 @@ function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
       const insight = insightMap.get(topicName)
       insight.mentionCount += 1
       
-      // 니즈 추가
-      if (detail.need && Array.isArray(detail.need)) {
-        insight.needs.push(...detail.need)
-        console.log(`    니즈 추가: ${detail.need.length}개`)
+      // 니즈 추가 (배열 검증)
+      if (detail.need) {
+        if (Array.isArray(detail.need)) {
+          insight.needs.push(...detail.need)
+          console.log(`    니즈 추가: ${detail.need.length}개`)
+        } else {
+          console.log(`    니즈가 배열이 아님 (${typeof detail.need}):`, detail.need)
+        }
       }
       
-      // 페인포인트 추가
-      if (detail.painpoint && Array.isArray(detail.painpoint)) {
-        insight.painpoints.push(...detail.painpoint)
-        console.log(`    페인포인트 추가: ${detail.painpoint.length}개`)
+      // 페인포인트 추가 (배열 검증)
+      if (detail.painpoint) {
+        if (Array.isArray(detail.painpoint)) {
+          insight.painpoints.push(...detail.painpoint)
+          console.log(`    페인포인트 추가: ${detail.painpoint.length}개`)
+        } else {
+          console.log(`    페인포인트가 배열이 아님 (${typeof detail.painpoint}):`, detail.painpoint)
+        }
       }
       
-      // 키워드 수집 (need_keyword, painpoint_keyword, keyword_cluster 통합)
+      // 키워드 수집 (need_keyword, painpoint_keyword, keyword_cluster 통합) - 배열 검증
       const allDetailKeywords = [
-        ...(detail.need_keyword || []),
-        ...(detail.painpoint_keyword || []),
-        ...(detail.keyword_cluster || [])
+        ...(Array.isArray(detail.need_keyword) ? detail.need_keyword : []),
+        ...(Array.isArray(detail.painpoint_keyword) ? detail.painpoint_keyword : []),
+        ...(Array.isArray(detail.keyword_cluster) ? detail.keyword_cluster : [])
       ]
       
       allDetailKeywords.forEach(keyword => {
@@ -105,17 +178,21 @@ function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
       })
       console.log(`    키워드 수집: ${allDetailKeywords.length}개`)
       
-      // 인용문 추가 (실제 고객 정보 사용)
-      if (detail.insight_quote && Array.isArray(detail.insight_quote)) {
-        detail.insight_quote.forEach((quote: string) => {
-          if (quote && typeof quote === 'string') {
-            insight.quotes.push({
-              text: quote.trim(),
-              persona: actualPersona // 실제 고객 정보 사용
-            })
-          }
-        })
-        console.log(`    인용문 추가: ${detail.insight_quote.length}개`)
+      // 인용문 추가 (실제 고객 정보 사용) - 배열 검증
+      if (detail.insight_quote) {
+        if (Array.isArray(detail.insight_quote)) {
+          detail.insight_quote.forEach((quote: string) => {
+            if (quote && typeof quote === 'string') {
+              insight.quotes.push({
+                text: quote.trim(),
+                persona: actualPersona // 실제 고객 정보 사용
+              })
+            }
+          })
+          console.log(`    인용문 추가: ${detail.insight_quote.length}개`)
+        } else {
+          console.log(`    인용문이 배열이 아님 (${typeof detail.insight_quote}):`, detail.insight_quote)
+        }
       }
     })
   })
@@ -166,15 +243,20 @@ function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
     })
   })
   
-  // 우선순위순 정렬
-  insights.sort((a, b) => b.priority - a.priority)
-  
-  console.log(`최종 인사이트: ${insights.length}개`)
-  insights.forEach((insight, idx) => {
-    console.log(`  ${idx + 1}. ${insight.title} (언급: ${insight.mentionCount}, 인용문: ${insight.quotes.length})`)
-  })
-  
-  return insights
+    // 우선순위순 정렬
+    insights.sort((a, b) => b.priority - a.priority)
+    
+    console.log(`최종 인사이트: ${insights.length}개`)
+    insights.forEach((insight, idx) => {
+      console.log(`  ${idx + 1}. ${insight.title} (언급: ${insight.mentionCount}, 인용문: ${insight.quotes.length})`)
+    })
+    
+    return insights
+    
+  } catch (error) {
+    console.error("인사이트 변환 중 오류 발생:", error)
+    return []
+  }
 }
 
 function generateEnhancedSummary(
@@ -277,8 +359,8 @@ export async function GET(request: Request) {
       console.log(`첫 번째 인터뷰의 interview_detail:`, JSON.stringify(interviews[0].interview_detail, null, 2))
     }
 
-    // 인사이트 변환
-    const insights = transformInterviewDataToInsights(interviews)
+    // 인사이트 변환 (안전한 호출)
+    const insights = transformInterviewDataToInsights(interviews || [])
 
     console.log(`생성된 인사이트: ${insights.length}건`)
 

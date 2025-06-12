@@ -144,6 +144,11 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           const response = await fetch(`/api/insights?company_id=${profile.company_id}&project_id=${project.id}&year=${year}`)
           if (response.ok) {
             const data = await response.json()
+            console.log(`📊 ${year}년 인사이트 데이터:`, {
+              intervieweeCount: data.intervieweeCount,
+              insightsCount: data.insights?.length || 0,
+              sampleInsight: data.insights?.[0]
+            })
             return { year, data }
           }
           return { year, data: { intervieweeCount: 0, insights: [] } }
@@ -153,15 +158,25 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         const newInsightData: InsightApiData = {}
         
         yearResults.forEach(({ year, data }) => {
-          newInsightData[year] = {
+          console.log(`🗂️ ${year}년 데이터 처리:`, {
             intervieweeCount: data.intervieweeCount,
+            insightsLength: data.insights?.length,
             insights: data.insights
+          })
+          
+          newInsightData[year] = {
+            intervieweeCount: data.intervieweeCount || 0,
+            insights: data.insights || []
           }
         })
         
         setInsightData(newInsightData)
         
-        console.log('인사이트 데이터 로드 완료');
+        console.log('📦 인사이트 데이터 로드 완료:', {
+          totalYears: Object.keys(newInsightData).length,
+          dataKeys: Object.keys(newInsightData),
+          newInsightData
+        });
       } catch (error) {
         console.error("인사이트 데이터 로드 실패:", error)
         setError('인사이트 데이터를 불러오는데 실패했습니다')
@@ -190,6 +205,16 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   const currentYearData = selectedYears.length > 0 
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
     : (insightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
+
+  // 디버깅 로그
+  console.log('🔍 인사이트 표시 상태:', {
+    selectedYears,
+    availableYears,
+    currentYearData,
+    insightDataKeys: Object.keys(insightData),
+    loading,
+    error
+  })
 
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
@@ -365,7 +390,18 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       </Card>
       
       {/* 종합 인사이트 요약 카드와 내용 */}
-      {currentYearData?.insights && currentYearData.insights.length > 0 ? (
+      {(() => {
+        const hasInsights = currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights.length > 0
+        console.log('📊 인사이트 표시 조건 체크:', {
+          'currentYearData?.insights': !!currentYearData?.insights,
+          'Array.isArray(currentYearData.insights)': Array.isArray(currentYearData?.insights),
+          'currentYearData.insights.length': currentYearData?.insights?.length,
+          hasInsights,
+          insightsData: currentYearData?.insights
+        })
+        
+        return hasInsights
+      })() ? (
         <>
           <div className="grid grid-cols-1 gap-6 mb-5">
             {/* 종합 인사이트 요약 카드 - 직관적인 디자인 */}
@@ -382,43 +418,59 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(currentYearData?.insights || []).map((insight, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`relative border border-gray-200 dark:border-gray-800 rounded-lg transition-all cursor-pointer ${
-                        currentInsight === idx 
-                          ? 'border-primary bg-primary/5 shadow-sm' 
-                          : 'border-gray-200 dark:border-gray-800 hover:border-primary/50 hover:bg-muted/30'
-                      }`}
-                      onClick={() => setCurrentInsight(idx)}
-                    >
-                      {/* 카드 숫자 표시 */}
-                      <div className="absolute top-4 right-4 text-sm font-medium text-muted-foreground">
-                        #{idx + 1}
-                      </div>
-                      
-                      {currentInsight === idx && (
-                        <Badge 
-                          className="absolute -top-2 -right-2 bg-primary text-white" 
-                          variant="default"
-                        >
-                          선택
-                        </Badge>
-                      )}
-                      <div className="p-5">
-                        <div className="font-medium text-base mb-2">{insight.title}</div>
-                        <div className="text-sm text-muted-foreground line-clamp-2 mb-4">{insight.summary}</div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                            언급 {insight.mentionCount}회
+                  {(currentYearData?.insights || []).map((insight, idx) => {
+                    // 데이터 유효성 검사
+                    if (!insight || typeof insight !== 'object') {
+                      console.warn(`인사이트 ${idx}가 유효하지 않음:`, insight)
+                      return null
+                    }
+
+                    const safeInsight = {
+                      title: insight.title || `인사이트 ${idx + 1}`,
+                      summary: insight.summary || '요약 정보가 없습니다.',
+                      mentionCount: insight.mentionCount || 0,
+                      quotes: Array.isArray(insight.quotes) ? insight.quotes : [],
+                      keywords: Array.isArray(insight.keywords) ? insight.keywords : []
+                    }
+
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`relative border border-gray-200 dark:border-gray-800 rounded-lg transition-all cursor-pointer ${
+                          currentInsight === idx 
+                            ? 'border-primary bg-primary/5 shadow-sm' 
+                            : 'border-gray-200 dark:border-gray-800 hover:border-primary/50 hover:bg-muted/30'
+                        }`}
+                        onClick={() => setCurrentInsight(idx)}
+                      >
+                        {/* 카드 숫자 표시 */}
+                        <div className="absolute top-4 right-4 text-sm font-medium text-muted-foreground">
+                          #{idx + 1}
+                        </div>
+                        
+                        {currentInsight === idx && (
+                          <Badge 
+                            className="absolute -top-2 -right-2 bg-primary text-white" 
+                            variant="default"
+                          >
+                            선택
                           </Badge>
-                          <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                            고객 {new Set(insight.quotes.map(q => q.persona)).size}명
-                          </Badge>
+                        )}
+                        <div className="p-5">
+                          <div className="font-medium text-base mb-2">{safeInsight.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-2 mb-4">{safeInsight.summary}</div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Badge variant="outline" className="bg-primary/5 border-primary/10">
+                              언급 {safeInsight.mentionCount}회
+                            </Badge>
+                            <Badge variant="outline" className="bg-primary/5 border-primary/10">
+                              고객 {new Set(safeInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -437,7 +489,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         className="text-xs h-8 px-2 whitespace-nowrap"
                         onClick={() => setCurrentInsight(idx)}
                       >
-                        {insight.title}
+                        {insight?.title || `인사이트 ${idx + 1}`}
                       </Button>
                     ))}
                   </div>
@@ -447,16 +499,28 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           )}
           
           {/* 선택된 인사이트 상세 보기 */}
-          {currentYearData?.insights && currentYearData.insights[currentInsight] && (
-            <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold">
-                  {currentYearData.insights[currentInsight].title}
-                </CardTitle>
-                <CardDescription>
-                  {currentYearData.insights[currentInsight].summary}
-                </CardDescription>
-              </CardHeader>
+          {currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights[currentInsight] && (() => {
+            const selectedInsight = currentYearData.insights[currentInsight]
+            
+            // 안전한 데이터 구조 생성
+            const safeSelectedInsight = {
+              title: selectedInsight?.title || `인사이트 ${currentInsight + 1}`,
+              summary: selectedInsight?.summary || '요약 정보가 없습니다.',
+              keywords: Array.isArray(selectedInsight?.keywords) ? selectedInsight.keywords : [],
+              quotes: Array.isArray(selectedInsight?.quotes) ? selectedInsight.quotes : [],
+              mentionCount: selectedInsight?.mentionCount || 0
+            }
+            
+            return (
+              <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold">
+                    {safeSelectedInsight.title}
+                  </CardTitle>
+                  <CardDescription>
+                    {safeSelectedInsight.summary}
+                  </CardDescription>
+                </CardHeader>
             
               {/* 인사이트 상세 보기 */}
               <CardContent className="pb-8">
@@ -472,21 +536,23 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
-                              프로젝트 "{project.name}"에서 공통적으로 강조된 "{currentYearData.insights[currentInsight].title}"에 대한 분석입니다. 
-                              {currentYearData.insights[currentInsight].summary}
+                              프로젝트 "{project.name}"에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
+                              {safeSelectedInsight.summary}
                             </p>
                             <p className="text-sm leading-relaxed">
-                              이 인사이트는 총 {currentYearData.insights[currentInsight].mentionCount}회 언급되었으며, 
-                              {new Set(currentYearData.insights[currentInsight].quotes.map(q => q.persona)).size}명의 고객으로부터 {currentYearData.insights[currentInsight].quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 "{currentYearData.insights[currentInsight].keywords.slice(0, 3).map(k => k.name).join('", "')}" 등이 
+                              이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
+                              {new Set(safeSelectedInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
+                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}" 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
                             <div>
-                              {currentYearData.insights[currentInsight].keywords.slice(0, 3).map((keyword, idx) => (
-                                <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
-                                  {keyword.name} ({keyword.weight}%)
-                                </Badge>
-                              ))}
+                              {safeSelectedInsight.keywords.slice(0, 3).map((keyword, idx) => 
+                                keyword?.name ? (
+                                  <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
+                                    {keyword.name} ({keyword.weight || 0}%)
+                                  </Badge>
+                                ) : null
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -507,7 +573,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
-                                  data={currentYearData.insights[currentInsight].keywords}
+                                  data={safeSelectedInsight.keywords}
                                   cx="50%"
                                   cy="50%"
                                   labelLine={false}
@@ -516,7 +582,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                                   fill="#8884d8"
                                   dataKey="weight"
                                 >
-                                  {currentYearData.insights[currentInsight].keywords.map((entry, index) => (
+                                  {safeSelectedInsight.keywords.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
                                 </Pie>
@@ -543,36 +609,49 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {currentYearData.insights[currentInsight].quotes.map((quote, i) => (
-                      <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
-                        <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
-                          <div className="flex-grow">
-                            <p className="text-base">"{quote.text}"</p>
-                          </div>
-                          <div className="pt-2 border-t mt-auto">
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center">
-                                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
-                                  <User className="h-4 w-4 text-primary" />
-                                </div>
-                                <p className="text-sm text-muted-foreground">{quote.persona}</p>
-                              </div>
-                              <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-                                <Link href="/chat">
-                                  <MessageCircle className="h-3 w-3" />
-                                  <span>대화하기</span>
-                                </Link>
-                              </Button>
+                    {safeSelectedInsight.quotes.map((quote, i) => {
+                      // 인용구 데이터 유효성 검사
+                      if (!quote || typeof quote !== 'object') {
+                        return null
+                      }
+                      
+                      const safeQuote = {
+                        text: quote.text || '인용구 내용이 없습니다.',
+                        persona: quote.persona || `고객 ${i + 1}`
+                      }
+                      
+                      return (
+                        <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
+                          <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
+                            <div className="flex-grow">
+                              <p className="text-base">"{safeQuote.text}"</p>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <div className="pt-2 border-t mt-auto">
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center">
+                                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
+                                    <User className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{safeQuote.persona}</p>
+                                </div>
+                                <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
+                                  <Link href="/chat">
+                                    <MessageCircle className="h-3 w-3" />
+                                    <span>대화하기</span>
+                                  </Link>
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
+            )
+          })()}
         </>
       ) : (
         <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">

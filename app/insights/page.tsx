@@ -126,15 +126,25 @@ export default function InsightsPage() {
         const newInsightData: InsightData = {}
         
         yearResults.forEach(({ year, data }) => {
-          newInsightData[year] = {
+          console.log(`📊 ${year}년 연간 인사이트 데이터:`, {
             intervieweeCount: data.intervieweeCount,
-            insights: data.insights
+            insightsCount: data.insights?.length || 0,
+            sampleInsight: data.insights?.[0]
+          })
+          
+          newInsightData[year] = {
+            intervieweeCount: data.intervieweeCount || 0,
+            insights: data.insights || []
           }
         })
         
         setInsightData(newInsightData)
         
-        console.log('인사이트 데이터 로드 완료');
+        console.log('📦 연간 인사이트 데이터 로드 완료:', {
+          totalYears: Object.keys(newInsightData).length,
+          dataKeys: Object.keys(newInsightData),
+          newInsightData
+        });
       } catch (error) {
         console.error("인사이트 데이터 로드 실패:", error)
         // 오류 시 빈 데이터로 초기화
@@ -168,6 +178,15 @@ export default function InsightsPage() {
   const currentYearData = selectedYears.length > 0 
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
     : (insightData[years[0]] || { intervieweeCount: 0, insights: [] })
+
+  // 디버깅 로그
+  console.log('🔍 연간 인사이트 표시 상태:', {
+    selectedYears,
+    availableYears: years,
+    currentYearData,
+    insightDataKeys: Object.keys(insightData),
+    loading
+  })
 
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
@@ -374,7 +393,18 @@ export default function InsightsPage() {
         </Card>
         
         {/* 종합 인사이트 요약 카드와 내용 */}
-        {currentYearData?.insights && currentYearData.insights.length > 0 ? (
+        {(() => {
+          const hasInsights = currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights.length > 0
+          console.log('📊 연간 인사이트 표시 조건 체크:', {
+            'currentYearData?.insights': !!currentYearData?.insights,
+            'Array.isArray(currentYearData.insights)': Array.isArray(currentYearData?.insights),
+            'currentYearData.insights.length': currentYearData?.insights?.length,
+            hasInsights,
+            insightsData: currentYearData?.insights
+          })
+          
+          return hasInsights
+        })() ? (
           <>
             <div className="grid grid-cols-1 gap-6 mb-5">
               {/* 종합 인사이트 요약 카드 - 직관적인 디자인 */}
@@ -391,7 +421,22 @@ export default function InsightsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                          {(currentYearData?.insights || []).map((insight, idx) => (
+                    {(currentYearData?.insights || []).map((insight, idx) => {
+                      // 데이터 유효성 검사
+                      if (!insight || typeof insight !== 'object') {
+                        console.warn(`연간 인사이트 ${idx}가 유효하지 않음:`, insight)
+                        return null
+                      }
+
+                      const safeInsight = {
+                        title: insight.title || `인사이트 ${idx + 1}`,
+                        summary: insight.summary || '요약 정보가 없습니다.',
+                        mentionCount: insight.mentionCount || 0,
+                        quotes: Array.isArray(insight.quotes) ? insight.quotes : [],
+                        keywords: Array.isArray(insight.keywords) ? insight.keywords : []
+                      }
+
+                      return (
                       <div 
                         key={idx} 
                         className={`relative border border-gray-200 dark:border-gray-800 rounded-lg transition-all ${
@@ -415,19 +460,20 @@ export default function InsightsPage() {
                           </Badge>
                         )}
                         <div className="p-5 cursor-pointer">
-                          <div className="font-medium text-base mb-2">{insight.title}</div>
-                          <div className="text-sm text-muted-foreground line-clamp-2 mb-4">{insight.summary}</div>
+                          <div className="font-medium text-base mb-2">{safeInsight.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-2 mb-4">{safeInsight.summary}</div>
                           <div className="flex flex-wrap gap-2 mt-3">
                             <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              언급 {insight.mentionCount}회
+                              언급 {safeInsight.mentionCount}회
                             </Badge>
                             <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              고객 {new Set(insight.quotes.map(q => q.persona)).size}명
+                              고객 {new Set(safeInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명
                             </Badge>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -446,7 +492,7 @@ export default function InsightsPage() {
                           className="text-xs h-8 px-2 whitespace-nowrap"
                           onClick={() => setCurrentInsight(idx)}
                         >
-                          {insight.title}
+                          {insight?.title || `인사이트 ${idx + 1}`}
                         </Button>
                       ))}
                     </div>
@@ -456,14 +502,27 @@ export default function InsightsPage() {
             )}
             
             {/* 선택된 인사이트 상세 보기와 고객 이야기를 하나의 카드로 묶기 */}
-            {currentYearData?.insights && currentYearData.insights[currentInsight] && (
+            {currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights[currentInsight] && (() => {
+              const selectedInsight = currentYearData.insights[currentInsight]
+              
+              // 안전한 데이터 구조 생성
+              const safeSelectedInsight = {
+                title: selectedInsight?.title || `인사이트 ${currentInsight + 1}`,
+                summary: selectedInsight?.summary || '요약 정보가 없습니다.',
+                keywords: Array.isArray(selectedInsight?.keywords) ? selectedInsight.keywords : [],
+                quotes: Array.isArray(selectedInsight?.quotes) ? selectedInsight.quotes : [],
+                mentionCount: selectedInsight?.mentionCount || 0,
+                priority: selectedInsight?.priority || 1
+              }
+              
+              return (
               <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold">
-                    {currentYearData.insights[currentInsight].title}
+                    {safeSelectedInsight.title}
                   </CardTitle>
                   <CardDescription>
-                    {currentYearData.insights[currentInsight].summary}
+                    {safeSelectedInsight.summary}
                   </CardDescription>
                 </CardHeader>
               
@@ -481,31 +540,33 @@ export default function InsightsPage() {
                         <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
-                              최근 고객 인터뷰에서 공통적으로 강조된 "{currentYearData.insights[currentInsight].title}"에 대한 분석입니다. 
-                              {currentYearData.insights[currentInsight].summary}
+                              최근 고객 인터뷰에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
+                              {safeSelectedInsight.summary}
                             </p>
                             <p className="text-sm leading-relaxed">
-                              이 인사이트는 총 {currentYearData.insights[currentInsight].mentionCount}회 언급되었으며, 
-                              {new Set(currentYearData.insights[currentInsight].quotes.map(q => q.persona)).size}명의 고객으로부터 {currentYearData.insights[currentInsight].quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 "{currentYearData.insights[currentInsight].keywords.slice(0, 3).map(k => k.name).join('", "')}" 등이 
+                              이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
+                              {new Set(safeSelectedInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
+                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}" 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
                             <p className="text-sm leading-relaxed">
-                              특히 "{currentYearData.insights[currentInsight].keywords[0]?.name}" 키워드가 가장 높은 비중({currentYearData.insights[currentInsight].keywords[0]?.weight}%)을 차지하며, 
+                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
                               이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
-                              {currentYearData.insights[currentInsight].priority <= 3 ? 
+                              {safeSelectedInsight.priority <= 3 ? 
                                 '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
-                                currentYearData.insights[currentInsight].priority <= 7 ?
+                                safeSelectedInsight.priority <= 7 ?
                                 '중간 우선순위를 가진 이 인사이트는 중장기적 개선 계획에 포함되어야 할 요소입니다.' :
                                 '이 인사이트는 장기적 관점에서 지속적인 모니터링과 개선이 필요한 영역입니다.'
                               }
                             </p>
                             <div>
-                              {currentYearData.insights[currentInsight].keywords.slice(0, 3).map((keyword, idx) => (
-                                <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
-                                  {keyword.name} ({keyword.weight}%)
-                                </Badge>
-                              ))}
+                              {safeSelectedInsight.keywords.slice(0, 3).map((keyword, idx) => 
+                                keyword?.name ? (
+                                  <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
+                                    {keyword.name} ({keyword.weight || 0}%)
+                                  </Badge>
+                                ) : null
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -526,7 +587,7 @@ export default function InsightsPage() {
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart margin={{ top: 20, right: 20, bottom: 30, left: 20 }}>
                                 <Pie
-                                  data={currentYearData.insights[currentInsight].keywords}
+                                  data={safeSelectedInsight.keywords}
                                   cx="50%"
                                   cy="50%"
                                   labelLine={false}
@@ -537,7 +598,7 @@ export default function InsightsPage() {
                                   label={({ name }) => name}
                                   isAnimationActive={false}
                                 >
-                                  {currentYearData.insights[currentInsight].keywords.map((_, index) => (
+                                  {safeSelectedInsight.keywords.map((_, index) => (
                                     <Cell 
                                       key={`cell-${index}`} 
                                       fill={[
@@ -635,36 +696,49 @@ export default function InsightsPage() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {currentYearData.insights[currentInsight].quotes.map((quote, i) => (
-                      <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
-                        <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
-                          <div className="flex-grow">
-                            <p className="text-base">"{quote.text}"</p>
-                          </div>
-                          <div className="pt-2 border-t mt-auto">
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center">
-                                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
-                                  <User className="h-4 w-4 text-primary" />
-                                </div>
-                                <p className="text-sm text-muted-foreground">{quote.persona}</p>
-                              </div>
-                              <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-                                <Link href="/">
-                                  <MessageCircle className="h-3 w-3" />
-                                  <span>대화하기</span>
-                                </Link>
-                              </Button>
+                    {safeSelectedInsight.quotes.map((quote, i) => {
+                      // 인용구 데이터 유효성 검사
+                      if (!quote || typeof quote !== 'object') {
+                        return null
+                      }
+                      
+                      const safeQuote = {
+                        text: quote.text || '인용구 내용이 없습니다.',
+                        persona: quote.persona || `고객 ${i + 1}`
+                      }
+                      
+                      return (
+                        <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
+                          <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
+                            <div className="flex-grow">
+                              <p className="text-base">"{safeQuote.text}"</p>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <div className="pt-2 border-t mt-auto">
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center">
+                                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
+                                    <User className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{safeQuote.persona}</p>
+                                </div>
+                                <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
+                                  <Link href="/chat">
+                                    <MessageCircle className="h-3 w-3" />
+                                    <span>대화하기</span>
+                                  </Link>
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               </CardContent>
               </Card>
-            )}
+              )
+            })()}
           </>
         ) : (
           <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
