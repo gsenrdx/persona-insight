@@ -38,62 +38,11 @@ export default function SearchBar() {
     setQuery("")
   }
 
-  // 엔터 키 처리 - AI에게 적합한 페르소나 추천 받기
+  // 엔터 키 처리 - 검색 기능 준비중 메시지 표시
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && query.trim() && !isLoading) {
-      try {
-        setIsLoading(true)
-        
-        e.preventDefault()
-        
-        // 검색 이벤트를 트리거하기 위해 URL에 searchIntent 파라미터 추가
-        const params = new URLSearchParams(searchParams.toString())
-        params.set("q", query)
-        params.set("searchIntent", "chat")
-        router.push(`/?${params.toString()}`, {scroll: false})
-        
-        // AI 페르소나 검색 API 호출
-        const response = await fetch('/api/persona-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query }),
-        })
-        
-        if (!response.ok) {
-          throw new Error('페르소나 검색에 실패했습니다')
-        }
-        
-        const data = await response.json()
-        
-        if (data.recommendedPersonas && data.recommendedPersonas.length > 0) {
-          // 검색 결과 URL 설정 - 여러 페르소나 결과를 JSON 문자열로 저장
-          const resultParams = new URLSearchParams()
-          resultParams.set("q", query)
-          resultParams.set("results", "true") // 단일 결과가 아닌 여러 결과가 있음을 표시
-          
-          // 결과 데이터를 URL에 저장하지 않고 세션 스토리지에 저장
-          sessionStorage.setItem('personaSearchResults', JSON.stringify(data.recommendedPersonas))
-          
-          router.push(`/?${resultParams.toString()}`, {scroll: false})
-        } else {
-          toast.error("적합한 페르소나를 찾을 수 없습니다. 다른 검색어를 입력해 보세요.")
-          // 검색 의도 파라미터 제거
-          const clearParams = new URLSearchParams(searchParams.toString())
-          clearParams.delete("searchIntent")
-          router.push(`/?${clearParams.toString()}`, {scroll: false})
-        }
-      } catch (error) {
-        console.error('페르소나 검색 오류:', error)
-        toast.error("오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
-        // 검색 의도 파라미터 제거
-        const clearParams = new URLSearchParams(searchParams.toString())
-        clearParams.delete("searchIntent")
-        router.push(`/?${clearParams.toString()}`, {scroll: false})
-      } finally {
-        setIsLoading(false)
-      }
+    if (e.key === 'Enter' && query.trim()) {
+      e.preventDefault()
+      toast.info("검색 기능은 준비중입니다.")
     }
   }
 
@@ -123,7 +72,7 @@ export default function SearchBar() {
         
         <Input 
           type="text" 
-          placeholder="예: 안전 관리에 관심이 많은 주유소 관리자" 
+          placeholder="예: 안전 관리에 관심이 많은 관리자" 
           value={query} 
           onChange={handleSearch}
           onKeyDown={handleKeyDown}
