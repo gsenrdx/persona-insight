@@ -160,8 +160,8 @@ body {
   
   /* 스크롤바 스타일 */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
   
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -169,17 +169,18 @@ body {
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.2);
+    background: rgba(156, 163, 175, 0.3);
     border-radius: 10px;
+    transition: background 0.2s ease;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.4);
+    background: rgba(156, 163, 175, 0.6);
   }
   
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.2) transparent;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
   }
   
   /* 배경 그라데이션 효과 */

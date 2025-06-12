@@ -249,10 +249,16 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
                       day: 'numeric'
                     })}
                   </div>
-                  <Badge variant="secondary" className="bg-white/80 border-gray-200">
-                    {interview.personas?.persona_type ? 
-                      `${interview.personas.persona_type} - ${interview.personas.persona_title || ''}` : 
-                      interview.user_type
+                  <Badge variant="secondary" className={`${
+                    !interview.persona_reflected 
+                      ? 'bg-gray-100 text-gray-600 border-gray-300' 
+                      : 'bg-white/80 border-gray-200'
+                  }`}>
+                    {interview.persona_reflected 
+                      ? (interview.personas?.persona_type ? 
+                          `${interview.personas.persona_type} - ${interview.personas.persona_title || ''}` : 
+                          interview.user_type)
+                      : '미분류'
                     }
                   </Badge>
                   {interview.created_by_profile && (

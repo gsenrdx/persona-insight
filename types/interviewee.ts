@@ -29,7 +29,6 @@ export interface PersonaInfo {
   persona_type: string
   persona_title: string | null
   persona_description: string
-  persona_reflected?: boolean
 }
 
 // 프로필 정보 타입
@@ -57,6 +56,7 @@ export interface IntervieweeData {
   interviewee_fake_name: string | null
   project_id: string | null
   persona_id: string | null
+  persona_reflected?: boolean | null
   personas?: PersonaInfo | null
   profiles?: ProfileInfo | null
   created_by_profile?: ProfileInfo | null

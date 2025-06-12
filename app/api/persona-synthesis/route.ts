@@ -322,10 +322,7 @@ export async function POST(req: NextRequest) {
 
           const { data: updateResult, error: updateError } = await supabase
             .from('personas')
-            .update({
-              ...updateData,
-              persona_reflected: true
-            })
+            .update(updateData)
             .eq('id', selectedPersona.id)
             .select();
 
@@ -335,6 +332,25 @@ export async function POST(req: NextRequest) {
             console.log('[페르소나 합성] 페르소나 업데이트 성공:', updateResult);
           }
         }
+
+        // 인터뷰 데이터의 persona_reflected 필드를 true로 업데이트
+        if (parsedInterviewee.id) {
+          const { data: interviewUpdateResult, error: interviewUpdateError } = await supabase
+            .from('interviewees')
+            .update({
+              persona_reflected: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', parsedInterviewee.id)
+            .select();
+
+          if (interviewUpdateError) {
+            console.error('[페르소나 합성] 인터뷰 반영 상태 업데이트 실패:', interviewUpdateError);
+          } else {
+            console.log('[페르소나 합성] 인터뷰 반영 상태 업데이트 성공:', interviewUpdateResult);
+          }
+        }
+
       } catch (dbError) {
         console.error('[페르소나 합성] 데이터베이스 작업 중 오류:', dbError);
         // DB 오류가 있어도 합성 결과는 반환

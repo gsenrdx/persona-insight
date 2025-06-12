@@ -24,7 +24,6 @@ export async function GET(request: Request) {
         persona_type,
         persona_title,
         persona_description,
-        persona_reflected,
         thumbnail,
         created_at
       `)

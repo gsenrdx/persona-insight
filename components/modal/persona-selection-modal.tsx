@@ -111,76 +111,76 @@ export default function PersonaSelectionModal({
           </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="ml-2">페르소나 목록을 불러오는 중...</span>
-            </div>
-          ) : personas.length === 0 ? (
-            <div className="text-center py-8">
-              <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">생성된 페르소나가 없습니다</h3>
-              <p className="text-gray-500">먼저 페르소나를 생성해주세요</p>
-            </div>
-          ) : (
-            <RadioGroup 
-              value={selectedPersonaId} 
-              onValueChange={setSelectedPersonaId}
-              className="space-y-3"
-            >
-              {personas.map((persona) => (
-                <div
-                  key={persona.id}
-                  className={`flex items-start space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedPersonaId === persona.id
-                      ? 'border-purple-200 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setSelectedPersonaId(persona.id)}
-                >
-                  <RadioGroupItem 
-                    value={persona.id} 
-                    id={persona.id}
-                    className="mt-1" 
-                  />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={persona.thumbnail || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700">
-                            {persona.persona_type.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Label 
-                              htmlFor={persona.id}
-                              className="font-medium text-gray-900 cursor-pointer"
-                            >
-                              {persona.persona_title || persona.persona_type}
-                            </Label>
-                            {persona.id === recommendedPersonaId && (
-                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
-                                AI 추천
-                              </Badge>
-                            )}
-                          </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar py-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span className="ml-2">페르소나 목록을 불러오는 중...</span>
+              </div>
+            ) : personas.length === 0 ? (
+              <div className="text-center py-8">
+                <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">생성된 페르소나가 없습니다</h3>
+                <p className="text-gray-500">먼저 페르소나를 생성해주세요</p>
+              </div>
+            ) : (
+              <RadioGroup 
+                value={selectedPersonaId} 
+                onValueChange={setSelectedPersonaId}
+                className="space-y-3"
+              >
+                {personas.map((persona) => (
+                  <div
+                    key={persona.id}
+                    className={`flex items-start space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedPersonaId === persona.id
+                        ? 'border-purple-200 bg-purple-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedPersonaId(persona.id)}
+                  >
+                    <RadioGroupItem 
+                      value={persona.id} 
+                      id={persona.id}
+                      className="mt-1" 
+                    />
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage src={persona.thumbnail || undefined} />
+                            <AvatarFallback className="bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700">
+                              {persona.persona_type.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
                           
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {persona.persona_description}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Label 
+                                htmlFor={persona.id}
+                                className="font-medium text-gray-900 cursor-pointer"
+                              >
+                                {persona.persona_title || persona.persona_type}
+                              </Label>
+                              {persona.id === recommendedPersonaId && (
+                                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                                  AI 추천
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                              {persona.persona_description}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </RadioGroup>
-          )}
+                ))}
+              </RadioGroup>
+            )}
         </div>
 
         <DialogFooter className="flex-shrink-0 border-t pt-4">

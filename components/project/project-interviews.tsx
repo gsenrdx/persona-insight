@@ -14,6 +14,7 @@ import { IntervieweeData } from '@/types/interviewee'
 import InterviewDetail from './interview-detail'
 import { supabase } from '@/lib/supabase'
 import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
+import { PersonaClassificationModal } from '@/components/modal'
 
 interface Project {
   id: string
@@ -45,6 +46,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
   const [personaSynthesizing, setPersonaSynthesizing] = useState<string[]>([])
   const [showPersonaModal, setShowPersonaModal] = useState(false)
   const [selectedInterviewForPersona, setSelectedInterviewForPersona] = useState<IntervieweeData | null>(null)
+  const [showPersonaClassificationModal, setShowPersonaClassificationModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -300,39 +302,50 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       ) : (
         <div className="space-y-4">
           {/* 전체 선택 헤더 */}
-          <div className="flex items-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
-            <Checkbox
-              checked={selectedAll}
-              onCheckedChange={toggleSelectAll}
-            />
-            <span className="text-sm font-medium text-gray-700">인터뷰 목록 ({interviews.length}개)</span>
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Calendar className="w-4 h-4 mr-2" />
-                페르소나 기준 보기
-              </Button>
-              <Button variant="outline" size="sm">
-                AI 자동 처리
+          <div className="flex items-center justify-between py-4 px-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div className="flex items-center gap-4">
+              <Checkbox
+                checked={selectedAll}
+                onCheckedChange={toggleSelectAll}
+                className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+              />
+              <div className="flex flex-col">
+                <span className="text-base font-semibold text-gray-900">인터뷰 목록</span>
+                <span className="text-sm text-gray-500">{interviews.length}개의 인터뷰</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white hover:bg-gray-50 border-gray-300 text-gray-700"
+                onClick={() => setShowPersonaClassificationModal(true)}
+              >
+                <User className="w-4 h-4 mr-2" />
+                페르소나 분류 현황
               </Button>
             </div>
           </div>
 
           {/* 인터뷰 그리드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {interviews.map((interview) => (
               <div
                 key={interview.id}
-                className="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-shadow duration-300 cursor-pointer group"
+                className="bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:scale-[1.01] transition-all duration-300 cursor-pointer group overflow-hidden relative"
                 onClick={() => handleViewDetail(interview)}
               >
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-3">
+                
+                <div className="p-5">
+                  {/* 헤더 */}
+                  <div className="flex items-start justify-between mb-4">
                     <Checkbox
                       checked={selectedInterviews.includes(interview.id)}
                       onCheckedChange={() => {
                         toggleSelectInterview(interview.id)
                       }}
                       onClick={(e) => e.stopPropagation()}
+                      className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-gray-300 rounded-md"
                     />
                     
                     <DropdownMenu>
@@ -340,15 +353,15 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-gray-100 rounded-full"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreHorizontal className="w-3 h-3" />
+                          <MoreHorizontal className="w-4 h-4 text-gray-500" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="rounded-xl border-0 shadow-lg">
                         <DropdownMenuItem 
-                          className="text-red-600"
+                          className="text-red-600 hover:bg-red-50 rounded-lg"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDeleteInterview(interview.id)
@@ -361,54 +374,53 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                     </DropdownMenu>
                   </div>
                   
-                  <h3 className="font-bold text-base text-slate-800 line-clamp-1 mb-2">
+                  {/* 제목 */}
+                  <h3 className="font-semibold text-base text-gray-900 line-clamp-2 mb-3 leading-snug group-hover:text-blue-600 transition-colors duration-300">
                     {interview.interviewee_fake_name || `인터뷰 ${interview.user_type}`}
                   </h3>
                   
-                  {interview.user_description && (
-                    <p className="text-xs text-slate-600 mb-3 line-clamp-2">
-                      {interview.user_description}
-                    </p>
-                  )}
                   
+                  {/* 요약 */}
                   {interview.interviewee_summary && (
-                    <p className="text-xs text-slate-500 line-clamp-3 mb-3">
-                      {interview.interviewee_summary}
-                    </p>
+                    <div className="mb-4 p-3 bg-gray-50/70 rounded-xl border-0">
+                      <p className="text-xs text-gray-600 line-clamp-4 leading-relaxed">
+                        {interview.interviewee_summary}
+                      </p>
+                    </div>
                   )}
                   
-                  <div className="space-y-2">
+                  {/* 메타데이터 */}
+                  <div className="space-y-3 mb-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">
-                        <Calendar className="h-3 w-3 inline mr-1" />
-                        {new Date(interview.session_date).toLocaleDateString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span className="font-medium">
+                          {new Date(interview.session_date).toLocaleDateString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
                       
-                      <Badge 
-                        variant={interview.interviewee_summary ? "secondary" : "outline"} 
-                        className={`text-xs ${
-                          interview.personas?.persona_reflected 
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
-                            : interview.interviewee_summary 
-                            ? 'bg-green-100 text-green-700 hover:bg-green-100' 
-                            : 'bg-amber-50 text-amber-700 hover:bg-amber-50'
-                        }`}
-                      >
-                        {interview.personas?.persona_reflected 
-                          ? '페르소나 반영 완료'
+                      <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        interview.persona_reflected 
+                          ? 'bg-green-100 text-green-700'
                           : interview.interviewee_summary 
-                          ? '분석 완료' 
-                          : '분석 대기'
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {interview.persona_reflected 
+                          ? '반영완료'
+                          : interview.interviewee_summary 
+                          ? '분석완료' 
+                          : '대기중'
                         }
-                      </Badge>
+                      </div>
                     </div>
                     
                     {interview.created_by && (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                        <User className="h-3 w-3" />
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <User className="h-3.5 w-3.5" />
                         <span className="font-medium">
                           {interview.created_by === profile?.id 
                             ? '나' 
@@ -419,37 +431,39 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                     )}
                   </div>
                   
-                  {interview.personas?.persona_reflected ? (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 text-xs w-full justify-center">
-                        {interview.personas.persona_title || interview.personas.persona_type}
-                      </Badge>
+                  {/* 액션 영역 */}
+                  {interview.persona_reflected ? (
+                    <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full" />
+                        <span className="text-xs font-medium text-indigo-700 truncate">
+                          {interview.personas?.persona_title || interview.personas?.persona_type}
+                        </span>
+                      </div>
                     </div>
                   ) : interview.interviewee_summary && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full text-xs h-7 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-pink-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenPersonaModal(interview)
-                        }}
-                        disabled={personaSynthesizing.includes(interview.id)}
-                      >
-                        {personaSynthesizing.includes(interview.id) ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin mr-1.5" />
-                            반영 중...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3 h-3 mr-1.5" />
-                            페르소나 반영하기
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full h-9 text-xs font-medium bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border border-purple-200 hover:border-purple-300 text-purple-700 rounded-xl transition-all duration-300 hover:shadow-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenPersonaModal(interview)
+                      }}
+                      disabled={personaSynthesizing.includes(interview.id)}
+                    >
+                      {personaSynthesizing.includes(interview.id) ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin mr-2" />
+                          반영 중...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 mr-2" />
+                          페르소나 반영하기
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
               </div>
@@ -492,6 +506,13 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
         onConfirm={handleConfirmPersona}
         recommendedPersonaId={selectedInterviewForPersona?.persona_id}
         isLoading={selectedInterviewForPersona ? personaSynthesizing.includes(selectedInterviewForPersona.id) : false}
+      />
+
+      {/* 페르소나 분류 현황 모달 */}
+      <PersonaClassificationModal
+        isOpen={showPersonaClassificationModal}
+        onClose={() => setShowPersonaClassificationModal(false)}
+        interviews={interviews}
       />
     </div>
   )
