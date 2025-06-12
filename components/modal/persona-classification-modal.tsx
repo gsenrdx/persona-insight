@@ -8,6 +8,7 @@ import { User, Users, Calendar, CheckCircle, Loader2 } from "lucide-react"
 import { IntervieweeData } from '@/types/interviewee'
 import { useAuth } from '@/hooks/use-auth'
 import { useQuery } from '@tanstack/react-query'
+import { fetchPersonas } from '@/lib/persona-data'
 
 interface Persona {
   id: string
@@ -37,20 +38,27 @@ export default function PersonaClassificationModal({
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null)
 
   // 전체 페르소나 목록 조회 (React Query 사용)
-  const { data: allPersonas = [], isLoading: personasLoading } = useQuery({
+  const { data: allPersonasRaw = [], isLoading: personasLoading } = useQuery({
     queryKey: ['personas', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return []
       
-      const response = await fetch(`/api/supabase/persona?company_id=${profile.company_id}`)
-      if (!response.ok) throw new Error('페르소나 목록을 가져오는데 실패했습니다')
-      
-      const result = await response.json()
-      return (result.data || []) as Persona[]
+      // fetchPersonas 함수 사용하여 일관성 유지
+      return await fetchPersonas(profile?.company_id)
     },
     enabled: !!profile?.company_id && isOpen,
     staleTime: 5 * 60 * 1000,
   })
+
+  // PersonaCardData를 Persona 타입으로 변환
+  const allPersonas: Persona[] = allPersonasRaw.map(persona => ({
+    id: persona.id,
+    persona_type: persona.persona_type,
+    persona_title: persona.name, // name을 persona_title로 매핑
+    persona_description: persona.summary, // summary를 persona_description으로 매핑
+    thumbnail: persona.image && persona.image.includes('placeholder.svg') ? null : persona.image,
+    company_id: profile?.company_id || ''
+  }))
 
   // 페르소나별 인터뷰 분류 처리
   const processClassifications = (): { 

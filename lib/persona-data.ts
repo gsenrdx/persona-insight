@@ -1,7 +1,7 @@
 import { PersonaData, PersonaApiResponse, getPersonaTypeInfo } from "@/types/persona"
 
-// 모든 페르소나 가져오기
-export async function fetchPersonas(company_id?: string, project_id?: string): Promise<PersonaCardData[]> {
+// 모든 페르소나 가져오기 (회사 단위)
+export async function fetchPersonas(company_id?: string): Promise<PersonaCardData[]> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
@@ -12,10 +12,8 @@ export async function fetchPersonas(company_id?: string, project_id?: string): P
       return []
     }
 
-    let url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
-    if (project_id) {
-      url += `&project_id=${project_id}`
-    }
+    // 항상 회사 단위로만 조회 (프로젝트 필터링 제거)
+    const url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
 
     const response = await fetch(url)
 

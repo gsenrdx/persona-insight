@@ -12,19 +12,41 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AddInterviewModal, WorkflowProgressModal } from "@/components/modal"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 import { useAuth } from "@/hooks/use-auth"
+import { useQuery } from '@tanstack/react-query'
 import FloatingActionButton from "./floating-action-button"
 
 // 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
 
 export default function PersonaCardGrid() {
   const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
-  const [allPersonas, setAllPersonas] = useState<PersonaCardData[]>([])
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
-  const [isLoading, setIsLoading] = useState(true) // 초기에는 로딩 상태
-  const [error, setError] = useState<string | null>(null)
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
   const searchParams = useSearchParams()
+
+  // React Query로 페르소나 데이터 관리
+  const { 
+    data: allPersonas = [], 
+    isLoading, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['personas', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return []
+      
+      console.log('페르소나 데이터 로드 중 - 회사 단위:', profile?.company?.name, 'ID:', profile?.company_id);
+      
+      // 회사 단위로 모든 페르소나 로드 (프로젝트 필터링 없음)
+      const data = await fetchPersonas(profile?.company_id)
+      
+      console.log('페르소나 데이터 로드 완료:', data.length, '개');
+      return data
+    },
+    enabled: !!profile?.company_id,
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+  })
 
   // 워크플로우 큐 관리
   const {
@@ -104,50 +126,7 @@ export default function PersonaCardGrid() {
     handleButtonClick
   ]);
 
-  // 회사가 변경될 때마다 페르소나 데이터 새로 로드 (프로젝트 필터링 제거)
-  useEffect(() => {
-    // 프로필이 아직 로드되지 않았거나 회사 정보가 없으면 대기
-    if (!profile?.company_id) {
-      setIsLoading(true);
-      // 회사 정보가 없으면 모든 데이터 클리어
-      setAllPersonas([]);
-      setFilteredPersonas([]);
-      return;
-    }
-
-    // 회사가 변경되면 즉시 이전 데이터 클리어하여 깜빡임 방지
-    setAllPersonas([]);
-    setFilteredPersonas([]);
-
-    async function loadAllPersonas() {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        console.log('페르소나 데이터 로드 중 - 회사 단위:', profile?.company?.name, 'ID:', profile?.company_id);
-        
-        // 회사 단위로 모든 페르소나 로드 (프로젝트 필터링 없음)
-        const data = await fetchPersonas(
-          profile?.company_id || undefined, 
-          undefined // project_id를 undefined로 설정하여 회사 전체 페르소나 로드
-        )
-        
-        setAllPersonas(data)
-        
-        console.log('페르소나 데이터 로드 완료:', data.length, '개');
-      } catch (error) {
-        console.error("Failed to fetch personas:", error)
-        setError("데이터를 불러오는 중 오류가 발생했습니다.")
-        // 에러 시에도 데이터 클리어
-        setAllPersonas([]);
-        setFilteredPersonas([]);
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadAllPersonas();
-  }, [profile?.company_id]) // company_id만 의존성으로 설정
+  // React Query가 데이터 로딩을 담당하므로 useEffect 제거
 
   // 검색어와 필터에 따라 클라이언트 측에서 필터링
   useEffect(() => {
@@ -196,13 +175,9 @@ export default function PersonaCardGrid() {
           <div className="bg-destructive/10 p-6 rounded-xl text-center max-w-md mx-auto mb-6">
             <AlertOctagon className="h-10 w-10 text-destructive mx-auto mb-4" />
             <p className="text-xl font-semibold text-destructive mb-2">데이터 로드 실패</p>
-            <p className="text-muted-foreground mb-6">{error}</p>
+            <p className="text-muted-foreground mb-6">{error instanceof Error ? error.message : '데이터를 불러오는 중 오류가 발생했습니다.'}</p>
             <Button
-              onClick={() => {
-                setIsLoading(true);
-                setError(null);
-                window.location.reload(); // 페이지 새로고침
-              }}
+              onClick={() => refetch()}
               variant="outline"
               className="inline-flex items-center gap-2"
             >
