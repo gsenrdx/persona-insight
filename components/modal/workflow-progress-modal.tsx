@@ -465,7 +465,7 @@ const JobDetailPanel = React.memo(({
   
 
   return (
-    <div className="flex flex-col h-full max-h-[85vh] border-l bg-white">
+    <div className="flex flex-col h-[85vh] border-l bg-white">
       {/* 컴팩트 헤더 */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center justify-between mb-3">
@@ -504,10 +504,10 @@ const JobDetailPanel = React.memo(({
           
           {/* 컴팩트 평가 점수 */}
           {hasAnalysisResult && analysisResult && (
-            <div className="flex flex-col gap-1.5 w-32">
+            <div className="flex flex-col gap-1.5 w-60">
               {/* X축 점수 바 */}
               {analysisResult.x_axis && Array.isArray(analysisResult.x_axis) && analysisResult.x_axis.length > 0 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center">
                   {(() => {
                     const xData = analysisResult.x_axis[0] || {};
                     const keys = Object.keys(xData);
@@ -519,10 +519,12 @@ const JobDetailPanel = React.memo(({
                       const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
                       return (
                         <>
-                          <span className="text-xs text-gray-600 w-6 text-left truncate" title={key1.replace('_score', '')}>
-                            {key1.split('_score')[0].substring(0, 2)}
-                          </span>
-                          <div className="relative flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="w-20 text-right whitespace-nowrap">
+                            <span className="text-xs text-gray-600" title={`${key1.replace('_score', '')} (${val1})`}>
+                              {key1.replace('_score', '')} ({val1})
+                            </span>
+                          </div>
+                          <div className="relative w-16 h-2 bg-gray-200 rounded-full overflow-hidden mx-1">
                             <div 
                               className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
                               style={{ width: `${leftPercent}%` }}
@@ -532,9 +534,11 @@ const JobDetailPanel = React.memo(({
                               style={{ width: `${100 - leftPercent}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600 w-6 text-right truncate" title={key2.replace('_score', '')}>
-                            {key2.split('_score')[0].substring(0, 2)}
-                          </span>
+                          <div className="w-20 text-left whitespace-nowrap">
+                            <span className="text-xs text-gray-600" title={`${key2.replace('_score', '')} (${val2})`}>
+                              {key2.replace('_score', '')} ({val2})
+                            </span>
+                          </div>
                         </>
                       );
                     }
@@ -545,7 +549,7 @@ const JobDetailPanel = React.memo(({
               
               {/* Y축 점수 바 */}
               {analysisResult.y_axis && Array.isArray(analysisResult.y_axis) && analysisResult.y_axis.length > 0 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center">
                   {(() => {
                     const yData = analysisResult.y_axis[0] || {};
                     const keys = Object.keys(yData);
@@ -557,10 +561,12 @@ const JobDetailPanel = React.memo(({
                       const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
                       return (
                         <>
-                          <span className="text-xs text-gray-600 w-6 text-left truncate" title={key1.replace('_score', '')}>
-                            {key1.split('_score')[0].substring(0, 2)}
-                          </span>
-                          <div className="relative flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="w-20 text-right whitespace-nowrap">
+                            <span className="text-xs text-gray-600" title={`${key1.replace('_score', '')} (${val1})`}>
+                              {key1.replace('_score', '')} ({val1})
+                            </span>
+                          </div>
+                          <div className="relative w-16 h-2 bg-gray-200 rounded-full overflow-hidden mx-1">
                             <div 
                               className="absolute left-0 top-0 h-full bg-purple-500 transition-all duration-500"
                               style={{ width: `${leftPercent}%` }}
@@ -570,9 +576,11 @@ const JobDetailPanel = React.memo(({
                               style={{ width: `${100 - leftPercent}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600 w-6 text-right truncate" title={key2.replace('_score', '')}>
-                            {key2.split('_score')[0].substring(0, 2)}
-                          </span>
+                          <div className="w-20 text-left whitespace-nowrap">
+                            <span className="text-xs text-gray-600" title={`${key2.replace('_score', '')} (${val2})`}>
+                              {key2.replace('_score', '')} ({val2})
+                            </span>
+                          </div>
                         </>
                       );
                     }
@@ -653,70 +661,6 @@ const JobDetailPanel = React.memo(({
                 )}
               </div>
 
-              {/* 평가 점수 */}
-              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <div className="w-2 h-4 bg-green-500 rounded-full"></div>
-                  평가 점수
-                </h3>
-                
-                <div className="max-h-32 overflow-y-auto">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {/* X축 점수 */}
-                    {analysisResult?.x_axis && Array.isArray(analysisResult.x_axis) && analysisResult.x_axis.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-700 mb-2">X축 평가</div>
-                        <div className="space-y-2">
-                          {Object.entries(analysisResult.x_axis[0] || {}).map(([key, value]) => (
-                            <div key={key}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-600">{key.replace('_score', '')}</span>
-                                <span className="text-xs font-bold text-blue-600">{value as number}점</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
-                                  style={{ width: `${value}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Y축 점수 */}
-                    {analysisResult?.y_axis && Array.isArray(analysisResult.y_axis) && analysisResult.y_axis.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-700 mb-2">Y축 평가</div>
-                        <div className="space-y-2">
-                          {Object.entries(analysisResult.y_axis[0] || {}).map(([key, value]) => (
-                            <div key={key}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-600">{key.replace('_score', '')}</span>
-                                <span className="text-xs font-bold text-purple-600">{value as number}점</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-500"
-                                  style={{ width: `${value}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* 점수 데이터가 없을 때 */}
-                  {(!analysisResult?.x_axis && !analysisResult?.y_axis) && (
-                    <div className="w-full bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 text-center">
-                      <div className="text-xs text-gray-400">평가 데이터 없음</div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* 상세 분석 보고서 - 기존 2열 구조에 통합 */}
               {loadingDetail ? (
@@ -901,7 +845,7 @@ export default function WorkflowProgressModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="sm:max-w-5xl max-h-[85vh] p-0 flex flex-col overflow-hidden bg-white border shadow-lg rounded-xl"
+        className="sm:max-w-5xl h-[85vh] p-0 flex flex-col overflow-hidden bg-white border shadow-lg rounded-xl"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
       >
@@ -909,7 +853,7 @@ export default function WorkflowProgressModal({
           <DialogTitle>작업 진행 상황</DialogTitle>
         </VisuallyHidden>
         
-        <div className="flex h-full max-h-[85vh]">
+        <div className="flex h-[85vh]">
           {/* 리스트 페이지 */}
           {!selectedJob && (
             <div className="flex flex-col w-full min-w-0">
