@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { Monitor } from "lucide-react"
 
 // 고객 경험에 대한 명언들
@@ -21,6 +22,7 @@ export default function MobileNotSupported() {
   const [isMobile, setIsMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [currentQuote, setCurrentQuote] = useState("")
+  const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
@@ -48,6 +50,10 @@ export default function MobileNotSupported() {
 
   // 모바일이 아니면 표시하지 않음
   if (!isMobile) return null
+
+  // 인증 관련 페이지는 모바일에서도 접근 허용
+  const isAuthPage = pathname?.startsWith('/auth') || pathname?.startsWith('/login')
+  if (isAuthPage) return null
 
   return (
     <div className="fixed inset-0 z-50 bg-white dark:bg-black flex flex-col items-center justify-center p-8">
