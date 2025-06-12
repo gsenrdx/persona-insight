@@ -149,6 +149,9 @@ export async function PUT(
       )
     }
 
+    console.log('🔄 Updating project with data:', updateData)
+    console.log('📋 Project ID:', projectId)
+
     const { data, error } = await supabaseAdmin
       .from('projects')
       .update({
@@ -159,12 +162,20 @@ export async function PUT(
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
+      console.error("❌ Supabase 업데이트 오류:", error)
+      console.error("📊 Error details:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
       return NextResponse.json(
-        { error: "프로젝트 업데이트에 실패했습니다" }, 
+        { error: `프로젝트 업데이트에 실패했습니다: ${error.message}` }, 
         { status: 500 }
       )
     }
+
+    console.log('✅ Supabase update successful:', data)
 
     if (!data || data.length === 0) {
       return NextResponse.json(

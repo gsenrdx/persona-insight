@@ -10,12 +10,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
-import { FileText, Users, Plus, FolderOpen, Loader2, MoreHorizontal, Edit, Trash, Globe, Lock, Search, Crown, UserCheck, User, Zap, Settings, UserPlus, Eye, PieChart } from "lucide-react"
-import { useProjects, useCreateProject, useDeleteProject, Project, CreateProjectData } from '@/hooks/use-projects'
+import { FileText, Users, Plus, FolderOpen, Loader2, MoreHorizontal, Edit, Globe, Lock, Search, Crown, UserCheck, User, Zap, Settings, UserPlus, Eye, PieChart } from "lucide-react"
+import { useProjects, useCreateProject, Project, CreateProjectData } from '@/hooks/use-projects'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
@@ -33,11 +32,10 @@ interface ProjectEditData {
   password?: string
 }
 
-const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: { 
+const ProjectCard = ({ project, onEdit, onInvite, onSelect }: { 
   project: Project, 
   onEdit: (project: Project) => void,
   onInvite: (project: Project) => void,
-  onDelete: (project: Project) => void,
   onSelect: (project: Project) => void
 }) => {
   const { profile } = useAuth()
@@ -111,13 +109,6 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
     )
   }
 
-  const canDeleteProject = (project: Project) => {
-    return (
-      project.created_by === profile?.id || 
-      profile?.role === 'company_admin' || 
-      profile?.role === 'super_admin'
-    )
-  }
 
   const membershipStatus = getMembershipStatus(project)
   const projectMaster = getProjectMaster(project)
@@ -218,21 +209,6 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
                   멤버 초대
                 </DropdownMenuItem>
               )}
-              {canDeleteProject(project) && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(project)
-                    }}
-                    className="text-red-600"
-                  >
-                    <Trash className="h-4 w-4 mr-2" />
-                    삭제
-                  </DropdownMenuItem>
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -294,7 +270,6 @@ export function ProjectPageContent() {
     profile?.id || undefined
   )
   const createProjectMutation = useCreateProject()
-  const deleteProjectMutation = useDeleteProject()
   
   // 상태 관리
   const [searchQuery, setSearchQuery] = useState('')
@@ -319,8 +294,6 @@ export function ProjectPageContent() {
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   
-  // 삭제 관련
-  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   
   // 초대 관련 (추후 구현)
   const [inviteProject, setInviteProject] = useState<Project | null>(null)
@@ -400,22 +373,6 @@ export function ProjectPageContent() {
     setEditDescription(project.description || '')
   }
 
-  // 프로젝트 삭제
-  const handleDeleteProject = async () => {
-    if (!deletingProject || !profile?.id) return
-
-    try {
-      await deleteProjectMutation.mutateAsync({
-        projectId: deletingProject.id,
-        userId: profile.id
-      })
-      toast.success('프로젝트가 삭제되었습니다')
-      setDeletingProject(null)
-    } catch (error) {
-      console.error('프로젝트 삭제 실패:', error)
-      toast.error('프로젝트 삭제에 실패했습니다')
-    }
-  }
 
   if (loading) {
     return (
@@ -522,7 +479,6 @@ export function ProjectPageContent() {
                 project={project}
                 onEdit={handleEditProject}
                 onInvite={setInviteProject}
-                onDelete={setDeletingProject}
                 onSelect={handleSelectProject}
               />
             ))}
@@ -702,27 +658,6 @@ export function ProjectPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* 삭제 확인 다이얼로그 */}
-      <AlertDialog open={!!deletingProject} onOpenChange={() => setDeletingProject(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>프로젝트 삭제</AlertDialogTitle>
-            <AlertDialogDescription>
-              "{deletingProject?.name}" 프로젝트를 삭제하시겠습니까? 
-              이 작업은 되돌릴 수 없으며, 프로젝트의 모든 데이터가 영구적으로 삭제됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteProject}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              삭제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <PersonaCriteriaModal 
         open={showPersonaCriteriaModal}

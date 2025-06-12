@@ -93,7 +93,7 @@ export async function GET(
     }
 
     // RPC 결과를 프론트엔드에서 예상하는 형식으로 변환
-    const transformedMembers = (members || []).map(member => ({
+    const transformedMembers = (members || []).map((member: any) => ({
       id: member.id,
       user_id: member.user_id,
       project_id: member.project_id,

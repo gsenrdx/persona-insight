@@ -134,6 +134,112 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     setReplyingTo(null);
   }, []);
 
+
+  // MISO 스트리밍 처리 함수
+  const processMisoStreaming = async (response: Response) => {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    
+    // 어시스턴트 메시지 미리 생성 및 추가
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: "",
+      createdAt: new Date(),
+    };
+
+    // 로딩 메시지 숨기고 빈 어시스턴트 메시지 추가
+    setShowLoadingMsg(false);
+    setChatMessages(prev => [...prev, assistantMessage]);
+    setIsStreaming(true);
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // MISO 원본 청크 디코딩
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        
+        // MISO SSE 메시지 파싱 (줄 단위)
+        let lineEnd;
+        while ((lineEnd = buffer.indexOf('\n')) !== -1) {
+          const rawLine = buffer.slice(0, lineEnd).trim();
+          buffer = buffer.slice(lineEnd + 1);
+          
+          if (!rawLine) continue;
+          
+          // MISO API data: 접두사 처리
+          const dataLine = rawLine.startsWith('data: ') ? rawLine.slice(6) : rawLine;
+          
+          if (!dataLine || dataLine === '[DONE]') continue;
+          
+          try {
+            const payload = JSON.parse(dataLine);
+            
+            // MISO conversation_id 처리
+            if (payload.conversation_id && !misoConversationId) {
+              setMisoConversationId(payload.conversation_id);
+            }
+            
+            // MISO 이벤트별 처리 - agent_message만 스트리밍
+            if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
+              const receivedText = payload.answer;
+              
+              // 빈 answer는 무시
+              if (receivedText === "") continue;
+              
+              // 누적된 전체 텍스트인지 델타 텍스트인지 감지하여 처리
+              setChatMessages(prev => {
+                const updated = [...prev];
+                const lastIndex = updated.length - 1;
+                if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && updated[lastIndex].id === assistantMessage.id) {
+                  const currentContent = updated[lastIndex].content;
+                  
+                  // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
+                  if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
+                    updated[lastIndex] = {
+                      ...updated[lastIndex],
+                      content: receivedText,
+                    };
+                  } 
+                  // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
+                  else if (currentContent.startsWith(receivedText)) {
+                    return prev; // 상태 업데이트 없음
+                  }
+                  // 그 외의 경우는 델타 텍스트로 추가
+                  else {
+                    updated[lastIndex] = {
+                      ...updated[lastIndex],
+                      content: currentContent + receivedText,
+                    };
+                  }
+                }
+                return updated;
+              });
+              
+              // 스크롤 업데이트
+              scrollToBottom();
+            }
+            
+            // MISO message_end 이벤트 처리 (스트림 종료)
+            else if (payload.event === 'message_end') {
+              return; // 스트림 완료
+            }
+            
+          } catch (parseError) {
+            // JSON 파싱 실패는 무시
+          }
+        }
+      }
+      
+    } catch (streamError) {
+      throw streamError;
+    }
+  };
+
   // 메시지 전송 함수
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -160,8 +266,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     setIsStreaming(false);
     setShowLoadingMsg(true); // 로딩 메시지 박스 표시
     setReplyingTo(null); // 꼬리질문 상태 초기화
-    
-    console.log("대화 전송 - conversationId:", misoConversationId);
 
     try {
       // API에 보낼 메시지 생성
@@ -205,91 +309,45 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // 스트림 처리
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      let fullText = "";
-      let assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "",
-        createdAt: new Date(),
-      };
-
-      // 메시지 추가 및 스트리밍 시작
-      setShowLoadingMsg(false); // 로딩 메시지 박스 숨김
-      setChatMessages(prev => [...prev, assistantMessage]);
-      setIsStreaming(true);
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-
-        if (value) {
-          const chunkText = decoder.decode(value, { stream: true });
-          const lines = chunkText.split("\n").filter(line => line.trim() !== "");
-
-          for (const line of lines) {
-            // 데이터 파싱
-            if (line.startsWith("0:")) {
-              // 텍스트 응답
-              const textContent = JSON.parse(line.slice(2));
-              // 전체 응답 업데이트
-              fullText += textContent;
-              
-              // UI 업데이트: 응답 메시지 내용 업데이트 (최적화)
-              requestAnimationFrame(() => {
-                setChatMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = {
-                    ...updated[updated.length - 1],
-                    content: fullText,
-                  };
-                  return updated;
-                });
-              });
-            } else if (line.startsWith("2:")) {
-              // 데이터 응답
-              try {
-                const dataArray = JSON.parse(line.slice(2));
-                if (Array.isArray(dataArray)) {
-                  dataArray.forEach(item => {
-                    if (item && typeof item === "object" && "misoConversationId" in item) {
-                      const newConvId = item.misoConversationId;
-                      console.log("MISO 대화 ID 수신:", newConvId);
-                      setMisoConversationId(newConvId);
-                    }
-                  });
-                }
-              } catch (e) {
-                console.error("데이터 파싱 오류:", e);
-              }
-            }
-          }
-        }
-      }
-      
-      scrollToBottom();
+      // MISO 스트리밍 처리
+      await processMisoStreaming(response);
 
     } catch (error) {
-      console.error("API 요청 오류:", error);
-      setShowLoadingMsg(false); // 오류 발생 시 로딩 메시지 박스 숨김
-      // 오류 메시지 UI에 표시
-      setChatMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다.",
-        createdAt: new Date(),
-      }]);
+      setShowLoadingMsg(false);
+      
+      // 기존 어시스턴트 메시지가 있다면 오류 메시지로 업데이트
+      setChatMessages(prev => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        
+        if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && !updated[lastIndex].content) {
+          // 빈 어시스턴트 메시지를 오류 메시지로 교체
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
+          };
+        } else {
+          // 새 오류 메시지 추가
+          updated.push({
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
+            createdAt: new Date(),
+          });
+        }
+        
+        return updated;
+      });
     } finally {
       setLoading(false);
       setIsStreaming(false);
       setUserInput("");
-      // 응답 완료 후 입력창으로 포커스 이동
+      
+      // 응답 완료 후 스크롤 및 포커스
       setTimeout(() => {
+        scrollToBottom();
         focusInput();
-      }, 100);
+      }, 200);
     }
   };
 
@@ -299,12 +357,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     }
   }, [chatMessages, scrollToBottom]);
 
-  // 대화 ID 변경 시 로그 출력 (디버깅용)
-  useEffect(() => {
-    if (misoConversationId) {
-      console.log("대화 ID 상태 업데이트됨:", misoConversationId);
-    }
-  }, [misoConversationId]);
 
   // 이전 메시지 찾기 함수
   const getReplySourceMessage = useCallback((messageId: string) => {
@@ -532,6 +584,28 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             transform: rotate(360deg);
           }
         }
+        
+        .typing-content {
+          position: relative;
+          display: inline;
+        }
+        
+        .typing-cursor::after {
+          content: '|';
+          animation: blink 1s infinite;
+          color: #6366f1;
+          font-weight: normal;
+          margin-left: 1px;
+        }
+        
+        @keyframes blink {
+          0%, 50% {
+            opacity: 1;
+          }
+          51%, 100% {
+            opacity: 0;
+          }
+        }
       `}</style>
       
       <div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-zinc-50 dark:bg-zinc-900 custom-scrollbar">
@@ -590,7 +664,12 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                         </div>
                       )}
                       
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        <span className="typing-content">{message.content}</span>
+                        {isStreaming && message.id === chatMessages[chatMessages.length - 1].id && message.role === "assistant" && (
+                          <span className="typing-cursor"></span>
+                        )}
+                      </p>
                       <div className="mt-1.5 flex justify-end items-center gap-1.5">
                         <p className={`text-[10px] ${message.role === "user" ? "text-indigo-500 dark:text-indigo-300/80" : "text-zinc-500 dark:text-zinc-400"}`}>
                           {isClient && message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ''}

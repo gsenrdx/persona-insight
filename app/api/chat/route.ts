@@ -1,47 +1,27 @@
-import { NextRequest } from 'next/server'
-import { createDataStreamResponse } from 'ai'
-// Edge Runtime – crypto.randomUUID() 지원
+import { NextRequest, NextResponse } from 'next/server'
+
 export const runtime = 'edge'
 export const maxDuration = 30
 
-interface UpstreamLine {
-  /** 서버가 보내는 이벤트 타입 */
-  event?: 'agent_message'
-  /** 누적 전체 답변 스냅샷 */
-  answer?: string
-  /** 대화 식별자 */
-  conversation_id?: string
-  /** 메시지 식별자 */
-  message_id?: string
-  /** 기타 필드들 무시 */
-  [key: string]: unknown
-}
-
-/* ---------- 메인 POST 핸들러 ---------- */
 export async function POST(req: NextRequest) {
   const { messages, personaData, conversationId: clientConversationId } = await req.json()
 
-  /* 1. 입력 검증 */
   if (!personaData) {
     return new Response('페르소나 데이터가 제공되지 않았습니다.', { status: 400 })
   }
+
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
-  // 전달되는 값 콘솔 출력 (디버깅용)
   console.log('[MISO API 요청] query:', lastUser)
-  console.log('[MISO API 요청] inputs:', personaData)
   console.log('[MISO API 요청] conversationId:', clientConversationId)
 
-  const cleanInputs = { ...personaData }
-  delete cleanInputs.keywords
-
-  /* 2. 업스트림 요청 — 외부 LLM/에이전트 API */
+  // MISO API 호출
   const upstream = await fetch(
     'https://api.holdings.miso.gs/ext/v1/chat',
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,   // 테스트용
+        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -63,74 +43,93 @@ export async function POST(req: NextRequest) {
     }
   )
 
-  /* 오류 처리 */
   if (!upstream.ok || !upstream.body) {
     const err = await upstream.text().catch(() => '')
     console.error('⛔ Upstream error', upstream.status, err)
     return new Response('외부 API 오류', { status: 500 })
   }
 
-  /* 3. Vercel AI Data-Stream 응답 생성 */
-  return createDataStreamResponse({
-    async execute(stream) {
-      let misoConversationId: string | null = null;
-
-      const messageId = crypto.randomUUID()
-      stream.write(`f:${JSON.stringify({ messageId })}
-`)
-
-      /* (2) 업스트림 SSE → Data-Stream 변환 */
+  // MISO API 가이드에 따른 직접 스트림 전달
+  const encoder = new TextEncoder()
+  const stream = new TransformStream()
+  const writer = stream.writable.getWriter()
+  
+  // 백그라운드에서 MISO API 스트림 처리
+  ;(async () => {
+    try {
       const reader = upstream.body!.getReader()
-      const td = new TextDecoder()
-      let buf = ''
-
+      const decoder = new TextDecoder()
+      let buffer = ''
+      
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        buf += td.decode(value, { stream: true })
-
-        /* 업스트림은 \n 단위 SSE 라인 — 하나씩 파싱 */
-        let idx: number
-        while ((idx = buf.indexOf('\n')) !== -1) {
-          const raw = buf.slice(0, idx).trim()
-          buf = buf.slice(idx + 1)
-
-          if (!raw) continue
-          const line = raw.startsWith('data: ') ? raw.slice(6) : raw
-
-          try {
-            const payload = JSON.parse(line) as UpstreamLine
-            if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
-              const delta = payload.answer;
-              if (delta) { // 빈 문자열이 아닌 경우에만 전송
-                stream.write(`0:${JSON.stringify(delta)}
-`)   // text 파트
-              }
+        
+        // MISO API 청크 디코딩
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
+        
+        // 줄 단위로 파싱하여 message_replace 이벤트 필터링
+        let lineEnd
+        while ((lineEnd = buffer.indexOf('\n')) !== -1) {
+          const rawLine = buffer.slice(0, lineEnd + 1) // 개행 문자 포함
+          buffer = buffer.slice(lineEnd + 1)
+          
+          if (!rawLine.trim()) {
+            // 빈 줄은 그대로 전달 (SSE 메시지 구분자)
+            await writer.write(encoder.encode(rawLine))
+            continue
+          }
+          
+          // data: 접두사가 있는 줄만 확인
+          if (rawLine.startsWith('data: ')) {
+            const dataContent = rawLine.slice(6).trim()
+            
+            if (dataContent === '[DONE]') {
+              // DONE 메시지는 그대로 전달
+              await writer.write(encoder.encode(rawLine))
+              continue
             }
             
-            // MISO의 conversation_id 처리 - Vercel AI SDK 데이터 형식 사용 (배열로 감싸야 함)
-            if (payload.conversation_id && !misoConversationId && !clientConversationId) {
-              misoConversationId = payload.conversation_id;
-              // 표준 데이터 스트림 형식 '2:' 사용 (data) - 배열 형태로 전송
-              stream.write(`2:${JSON.stringify([{ misoConversationId: misoConversationId }])}
-`);
-              console.log('[MISO API 응답] New MISO Conversation ID:', misoConversationId);
+            try {
+              const payload = JSON.parse(dataContent)
+              
+              // message_replace 이벤트는 필터링하여 전달하지 않음
+              if (payload.event === 'message_replace') {
+                continue // 이 이벤트는 클라이언트로 전달하지 않음
+              }
+              
+              // 다른 이벤트는 그대로 전달
+              await writer.write(encoder.encode(rawLine))
+              
+            } catch (parseError) {
+              // JSON 파싱 실패 시 원본 그대로 전달
+              await writer.write(encoder.encode(rawLine))
             }
-          } catch (err) {
-            console.error('⚠️ JSON parse error', err, line)
+          } else {
+            // data: 가 아닌 줄은 그대로 전달 (event:, id: 등)
+            await writer.write(encoder.encode(rawLine))
           }
         }
       }
-
-      /* (3) finish_message 파트 전송 후 스트림 종료 (Vercel AI SDK Data-Stream Protocol) */
-      stream.write(`d:${JSON.stringify({ finishReason: 'stop' })}
-`)
-    },
-
-    /* 4. 스트림-레벨 오류 메시지 생성 */
-    onError(error) {
-      console.error('⛔ Data-stream error', error)
-      return '서버 내부 오류가 발생했습니다.'
+      
+      // 남은 버퍼 내용 처리
+      if (buffer) {
+        await writer.write(encoder.encode(buffer))
+      }
+      
+    } catch (error) {
+      console.error('스트리밍 처리 오류:', error)
+    } finally {
+      await writer.close()
     }
+  })()
+
+  return new NextResponse(stream.readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
   })
 }
