@@ -51,9 +51,11 @@ export default function AuthConfirmPage() {
       <div className="w-full max-w-md">
         <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-8 shadow-lg text-center">
           {/* 로고 */}
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <div className="w-8 h-8 bg-white rounded-xl"></div>
-          </div>
+          <img 
+            src="/logo.svg" 
+            alt="Persona Insight Logo" 
+            className="w-16 h-16 mx-auto mb-6 drop-shadow-lg"
+          />
 
           {status === 'loading' && (
             <>

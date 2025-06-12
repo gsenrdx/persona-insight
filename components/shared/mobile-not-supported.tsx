@@ -61,9 +61,11 @@ export default function MobileNotSupported() {
       <div className="text-center space-y-8">
         {/* 로고 */}
         <div className="space-y-4">
-          <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto">
-            <div className="w-8 h-8 bg-white rounded-xl"></div>
-          </div>
+          <img 
+            src="/logo.svg" 
+            alt="Persona Insight Logo" 
+            className="w-16 h-16 mx-auto"
+          />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
             Persona Insight
           </h1>

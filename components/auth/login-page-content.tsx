@@ -254,9 +254,11 @@ export default function LoginPageContent() {
           {/* 로고 및 브랜딩 */}
           <div className="text-center mb-10">
             {/* Persona Insight Logo */}
-            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <div className="w-10 h-10 bg-white rounded-2xl"></div>
-            </div>
+            <img 
+              src="/logo.svg" 
+              alt="Persona Insight Logo" 
+              className="w-20 h-20 mx-auto mb-6 drop-shadow-lg"
+            />
             
             <div className="mb-3">
               <h1 className="text-2xl font-bold text-gray-900 mb-1">

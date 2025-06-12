@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: 'Persona Insight | MISO',
   description: 'Persona Insight는 고객의 니즈와 행동 패턴을 더 깊이 이해하고 대화할 수 있는 서비스입니다',
   generator: 'Next.js',
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo.svg',
+  },
 }
 
 export default function RootLayout({
