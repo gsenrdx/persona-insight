@@ -394,7 +394,7 @@ export default function LoginPageContent() {
                     회원가입
                   </DialogTitle>
                   <p className="text-gray-500 text-sm">
-                    회사와 개인정보를 입력해주세요
+                    인증 메일이 발송되었어요!
                   </p>
                 </div>
               </DialogHeader>
