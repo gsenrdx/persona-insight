@@ -25,6 +25,10 @@ export async function GET(request: Request) {
         persona_title,
         persona_description,
         thumbnail,
+        persona_style,
+        painpoints,
+        needs,
+        insight_quote,
         created_at
       `)
       .eq('company_id', company_id)

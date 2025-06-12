@@ -193,10 +193,22 @@ export default function ChatPage({ params }: ChatPageProps) {
               {persona.persona_character && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    프로필
+                    "본인에 대해서 설명해주세요"
                   </h3>
                   <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
                     {persona.persona_character}
+                  </div>
+                </div>
+              )}
+
+              {/* 페인 포인트 - 토스 스타일 적용 */}
+              {persona.painPoint && (
+                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
+                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                    "고민이 있으신가요?"
+                  </h3>
+                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                    {persona.painPoint}
                   </div>
                 </div>
               )}
@@ -205,7 +217,7 @@ export default function ChatPage({ params }: ChatPageProps) {
               {(persona.insight || persona.hiddenNeeds) && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    핵심 니즈
+                    "어떤게 필요하세요?"
                   </h3>
                   <div className="space-y-3">
                     {persona.insight && (
@@ -218,18 +230,6 @@ export default function ChatPage({ params }: ChatPageProps) {
                         <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.hiddenNeeds}
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* 페인 포인트 - 토스 스타일 적용 */}
-              {persona.painPoint && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    어려움
-                  </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
-                    {persona.painPoint}
                   </div>
                 </div>
               )}
