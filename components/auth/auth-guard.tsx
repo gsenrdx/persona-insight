@@ -16,7 +16,7 @@ function AuthLoadingScreen() {
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { user, profile, loading, error, refreshProfile } = useAuth()
+  const { user, loading, error, refreshProfile } = useAuth()
 
   // 로딩 중일 때
   if (loading) {

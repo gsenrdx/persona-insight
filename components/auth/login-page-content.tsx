@@ -187,16 +187,9 @@ export default function LoginPageContent() {
     }
   }
 
-  // 이미 로그인된 경우만 처리 (로딩 중에는 로그인 폼을 보여줌)
+  // 이미 로그인된 경우 빈 화면만 보여주고 리다이렉트는 useEffect에서 처리
   if (!loading && user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="text-center">
-          <div className="h-8 w-8 border-2 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">메인 페이지로 이동 중...</p>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen bg-background" />
   }
 
   return (
