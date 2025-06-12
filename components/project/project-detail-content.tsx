@@ -165,7 +165,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         {/* Sidebar */}
         <aside 
           className="w-64 bg-white border-r border-slate-200 min-h-[calc(100vh-73px)]"
-          style={{ pointerEvents: 'auto', zIndex: 100, position: 'relative' }}
+          style={{ pointerEvents: 'auto', zIndex: 10, position: 'relative' }}
         >
           <div className="p-4 border-b border-slate-200">
             <div className="flex items-center gap-4">
@@ -182,7 +182,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
           </div>
           <nav 
             className="p-4"
-            style={{ pointerEvents: 'auto', zIndex: 101, position: 'relative' }}
+            style={{ pointerEvents: 'auto', zIndex: 11, position: 'relative' }}
           >
             <div className="space-y-1">
               <NavLink 

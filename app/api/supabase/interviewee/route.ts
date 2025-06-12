@@ -23,7 +23,8 @@ export async function GET(request: Request) {
           id,
           persona_type,
           persona_title,
-          persona_description
+          persona_description,
+          persona_reflected
         )
       `)
       .eq('company_id', company_id)

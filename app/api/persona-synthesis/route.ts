@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
   try {
-    const { selectedInterviewee, personaType, projectId } = await req.json();
+    const { selectedInterviewee, personaType, projectId, personaId } = await req.json();
     
     if (!selectedInterviewee || !personaType) {
       return NextResponse.json({ 
@@ -11,13 +11,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!projectId) {
-      return NextResponse.json({ 
-        error: 'projectId가 필요합니다.' 
-      }, { status: 400 });
-    }
-
-    console.log('[페르소나 합성 API] 요청 데이터:', { selectedInterviewee, personaType, projectId });
+    console.log('[페르소나 합성 API] 요청 데이터:', { selectedInterviewee, personaType, projectId, personaId });
 
     // Authorization 헤더에서 사용자 정보 추출
     const authorization = req.headers.get('authorization');
@@ -67,24 +61,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '인증 처리 중 오류가 발생했습니다.' }, { status: 401 });
     }
 
-    // personas 테이블에서 해당 persona_type의 데이터 조회
-    const { data: personas, error: personasError } = await supabase
-      .from('personas')
-      .select(`
-        id,
-        persona_type,
-        persona_description,
-        persona_summary,
-        persona_style,
-        painpoints,
-        needs,
-        insight,
-        insight_quote,
-        thumbnail
-      `)
-      .eq('company_id', companyId)
-      .eq('persona_type', personaType)
-      .eq('project_id', projectId);
+    // personas 테이블에서 해당 persona_id나 persona_type의 데이터 조회
+    let personas, personasError;
+    
+    if (personaId) {
+      // personaId가 있으면 해당 페르소나 직접 조회
+      const { data, error } = await supabase
+        .from('personas')
+        .select(`
+          id,
+          persona_type,
+          persona_description,
+          persona_summary,
+          persona_style,
+          painpoints,
+          needs,
+          insight,
+          insight_quote,
+          thumbnail
+        `)
+        .eq('id', personaId)
+        .eq('company_id', companyId);
+      
+      personas = data;
+      personasError = error;
+    } else if (projectId) {
+      // projectId가 있으면 기존 로직 사용
+      const { data, error } = await supabase
+        .from('personas')
+        .select(`
+          id,
+          persona_type,
+          persona_description,
+          persona_summary,
+          persona_style,
+          painpoints,
+          needs,
+          insight,
+          insight_quote,
+          thumbnail
+        `)
+        .eq('company_id', companyId)
+        .eq('persona_type', personaType)
+        .eq('project_id', projectId);
+      
+      personas = data;
+      personasError = error;
+    } else {
+      // company 레벨에서 persona_type으로 조회
+      const { data, error } = await supabase
+        .from('personas')
+        .select(`
+          id,
+          persona_type,
+          persona_description,
+          persona_summary,
+          persona_style,
+          painpoints,
+          needs,
+          insight,
+          insight_quote,
+          thumbnail
+        `)
+        .eq('company_id', companyId)
+        .eq('persona_type', personaType)
+        .is('project_id', null);
+      
+      personas = data;
+      personasError = error;
+    }
 
     if (personasError) {
       console.error('페르소나 데이터 조회 실패:', personasError);
@@ -277,10 +322,11 @@ export async function POST(req: NextRequest) {
 
           const { data: updateResult, error: updateError } = await supabase
             .from('personas')
-            .update(updateData)
-            .eq('company_id', companyId)
-            .eq('persona_type', personaType)
-            .eq('project_id', projectId)
+            .update({
+              ...updateData,
+              persona_reflected: true
+            })
+            .eq('id', selectedPersona.id)
             .select();
 
           if (updateError) {

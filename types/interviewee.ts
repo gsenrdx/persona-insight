@@ -29,6 +29,7 @@ export interface PersonaInfo {
   persona_type: string
   persona_title: string | null
   persona_description: string
+  persona_reflected?: boolean
 }
 
 // 프로필 정보 타입

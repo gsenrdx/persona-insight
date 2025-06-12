@@ -284,8 +284,27 @@ export const PersonaCriteriaModal = ({
     }
   }
 
+  const [personaDeleteConfirm, setPersonaDeleteConfirm] = useState<{
+    show: boolean
+    personaId: string
+    personaTitle: string
+  }>({ show: false, personaId: '', personaTitle: '' })
+
   const handleDeletePersona = (id: string) => {
-    setPersonaTypes(personaTypes.filter(p => p.id !== id))
+    const persona = personaTypes.find(p => p.id === id)
+    if (persona) {
+      setPersonaDeleteConfirm({
+        show: true,
+        personaId: id,
+        personaTitle: persona.title || persona.personaType || '페르소나'
+      })
+    }
+  }
+
+  const confirmDeletePersona = () => {
+    const { personaId } = personaDeleteConfirm
+    setPersonaTypes(personaTypes.filter(p => p.id !== personaId))
+    setPersonaDeleteConfirm({ show: false, personaId: '', personaTitle: '' })
   }
 
   const handleSegmentUpdate = (axis: 'x' | 'y', index: number, data: Partial<Segment>) => {
@@ -315,38 +334,82 @@ export const PersonaCriteriaModal = ({
       return
     }
 
-    // persona_matrix를 객체로 변환
-    const personaMatrix = personaTypes.reduce((acc, persona) => {
-      acc[persona.id] = persona
-      return acc
-    }, {} as Record<string, PersonaMatrixItem>)
+    try {
+      // 1. 먼저 페르소나 분류 기준 저장
+      const personaMatrix = personaTypes.reduce((acc, persona) => {
+        acc[persona.id] = persona
+        return acc
+      }, {} as Record<string, PersonaMatrixItem>)
 
-    const saveData = {
-      project_id: projectId,
-      company_id: profile.company_id,
-      x_axis: xAxis,
-      y_axis: yAxis,
-      unclassified_cells: unclassifiedCells,
-      persona_matrix: personaMatrix,
-      output_config: outputConfig,
-      scoring_guidelines: scoringGuidelines,
+      const saveData = {
+        project_id: projectId,
+        company_id: profile.company_id,
+        x_axis: xAxis,
+        y_axis: yAxis,
+        unclassified_cells: unclassifiedCells,
+        persona_matrix: personaMatrix,
+        output_config: outputConfig,
+        scoring_guidelines: scoringGuidelines,
+      }
+
+      if (existingConfig) {
+        const updateData: UpdatePersonaCriteriaData = {
+          ...saveData,
+          id: existingConfig.id,
+          user_id: profile.id,
+        }
+        await updateMutation.mutateAsync(updateData)
+      } else {
+        const createData: CreatePersonaCriteriaData = {
+          ...saveData,
+          created_by: profile.id,
+        }
+        await createMutation.mutateAsync(createData)
+      }
+
+      // 2. personas 테이블 동기화
+      await syncPersonasTable()
+      
+    } catch (error) {
+      console.error('페르소나 분류 기준 저장 오류:', error)
+      // 에러는 mutation에서 처리됨
     }
+  }
 
-    if (existingConfig) {
-      // 업데이트
-      const updateData: UpdatePersonaCriteriaData = {
-        ...saveData,
-        id: existingConfig.id,
-        user_id: profile.id,
+  const syncPersonasTable = async () => {
+    try {
+      const response = await fetch('/api/supabase/persona/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_id: profile?.company_id,
+          project_id: projectId,
+          personas: personaTypes.map(p => ({
+            persona_type: p.personaType,
+            persona_title: p.title,
+            persona_description: p.description,
+            thumbnail: (p as any).thumbnail || null,
+            matrix_position: {
+              xIndex: p.xIndex,
+              yIndex: p.yIndex,
+              coordinate: generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
+                .find(c => c.xIndex === p.xIndex && c.yIndex === p.yIndex)?.label || ''
+            }
+          }))
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '페르소나 동기화에 실패했습니다')
       }
-      await updateMutation.mutateAsync(updateData)
-    } else {
-      // 생성
-      const createData: CreatePersonaCriteriaData = {
-        ...saveData,
-        created_by: profile.id,
-      }
-      await createMutation.mutateAsync(createData)
+
+      console.log('페르소나 테이블 동기화 완료')
+    } catch (error) {
+      console.error('페르소나 테이블 동기화 오류:', error)
+      toast.error('페르소나 동기화 중 오류가 발생했습니다')
     }
   }
 
@@ -846,6 +909,40 @@ export const PersonaCriteriaModal = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 페르소나 삭제 확인 다이얼로그 */}
+        <AlertDialog open={personaDeleteConfirm.show} onOpenChange={(open) => !open && setPersonaDeleteConfirm({ show: false, personaId: '', personaTitle: '' })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                페르소나 삭제 확인
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                <span className="font-medium">{personaDeleteConfirm.personaTitle}</span> 페르소나를 삭제하시겠습니까?
+                <br />
+                <br />
+                <span className="text-red-600 font-medium">⚠️ 경고:</span>
+                <br />
+                삭제하면 다음 데이터가 영구적으로 손실됩니다:
+                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                  <li>누적된 페르소나 분석 데이터</li>
+                  <li>연결된 인터뷰와의 링크</li>
+                  <li>페르소나 반영 이력</li>
+                </ul>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeletePersona}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </>
     )
   }

@@ -34,24 +34,29 @@ export async function fetchPersonas(company_id?: string, project_id?: string): P
       throw new Error("Invalid persona data format received from API")
     }
 
-    // Supabase 데이터를 UI 컴포넌트 형식으로 변환
-    return result.data.map((persona: PersonaData) => {
-      const typeInfo = getPersonaTypeInfo(persona.persona_type)
-      
-      return {
-        id: persona.id,
-        name: persona.persona_title || persona.persona_description, // persona_title 우선, 없으면 persona_description
-        image: persona.thumbnail || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
-        keywords: [], // 키워드 비우기
-        insight: persona.insight_quote,
-        summary: persona.persona_description, // persona_description을 summary로 사용
-        painPoint: persona.painpoints,
-        hiddenNeeds: persona.needs,
-        persona_character: persona.persona_style,
-        persona_type: persona.persona_type,
-        persona_description: persona.persona_description
-      }
-    })
+    // Supabase 데이터를 UI 컴포넌트 형식으로 변환 후 persona_type으로 정렬
+    return result.data
+      .map((persona: PersonaData) => {
+        const typeInfo = getPersonaTypeInfo(persona.persona_type)
+        
+        return {
+          id: persona.id,
+          name: persona.persona_title || persona.persona_description, // persona_title 우선, 없으면 persona_description
+          image: persona.thumbnail || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
+          keywords: [], // 키워드 비우기
+          insight: persona.insight_quote,
+          summary: persona.persona_description, // persona_description을 summary로 사용
+          painPoint: persona.painpoints,
+          hiddenNeeds: persona.needs,
+          persona_character: persona.persona_style,
+          persona_type: persona.persona_type,
+          persona_description: persona.persona_description
+        }
+      })
+      .sort((a, b) => {
+        // persona_type으로 알파벳 순 정렬 (A, B, C, D...)
+        return a.persona_type.localeCompare(b.persona_type)
+      })
   } catch (error) {
     console.error("Error fetching personas:", error)
     throw error

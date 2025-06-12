@@ -19,13 +19,23 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('personas')
-      .select('*')
-      .eq('company_id', company_id) // 회사 필터링 추가
-      .order('persona_type', { ascending: true })
+      .select(`
+        id,
+        persona_type,
+        persona_title,
+        persona_description,
+        persona_reflected,
+        thumbnail,
+        created_at
+      `)
+      .eq('company_id', company_id)
+      .order('created_at', { ascending: false })
 
-    // 프로젝트 필터링 추가
+    // 프로젝트 필터링 추가 (project_id가 있으면 해당 프로젝트, 없으면 회사 레벨)
     if (project_id) {
       query = query.eq('project_id', project_id)
+    } else {
+      query = query.is('project_id', null)
     }
 
     // 특정 타입 필터링

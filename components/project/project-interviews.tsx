@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Play, FileText, Calendar, MoreHorizontal, Trash2, Plus, Eye, User } from "lucide-react"
+import { Play, FileText, Calendar, MoreHorizontal, Trash2, Plus, User, Sparkles } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { IntervieweeData } from '@/types/interviewee'
 import InterviewDetail from './interview-detail'
+import { supabase } from '@/lib/supabase'
+import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
 
 interface Project {
   id: string
@@ -40,6 +42,9 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
   const [selectedInterviews, setSelectedInterviews] = useState<string[]>([])
   const [selectedInterview, setSelectedInterview] = useState<IntervieweeData | null>(null)
   const [criteriaConfig, setCriteriaConfig] = useState<any>(null)
+  const [personaSynthesizing, setPersonaSynthesizing] = useState<string[]>([])
+  const [showPersonaModal, setShowPersonaModal] = useState(false)
+  const [selectedInterviewForPersona, setSelectedInterviewForPersona] = useState<IntervieweeData | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -155,6 +160,87 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     }
   }
 
+  const handleOpenPersonaModal = (interview: IntervieweeData) => {
+    setSelectedInterviewForPersona(interview)
+    setShowPersonaModal(true)
+  }
+
+  const handleClosePersonaModal = () => {
+    setShowPersonaModal(false)
+    setSelectedInterviewForPersona(null)
+  }
+
+  const handleConfirmPersona = async (selectedPersonaId: string) => {
+    if (!selectedInterviewForPersona) return
+    
+    try {
+      setPersonaSynthesizing(prev => [...prev, selectedInterviewForPersona.id])
+
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('인증 정보를 찾을 수 없습니다. 다시 로그인해주세요.')
+      }
+
+      // 먼저 인터뷰의 persona_id 업데이트
+      if (selectedPersonaId !== selectedInterviewForPersona.persona_id) {
+        const { error: updateError } = await supabase
+          .from('interviewees')
+          .update({ persona_id: selectedPersonaId })
+          .eq('id', selectedInterviewForPersona.id)
+
+        if (updateError) {
+          throw new Error('인터뷰 페르소나 배정 업데이트에 실패했습니다')
+        }
+      }
+
+      const selectedInterviewee = typeof selectedInterviewForPersona === 'string' 
+        ? selectedInterviewForPersona 
+        : JSON.stringify(selectedInterviewForPersona)
+
+      const response = await fetch('/api/persona-synthesis', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          selectedInterviewee,
+          personaType: selectedInterviewForPersona.personas?.persona_type || selectedInterviewForPersona.user_type,
+          personaId: selectedPersonaId,
+          projectId: project?.id
+        })
+      })
+
+      if (!response.ok) {
+        let errorMessage = '페르소나 반영 중 오류가 발생했습니다'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (parseError) {
+          const errorText = await response.text()
+          errorMessage = errorText || errorMessage
+        }
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      
+      // 인터뷰 목록 새로고침
+      await fetchInterviews()
+      
+      // 모달 닫기
+      handleClosePersonaModal()
+      
+      alert('페르소나 반영이 완료되었습니다')
+    } catch (error: any) {
+      console.error('페르소나 반영 오류:', error)
+      alert(error.message || '페르소나 반영 중 오류가 발생했습니다')
+    } finally {
+      setPersonaSynthesizing(prev => prev.filter(id => id !== selectedInterviewForPersona.id))
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -261,16 +347,6 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          handleViewDetail(interview)
-                        }}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          자세히 보기
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                          수정
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600"
                           onClick={(e) => {
@@ -314,12 +390,19 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                       <Badge 
                         variant={interview.interviewee_summary ? "secondary" : "outline"} 
                         className={`text-xs ${
-                          interview.interviewee_summary 
+                          interview.personas?.persona_reflected 
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                            : interview.interviewee_summary 
                             ? 'bg-green-100 text-green-700 hover:bg-green-100' 
                             : 'bg-amber-50 text-amber-700 hover:bg-amber-50'
                         }`}
                       >
-                        {interview.interviewee_summary ? '분석 완료' : '분석 대기'}
+                        {interview.personas?.persona_reflected 
+                          ? '페르소나 반영 완료'
+                          : interview.interviewee_summary 
+                          ? '분석 완료' 
+                          : '분석 대기'
+                        }
                       </Badge>
                     </div>
                     
@@ -336,11 +419,36 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
                     )}
                   </div>
                   
-                  {interview.personas && (
+                  {interview.personas?.persona_reflected ? (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 text-xs w-full justify-center">
                         {interview.personas.persona_title || interview.personas.persona_type}
                       </Badge>
+                    </div>
+                  ) : interview.interviewee_summary && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-7 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-pink-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenPersonaModal(interview)
+                        }}
+                        disabled={personaSynthesizing.includes(interview.id)}
+                      >
+                        {personaSynthesizing.includes(interview.id) ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin mr-1.5" />
+                            반영 중...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3 mr-1.5" />
+                            페르소나 반영하기
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -376,6 +484,15 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* 페르소나 선택 모달 */}
+      <PersonaSelectionModal
+        isOpen={showPersonaModal}
+        onClose={handleClosePersonaModal}
+        onConfirm={handleConfirmPersona}
+        recommendedPersonaId={selectedInterviewForPersona?.persona_id}
+        isLoading={selectedInterviewForPersona ? personaSynthesizing.includes(selectedInterviewForPersona.id) : false}
+      />
     </div>
   )
 } 
