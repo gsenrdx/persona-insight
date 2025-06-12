@@ -11,20 +11,7 @@ interface AuthGuardProps {
 
 function AuthLoadingScreen() {
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
-      {/* 배경 장식 요소 */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
-      <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
-      <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
-      
-      <div className="flex items-center justify-center min-h-screen relative z-10">
-        <div className="text-center">
-          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">인증 상태를 확인하고 있어요...</p>
-          <p className="text-xs text-muted-foreground/60 mt-2">잠시만 기다려주세요</p>
-        </div>
-      </div>
-    </div>
+    <div className="min-h-screen bg-background" />
   )
 }
 
@@ -82,7 +69,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   // 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
   if (!user) {
-    console.log('AuthGuard: No user, redirecting to login')
     window.location.href = '/login'
     return <AuthLoadingScreen />
   }

@@ -187,19 +187,8 @@ export default function LoginPageContent() {
     }
   }
 
-  // 로딩 중이거나 이미 로그인된 경우 처리
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center">
-          <div className="h-8 w-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">인증 상태를 확인하고 있어요...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (user) {
+  // 이미 로그인된 경우만 처리 (로딩 중에는 로그인 폼을 보여줌)
+  if (!loading && user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="text-center">
