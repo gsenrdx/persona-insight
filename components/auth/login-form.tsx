@@ -78,10 +78,21 @@ export default function LoginForm({ onSwitchToSignup, onClose }: LoginFormProps)
   return (
     <div className="w-full max-w-md mx-auto">
       {/* 헤더 */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="mb-8 text-center">
+        {/* Persona Insight Logo */}
+        <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-8 h-8 bg-white rounded-xl"></div>
+        </div>
+        
+        <div className="mb-2">
+          <h1 className="text-lg font-semibold text-gray-900 mb-1">
+            Persona Insight <span className="text-xs text-gray-400 font-medium ml-2">by MISO</span>
+          </h1>
+        </div>
+        
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
           로그인
-        </h1>
+        </h2>
         <p className="text-gray-600">
           이메일과 비밀번호로 로그인해주세요
         </p>

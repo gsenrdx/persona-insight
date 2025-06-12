@@ -5,6 +5,7 @@ import { ChatInterface } from "@/components/chat"
 import { fetchPersonaById, fetchPersonas } from "@/lib/persona-data"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { ModeToggle } from "@/components/shared"
 import { PersonaSwitcher } from "@/components/persona"
 import { Badge } from "@/components/ui/badge"
@@ -60,6 +61,8 @@ export default function ChatPage({ params }: ChatPageProps) {
   }, [])
 
   useEffect(() => {
+    let isSubscribed = true;
+    
     const loadData = async () => {
       try {
         // 프로필이 아직 로드되지 않았으면 대기
@@ -67,8 +70,14 @@ export default function ChatPage({ params }: ChatPageProps) {
           return;
         }
 
-        const personaData = await fetchPersonaById(personaId, profile.company_id) as PersonaForPage | null
+        // 전체 페르소나를 한 번만 가져오기
         const allPersonasData = await fetchPersonas(profile.company_id) as PersonaForPage[]
+        
+        // 컴포넌트가 언마운트되었으면 상태 업데이트 하지 않음
+        if (!isSubscribed) return;
+        
+        // 가져온 데이터에서 현재 페르소나 찾기
+        const personaData = allPersonasData.find(p => p.id === personaId) || null
         
         if (!personaData) {
           notFound()
@@ -78,12 +87,18 @@ export default function ChatPage({ params }: ChatPageProps) {
         setAllPersonas(allPersonasData)
         setLoading(false)
       } catch (error) {
-        console.error("데이터 로딩 중 오류 발생:", error)
-        notFound()
+        if (isSubscribed) {
+          console.error("데이터 로딩 중 오류 발생:", error)
+          notFound()
+        }
       }
     }
     
     loadData()
+    
+    return () => {
+      isSubscribed = false;
+    }
   }, [personaId, profile?.company_id])
   
   const toggleSidebar = () => {
@@ -176,11 +191,14 @@ export default function ChatPage({ params }: ChatPageProps) {
                 )}
               </div>
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 relative flex-shrink-0">
-                <img
+                <Image
                   src={persona.image || `/placeholder.svg?height=256&width=256&query=${encodeURIComponent(persona.name)}`}
                   alt={persona.name}
+                  width={96}
+                  height={96}
                   className="object-contain w-full h-full select-none drop-shadow-md"
-                  loading="eager"
+                  priority
+                  unoptimized={persona.image?.includes('supabase.co')}
                 />
               </div>
             </div>

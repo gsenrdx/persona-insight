@@ -15,6 +15,7 @@ import InterviewDetail from './interview-detail'
 import { supabase } from '@/lib/supabase'
 import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
 import { PersonaClassificationModal, AddInterviewModal } from '@/components/modal'
+import { toast } from 'sonner'
 
 interface Project {
   id: string
@@ -181,9 +182,9 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       setInterviews(prev => prev.filter(item => item.id !== interviewId))
       setSelectedInterview(null) // 상세보기도 닫기
       
-      alert('인터뷰가 삭제되었습니다')
+      toast.success('인터뷰가 삭제되었습니다')
     } catch (err) {
-      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다')
+      toast.error(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다')
     }
   }
 
@@ -259,10 +260,10 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       // 모달 닫기
       handleClosePersonaModal()
       
-      alert('페르소나 반영이 완료되었습니다')
+      toast.success('페르소나 반영이 완료되었습니다')
     } catch (error: any) {
       console.error('페르소나 반영 오류:', error)
-      alert(error.message || '페르소나 반영 중 오류가 발생했습니다')
+      toast.error(error.message || '페르소나 반영 중 오류가 발생했습니다')
     } finally {
       setPersonaSynthesizing(prev => prev.filter(id => id !== selectedInterviewForPersona.id))
     }

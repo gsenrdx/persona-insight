@@ -2,14 +2,15 @@
 
 import { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { useChat, type Message } from "ai/react"
+import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2 } from "lucide-react"
-import { Avatar } from "@/components/ui/avatar"
-import { AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { MindmapModal } from "@/components/mindmap"
+
+
 
 interface ChatInterfaceProps {
   personaId: string
@@ -101,6 +102,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     ]);
   }, [personaData.name]);
 
+
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
@@ -133,6 +135,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const cancelReply = useCallback(() => {
     setReplyingTo(null);
   }, []);
+
 
 
   // MISO 스트리밍 처리 함수
@@ -459,19 +462,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     <div className="flex flex-col h-full relative">
       {/* CSS 정의 */}
       <style jsx global>{`
-        .animate-pulse-subtle {
-          animation: pulse-subtle 2s infinite;
-        }
-        
-        @keyframes pulse-subtle {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.8;
-          }
-        }
-        
         .loading-dots {
           display: flex;
           align-items: center;
@@ -508,104 +498,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             transform: scale(1.2);
           }
         }
-        
-        .reply-chip {
-          animation: slide-in 0.3s ease-out;
-        }
-        
-        @keyframes slide-in {
-          from {
-            transform: translateY(-100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        
-        .tooltip-copied {
-          animation: fade-out 2s forwards;
-        }
-        
-        @keyframes fade-out {
-          0% { opacity: 1; }
-          70% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-        
-        .replied-to-badge {
-          animation: fade-in 0.3s ease-out;
-        }
-        
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        
-        .action-message:hover {
-          border-color: #818cf8;
-        }
-        
-        .action-message:hover + .message-actions {
-          opacity: 1;
-        }
-        
-        .action-message:hover + .message-actions .border-dashed {
-          border-color: #818cf8;
-        }
-        
-        .summary-fab {
-          transition: all 0.2s ease;
-        }
-        
-        .summary-fab:hover:not(.disabled) {
-          opacity: 0.9;
-        }
-        
-        .summary-fab.disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-        
-        .loading-spinner {
-          animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-        
-        .typing-content {
-          position: relative;
-          display: inline;
-        }
-        
-        .typing-cursor::after {
-          content: '|';
-          animation: blink 1s infinite;
-          color: #6366f1;
-          font-weight: normal;
-          margin-left: 1px;
-        }
-        
-        @keyframes blink {
-          0%, 50% {
-            opacity: 1;
-          }
-          51%, 100% {
-            opacity: 0;
-          }
-        }
       `}</style>
       
       <div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-zinc-50 dark:bg-zinc-900 custom-scrollbar">
@@ -630,12 +522,22 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                     `}
                   >
                     {message.role === "assistant" && (
-                      <Avatar className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden">
-                        <AvatarImage src={personaData.image} alt={personaData.name} />
-                        <AvatarFallback className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                          {personaData.name.substring(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
+                        {personaData.image ? (
+                          <Image
+                            src={personaData.image}
+                            alt={personaData.name}
+                            width={36}
+                            height={36}
+                            className="object-cover w-full h-full"
+                            unoptimized={personaData.image.includes('supabase.co')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                            {personaData.name.substring(0, 2)}
+                          </div>
+                        )}
+                      </div>
                     )}
                     
                     <div
@@ -645,16 +547,11 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                           ? "bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-sm dark:bg-indigo-900/20 dark:text-indigo-100 dark:border-indigo-800/40" 
                           : "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                         }
-                        ${isStreaming && message.id === chatMessages[chatMessages.length - 1].id && message.role === "assistant" 
-                          ? "animate-pulse-subtle" 
-                          : ""
-                        }
-                        ${message.role === "assistant" ? "action-message" : ""}
                       `}
                     >
                       {/* 꼬리질문 배지 */}
                       {sourceMessage && message.role === "user" && (
-                        <div className="replied-to-badge mb-2 text-xs text-indigo-500 dark:text-indigo-300 p-2 bg-indigo-50/70 dark:bg-indigo-900/20 rounded-md border border-indigo-100 dark:border-indigo-800/30">
+                        <div className="mb-2 text-xs text-indigo-500 dark:text-indigo-300 p-2 bg-indigo-50/70 dark:bg-indigo-900/20 rounded-md border border-indigo-100 dark:border-indigo-800/30">
                           <p className="italic font-medium mb-1">* 아래 답변에 대한 꼬리 질문입니다</p>
                           <div className="pl-2 border-l-2 border-indigo-300 dark:border-indigo-600 py-1">
                             <span className="line-clamp-2 text-zinc-600 dark:text-zinc-300">
@@ -665,10 +562,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                       )}
                       
                       <p className="whitespace-pre-wrap leading-relaxed">
-                        <span className="typing-content">{message.content}</span>
-                        {isStreaming && message.id === chatMessages[chatMessages.length - 1].id && message.role === "assistant" && (
-                          <span className="typing-cursor"></span>
-                        )}
+                        {message.content}
                       </p>
                       <div className="mt-1.5 flex justify-end items-center gap-1.5">
                         <p className={`text-[10px] ${message.role === "user" ? "text-indigo-500 dark:text-indigo-300/80" : "text-zinc-500 dark:text-zinc-400"}`}>
@@ -712,12 +606,22 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               className="flex justify-start mb-4"
             >
               <div className="flex flex-row items-end gap-2">
-                <Avatar className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden">
-                  <AvatarImage src={personaData.image} alt={personaData.name} />
-                  <AvatarFallback className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                    {personaData.name.substring(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
+                  {personaData.image ? (
+                    <Image
+                      src={personaData.image}
+                      alt={personaData.name}
+                      width={36}
+                      height={36}
+                      className="object-cover w-full h-full"
+                      unoptimized={personaData.image.includes('supabase.co')}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                      {personaData.name.substring(0, 2)}
+                    </div>
+                  )}
+                </div>
                 <div className="px-4 py-3 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
                   <div className="loading-dots">
                     <div></div>
@@ -744,7 +648,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               transition={{ duration: 0.2 }}
               className="max-w-3xl mx-auto mb-2"
             >
-              <div className="reply-chip bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800/40 rounded-md p-2 pr-8 flex items-center relative overflow-hidden">
+              <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800/40 rounded-md p-2 pr-8 flex items-center relative overflow-hidden">
                 <div className="flex-shrink-0 w-1 h-full max-h-6 bg-indigo-400 mr-2 rounded-full"></div>
                 <div className="text-xs text-indigo-800 dark:text-indigo-200 font-medium truncate">
                   {replyingTo.content.substring(0, 100)}
@@ -809,15 +713,16 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               onClick={handleGenerateMindmap}
               disabled={isGeneratingMindmap || chatMessages.length <= 1}
               className={`
-                summary-fab px-4 py-2 h-10 rounded-lg bg-blue-600 
+                px-4 py-2 h-10 rounded-lg bg-blue-600 
                 hover:bg-blue-700 text-white text-sm font-medium shadow-md 
                 border-0 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
-                ${isGeneratingMindmap || chatMessages.length <= 1 ? 'disabled' : ''}
+                transition-colors duration-200
+                ${isGeneratingMindmap || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed' : ''}
               `}
             >
               {isGeneratingMindmap ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 loading-spinner" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   생성 중...
                 </>
               ) : (

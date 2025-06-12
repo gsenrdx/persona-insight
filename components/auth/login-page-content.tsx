@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Eye, EyeOff, CheckCircle2, X, ArrowRight, Sparkles, Mail, Lock, User, Building2 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('이메일 형식이 올바르지 않아요'),
@@ -35,19 +34,6 @@ const signupSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>
 type SignupForm = z.infer<typeof signupSchema>
-
-// Subtle elevations
-const elevations = {
-  low: '0 1px 3px rgba(0,0,0,0.06)',
-  medium: '0 4px 12px rgba(0,0,0,0.08)',
-  high: '0 8px 24px rgba(0,0,0,0.12)',
-}
-
-// Refined motion presets
-const motionConfig = {
-  subtle: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
-  smooth: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-}
 
 export default function LoginPageContent() {
   const { user, loading } = useAuth()
@@ -225,309 +211,269 @@ export default function LoginPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="container mx-auto px-4 h-full">
-        <div className="min-h-screen grid lg:grid-cols-2 gap-8 items-center">
-          {/* 좌측 - Hero Section */}
-          <div className="flex flex-col justify-center px-6 py-12">
-            <div className="max-w-lg">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full border border-blue-100 mb-8">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-700">AI 기반 페르소나 분석</span>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 relative overflow-hidden">
+      {/* 신경망 같은 배경 패턴 */}
+      <div className="absolute inset-0 opacity-[0.03]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(99 102 241) 1px, transparent 0)`,
+          backgroundSize: '40px 40px'
+        }}></div>
+      </div>
+      
+      {/* 데이터 플로우 오버레이 */}
+      <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/60 to-white/90"></div>
+      
+      {/* 부드러운 인사이트 오브들 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* 상단 영역 */}
+        <div className="insight-orb insight-orb-azure w-72 h-72 animate-giant-float-1" style={{ top: '5vh', left: '-10vw' }}></div>
+        <div className="insight-orb insight-orb-blue w-48 h-48 animate-gentle-float-2" style={{ top: '15vh', left: '70vw' }}></div>
+        <div className="insight-orb insight-orb-sky w-32 h-32 animate-gentle-float-3" style={{ top: '8vh', left: '40vw' }}></div>
+        <div className="insight-orb insight-orb-teal w-24 h-24 animate-gentle-float-1" style={{ top: '20vh', left: '20vw' }}></div>
+        
+        {/* 중간 영역 */}
+        <div className="insight-orb insight-orb-indigo w-64 h-64 animate-gentle-float-4" style={{ top: '35vh', left: '85vw' }}></div>
+        <div className="insight-orb insight-orb-cyan w-40 h-40 animate-gentle-float-5" style={{ top: '45vh', left: '10vw' }}></div>
+        <div className="insight-orb insight-orb-violet w-28 h-28 animate-gentle-float-6" style={{ top: '50vh', left: '55vw' }}></div>
+        <div className="insight-orb insight-orb-slate w-36 h-36 animate-gentle-float-7" style={{ top: '30vh', left: '30vw' }}></div>
+        
+        {/* 하단 영역 */}
+        <div className="insight-orb insight-orb-blue w-56 h-56 animate-gentle-float-8" style={{ top: '70vh', left: '75vw' }}></div>
+        <div className="insight-orb insight-orb-azure w-44 h-44 animate-giant-float-2" style={{ top: '80vh', left: '15vw' }}></div>
+        <div className="insight-orb insight-orb-sky w-20 h-20 animate-gentle-float-2" style={{ top: '85vh', left: '60vw' }}></div>
+        <div className="insight-orb insight-orb-teal w-52 h-52 animate-gentle-float-4" style={{ top: '75vh', left: '45vw' }}></div>
+        <div className="insight-orb insight-orb-cyan w-16 h-16 animate-gentle-float-6" style={{ top: '90vh', left: '85vw' }}></div>
+        
+        {/* 추가 액센트 오브들 */}
+        <div className="insight-orb insight-orb-indigo w-60 h-60 animate-gentle-float-3" style={{ top: '60vh', left: '5vw' }}></div>
+        <div className="insight-orb insight-orb-violet w-18 h-18 animate-gentle-float-5" style={{ top: '25vh', left: '90vw' }}></div>
+      </div>
+      
+      <div className="relative min-h-screen flex items-center justify-center px-4 py-12 z-10">
+        <div className="w-full max-w-md">
+          {/* 로고 및 브랜딩 */}
+          <div className="text-center mb-10">
+            {/* Persona Insight Logo */}
+            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <div className="w-10 h-10 bg-white rounded-2xl"></div>
+            </div>
+            
+            <div className="mb-3">
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                Persona Insight <span className="text-xs text-gray-400 font-medium ml-2">by MISO</span>
+              </h1>
+            </div>
+            
+            <p className="text-gray-500 text-sm leading-relaxed">
+              고객을 더 깊이 이해하는 AI 페르소나 분석 플랫폼
+            </p>
+          </div>
 
-              {/* Hero Text */}
-              <div className="mb-8">
-                <h1 className="text-4xl lg:text-5xl font-bold mb-6 text-slate-900 leading-tight">
-                  고객을<br />
-                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    더 깊이 이해하는
-                  </span><br />
-                  새로운 방법
-                </h1>
-                
-                <p className="text-lg text-slate-600 leading-relaxed">
-                  AI 기반 페르소나 분석으로 고객의 니즈와 행동 패턴을 파악하고,
-                  데이터 기반의 비즈니스 의사결정을 시작해보세요.
-                </p>
-              </div>
+          {/* 로그인 카드 */}
+          <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-8 shadow-lg">
+            {/* 로그인 제목 */}
+            <div className="text-center mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                로그인
+              </h2>
+              <p className="text-gray-500 text-sm">
+                이메일과 비밀번호를 입력해주세요
+              </p>
+            </div>
 
-              {/* Feature Pills */}
-              <div className="flex flex-wrap gap-3 mb-10">
-                {['실시간 분석', '팀 협업', '데이터 기반 인사이트'].map((feature) => (
-                  <div
-                    key={feature}
-                    className="px-4 py-2 bg-white/70 border border-slate-200 rounded-full text-sm font-medium text-slate-700"
-                    style={{ boxShadow: elevations.low }}
-                  >
-                    {feature}
-                  </div>
-                ))}
+            {/* 에러 알림 */}
+            {error && (
+              <div className="mb-6">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-red-700 text-sm text-center">
+                    {error}
+                  </p>
+                </div>
               </div>
+            )}
 
-              {/* Hero Image */}
-              <div className="relative max-w-md">
-                <img 
-                  src="/main-image.png" 
-                  alt="Team Collaboration" 
-                  className="w-full h-auto object-contain drop-shadow-lg"
+            {/* 로그인 폼 */}
+            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
+              {/* 이메일 */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  이메일
+                </label>
+                <Input
+                  type="email"
+                  placeholder="your@company.com"
+                  {...loginForm.register('email')}
+                  className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors"
                 />
+                {loginForm.formState.errors.email && (
+                  <p className="text-sm text-red-600">
+                    {loginForm.formState.errors.email.message}
+                  </p>
+                )}
               </div>
+
+              {/* 비밀번호 */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  비밀번호
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="비밀번호를 입력해주세요"
+                    {...loginForm.register('password')}
+                    className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {loginForm.formState.errors.password && (
+                  <p className="text-sm text-red-600">
+                    {loginForm.formState.errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              {/* 로그인 버튼 */}
+              <Button 
+                type="submit" 
+                className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-200 shadow-sm hover:shadow-md" 
+                disabled={formLoading}
+              >
+                {formLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    로그인 중...
+                  </>
+                ) : (
+                  '로그인'
+                )}
+              </Button>
+            </form>
+
+            {/* 회원가입 링크 */}
+            <div className="mt-8 text-center">
+              <p className="text-gray-500 text-sm mb-4">
+                아직 계정이 없으신가요?
+              </p>
+              <Button 
+                onClick={handleOpenSignup}
+                variant="outline"
+                className="w-full h-11 rounded-xl border-gray-300 hover:bg-gray-50 transition-colors text-gray-700"
+                disabled={formLoading}
+              >
+                회원가입하기
+              </Button>
             </div>
           </div>
 
-          {/* 우측 - Login Card */}
-          <div className="flex flex-col justify-center px-6 py-12">
-            <div className="max-w-md mx-auto w-full">
-              {/* Card */}
-              <div 
-                className="bg-white rounded-2xl p-8 border border-slate-200"
-                style={{ boxShadow: elevations.medium }}
-              >
-                {/* Header */}
-                <div className="text-center mb-8">
-                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Lock className="w-6 h-6 text-white" />
-                  </div>
-                  
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                    로그인
-                  </h2>
-                  <p className="text-slate-600">
-                    이메일과 비밀번호로 로그인해주세요
-                  </p>
-                </div>
-
-                {/* Error Alert */}
-                                 <AnimatePresence>
-                   {error && (
-                     <motion.div
-                       initial={{ opacity: 0, y: -10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       transition={motionConfig.subtle}
-                       className="mb-6"
-                     >
-                      <Alert variant="destructive" className="border-red-200 bg-red-50">
-                        <AlertDescription className="text-red-700">
-                          {error}
-                        </AlertDescription>
-                      </Alert>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Login Form */}
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-5">
-                  {/* Email Field */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <Mail className="w-4 h-4 text-blue-600" />
-                      이메일
-                    </label>
-                    <Input
-                      type="email"
-                      placeholder="your@company.com"
-                      {...loginForm.register('email')}
-                      className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20"
-                    />
-                    {loginForm.formState.errors.email && (
-                      <p className="text-sm text-red-600 flex items-center gap-2">
-                        <X className="w-4 h-4" />
-                        {loginForm.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Password Field */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <Lock className="w-4 h-4 text-blue-600" />
-                      비밀번호
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="비밀번호"
-                        {...loginForm.register('password')}
-                        className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {loginForm.formState.errors.password && (
-                      <p className="text-sm text-red-600 flex items-center gap-2">
-                        <X className="w-4 h-4" />
-                        {loginForm.formState.errors.password.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Login Button */}
-                  <div className="pt-2">
-                    <Button 
-                      type="submit" 
-                      className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors font-semibold" 
-                      disabled={formLoading}
-                    >
-                      {formLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          로그인 중...
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          로그인
-                          <ArrowRight className="h-4 w-4" />
-                        </div>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-
-                {/* Signup Section */}
-                <div className="mt-8 text-center">
-                  <p className="text-slate-600 text-sm mb-4">
-                    아직 계정이 없으신가요?
-                  </p>
-                  <Button 
-                    onClick={handleOpenSignup}
-                    variant="outline"
-                    className="w-full h-10 rounded-lg border-slate-300 hover:bg-slate-50 transition-colors"
-                  >
-                    회원가입
-                  </Button>
-                </div>
-
-                {/* Terms */}
-                <div className="mt-6 text-center">
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    계속 진행하면{' '}
-                    <span className="text-blue-600 hover:underline cursor-pointer">서비스 약관</span> 및{' '}
-                    <span className="text-blue-600 hover:underline cursor-pointer">개인정보 처리방침</span>에 동의하는 것으로 간주됩니다.
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* 하단 텍스트 */}
+          <div className="mt-8 text-center">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              계속 진행하면{' '}
+              <span className="text-blue-600 hover:underline cursor-pointer">서비스 약관</span> 및{' '}
+              <span className="text-blue-600 hover:underline cursor-pointer">개인정보 처리방침</span>에 동의하는 것으로 간주됩니다.
+            </p>
           </div>
         </div>
       </div>
 
       {/* 회원가입 모달 */}
-      <AnimatePresence>
-        {signupModalOpen && (
-          <Dialog open={signupModalOpen} onOpenChange={setSignupModalOpen}>
-            <DialogContent className="sm:max-w-md rounded-2xl border-0 p-0 overflow-hidden">
-                             <motion.div
-                 initial={{ opacity: 0, scale: 0.95 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 exit={{ opacity: 0, scale: 0.95 }}
-                 transition={motionConfig.smooth}
-                 style={{ boxShadow: elevations.high }}
-                 className="bg-white"
-               >
-                <DialogHeader className="p-6 pb-4">
-                  <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
+      {signupModalOpen && (
+        <Dialog open={signupModalOpen} onOpenChange={setSignupModalOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border-0 p-0">
+            <div className="bg-white">
+              <DialogHeader className="p-8 pb-6">
+                <div className="text-center mb-4">
+                  <DialogTitle className="text-xl font-semibold text-gray-900 mb-2">
                     회원가입
                   </DialogTitle>
-                  <p className="text-slate-600 text-sm mt-1">
+                  <p className="text-gray-500 text-sm">
                     회사와 개인정보를 입력해주세요
                   </p>
-                </DialogHeader>
+                </div>
+              </DialogHeader>
 
-                <div className="px-6 pb-6">
-                  {signupSuccess ? (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="h-8 w-8 text-green-600" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 mb-2">
-                        환영합니다!
-                      </h3>
-                      <p className="text-slate-600 mb-6">
-                        이메일 인증을 완료하고 Persona Insight를 시작해보세요
-                      </p>
-                      <Button 
-                        onClick={handleCloseSignup}
-                        className="w-full h-11 rounded-lg bg-green-600 hover:bg-green-700"
-                      >
-                        확인
-                      </Button>
+              <div className="px-8 pb-8">
+                {signupSuccess ? (
+                  <div className="text-center py-8">
+                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle2 className="h-10 w-10 text-green-600" />
                     </div>
-                  ) : (
-                    <>
-                      <AnimatePresence>
-                                                 {signupError && (
-                           <motion.div
-                             initial={{ opacity: 0, y: -10 }}
-                             animate={{ opacity: 1, y: 0 }}
-                             exit={{ opacity: 0, y: -10 }}
-                             transition={motionConfig.subtle}
-                             className="mb-4"
-                           >
-                            <Alert variant="destructive" className="border-red-200 bg-red-50">
-                              <AlertDescription className="text-red-700 whitespace-pre-line">
-                                {signupError}
-                              </AlertDescription>
-                            </Alert>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
-                        {/* Company */}
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                            <Building2 className="w-4 h-4 text-blue-600" />
-                            회사
-                          </label>
-                          <Select
-                            onValueChange={(value) => signupForm.setValue('companyId', value)}
-                            disabled={loadingCompanies}
-                          >
-                            <SelectTrigger className="h-11 rounded-lg border-slate-300">
-                              <SelectValue placeholder={loadingCompanies ? "로딩 중..." : "회사를 선택해주세요"} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-lg">
-                              {companies.map((company) => (
-                                <SelectItem key={company.id} value={company.id}>
-                                  {company.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {signupForm.formState.errors.companyId && (
-                            <p className="text-sm text-red-600 flex items-center gap-2">
-                              <X className="w-4 h-4" />
-                              {signupForm.formState.errors.companyId.message}
-                            </p>
-                          )}
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      환영합니다!
+                    </h3>
+                    <p className="text-gray-500 mb-8 text-sm leading-relaxed max-w-sm mx-auto">
+                      이메일 인증을 완료하고 Persona Insight를 시작해보세요
+                    </p>
+                    <Button 
+                      onClick={handleCloseSignup}
+                      className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
+                    >
+                      확인
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* 에러 알림 */}
+                    {signupError && (
+                      <div className="mb-6">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                          <p className="text-red-700 text-sm whitespace-pre-line text-center">
+                            {signupError}
+                          </p>
                         </div>
+                      </div>
+                    )}
 
+                    <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
+                      {/* Company */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          회사
+                        </label>
+                        <Select
+                          onValueChange={(value) => signupForm.setValue('companyId', value)}
+                          disabled={loadingCompanies}
+                        >
+                          <SelectTrigger className="h-12 rounded-xl border-gray-300 bg-gray-50 focus:bg-white transition-colors">
+                            <SelectValue placeholder={loadingCompanies ? "로딩 중..." : "회사를 선택해주세요"} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {signupForm.formState.errors.companyId && (
+                          <p className="text-xs text-red-600 mt-1">
+                            {signupForm.formState.errors.companyId.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Name and Email in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Name */}
                         <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                            <User className="w-4 h-4 text-blue-600" />
+                          <label className="block text-sm font-medium text-gray-700">
                             이름
                           </label>
                           <Input
                             type="text"
                             placeholder="홍길동"
                             {...signupForm.register('name')}
-                            className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20"
+                            className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors"
                           />
                           {signupForm.formState.errors.name && (
-                            <p className="text-sm text-red-600 flex items-center gap-2">
-                              <X className="w-4 h-4" />
+                            <p className="text-xs text-red-600 mt-1">
                               {signupForm.formState.errors.name.message}
                             </p>
                           )}
@@ -535,28 +481,28 @@ export default function LoginPageContent() {
 
                         {/* Email */}
                         <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                            <Mail className="w-4 h-4 text-blue-600" />
+                          <label className="block text-sm font-medium text-gray-700">
                             이메일
                           </label>
                           <Input
                             type="email"
                             placeholder="your@company.com"
                             {...signupForm.register('email')}
-                            className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20"
+                            className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors"
                           />
                           {signupForm.formState.errors.email && (
-                            <p className="text-sm text-red-600 flex items-center gap-2">
-                              <X className="w-4 h-4" />
+                            <p className="text-xs text-red-600 mt-1">
                               {signupForm.formState.errors.email.message}
                             </p>
                           )}
                         </div>
+                      </div>
 
+                      {/* Password fields in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Password */}
                         <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                            <Lock className="w-4 h-4 text-blue-600" />
+                          <label className="block text-sm font-medium text-gray-700">
                             비밀번호
                           </label>
                           <div className="relative">
@@ -564,19 +510,18 @@ export default function LoginPageContent() {
                               type={showPassword ? 'text' : 'password'}
                               placeholder="6자 이상"
                               {...signupForm.register('password')}
-                              className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20 pr-10"
+                              className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors pr-12"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                           {signupForm.formState.errors.password && (
-                            <p className="text-sm text-red-600 flex items-center gap-2">
-                              <X className="w-4 h-4" />
+                            <p className="text-xs text-red-600 mt-1">
                               {signupForm.formState.errors.password.message}
                             </p>
                           )}
@@ -584,8 +529,7 @@ export default function LoginPageContent() {
 
                         {/* Confirm Password */}
                         <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                            <Lock className="w-4 h-4 text-blue-600" />
+                          <label className="block text-sm font-medium text-gray-700">
                             비밀번호 확인
                           </label>
                           <div className="relative">
@@ -593,50 +537,49 @@ export default function LoginPageContent() {
                               type={showConfirmPassword ? 'text' : 'password'}
                               placeholder="비밀번호 재입력"
                               {...signupForm.register('confirmPassword')}
-                              className="h-11 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500/20 pr-10"
+                              className="h-12 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white transition-colors pr-12"
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                             >
                               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                           {signupForm.formState.errors.confirmPassword && (
-                            <p className="text-sm text-red-600 flex items-center gap-2">
-                              <X className="w-4 h-4" />
+                            <p className="text-xs text-red-600 mt-1">
                               {signupForm.formState.errors.confirmPassword.message}
                             </p>
                           )}
                         </div>
+                      </div>
 
-                        {/* Submit Button */}
-                        <div className="pt-2">
-                          <Button 
-                            type="submit" 
-                            className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors font-semibold" 
-                            disabled={formLoading || loadingCompanies}
-                          >
-                            {formLoading ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                가입 중...
-                              </>
-                            ) : (
-                              '회원가입'
-                            )}
-                          </Button>
-                        </div>
-                      </form>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </AnimatePresence>
+                      {/* Submit Button */}
+                      <div className="pt-4">
+                        <Button 
+                          type="submit" 
+                          className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-200 shadow-sm hover:shadow-md" 
+                          disabled={formLoading || loadingCompanies}
+                        >
+                          {formLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              가입 중...
+                            </>
+                          ) : (
+                            '회원가입하기'
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
-} 
+}

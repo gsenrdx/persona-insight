@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, Check, Users, UserPlus } from "lucide-react"
+import { ChevronDown, Check } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -107,13 +107,6 @@ export default function PersonaSwitcher({ currentPersona, allPersonas, currentPe
               </DropdownMenuItem>
             </Link>
           ))}
-          <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-700"/>
-          <Link href="/persona/new" passHref legacyBehavior>
-            <DropdownMenuItem className="flex items-center gap-2 m-1 px-2 py-2 rounded-md text-blue-500 hover:!bg-blue-50 dark:hover:!bg-blue-900/20">
-              <UserPlus className="h-4 w-4" />
-              <span className="text-sm font-medium">새 페르소나 만들기</span>
-            </DropdownMenuItem>
-          </Link>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

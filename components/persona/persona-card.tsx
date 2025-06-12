@@ -24,6 +24,22 @@ export interface PersonaCardProps {
   persona_description?: string
 }
 
+// 디자인 씽킹 및 고객 경험 명언들
+const designThinkingQuotes = [
+  "좋은 디자인은 사용자를 이해하는 것에서 시작된다. - Steve Jobs",
+  "디자인은 단순히 보이는 것이 아니라 작동하는 방식이다. - Steve Jobs",
+  "사용자의 문제를 해결하지 못하는 디자인은 예술일 뿐이다. - Don Norman",
+  "가장 좋은 디자인은 눈에 보이지 않는다. - Dieter Rams",
+  "디자인은 인간을 위한 것이어야 한다. - Victor Papanek",
+  "공감은 인간 중심 디자인의 핵심이다. - IDEO",
+  "사용자를 놀라게 하고 기쁘게 하라. - Aaron Walter",
+  "단순함은 궁극의 정교함이다. - Leonardo da Vinci",
+  "좋은 디자인은 가능한 한 적은 디자인이다. - Dieter Rams",
+  "혁신은 리더와 추종자를 구분한다. - Steve Jobs",
+  "디자인은 문제 해결이다. - Charles Eames",
+  "사용자의 니즈를 충족시키는 것이 아름다운 디자인이다. - Joshua Porter"
+]
+
 export default function PersonaCard({
   id,
   name,
@@ -42,6 +58,7 @@ export default function PersonaCard({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [prefetchStarted, setPrefetchStarted] = useState(false)
+  const [currentQuote, setCurrentQuote] = useState("")
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   
@@ -63,6 +80,10 @@ export default function PersonaCard({
   const handleCardClick = () => {
     setIsModalOpen(true)
     setIsLoading(true)
+    
+    // 랜덤 명언 선택
+    const randomQuote = designThinkingQuotes[Math.floor(Math.random() * designThinkingQuotes.length)]
+    setCurrentQuote(randomQuote)
     
     // 아직 프리페치가 시작되지 않았다면 즉시 시작
     if (!prefetchStarted) {
@@ -293,6 +314,18 @@ export default function PersonaCard({
                       />
                     </div>
                   </div>
+
+                  {/* 명언 */}
+                  {currentQuote && (
+                    <div className="mt-6 px-2">
+                      <p className={cn(
+                        "text-xs leading-relaxed text-center italic",
+                        isDark ? "text-zinc-300" : "text-zinc-700"
+                      )}>
+                        "{currentQuote}"
+                      </p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </motion.div>

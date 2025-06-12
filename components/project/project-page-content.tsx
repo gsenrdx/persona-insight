@@ -488,7 +488,7 @@ export function ProjectPageContent() {
 
       {/* 프로젝트 생성 다이얼로그 */}
       <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">새 프로젝트 만들기</DialogTitle>
             <DialogDescription>
