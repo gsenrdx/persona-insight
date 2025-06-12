@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : '프로필 로드에 실패했습니다.'
         setError(errorMessage)
-        console.error('프로필 갱신 실패:', err)
       }
     }
   }
@@ -90,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       setProfile(null)
     } catch (error) {
-      console.error('로그아웃 실패:', error)
       setError('로그아웃에 실패했습니다.')
     }
   }
@@ -140,7 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           async (event, session) => {
             if (!mounted) return
             
-            console.log('Auth state changed:', event, session?.user?.id)
 
             try {
               if (session?.user) {
@@ -170,7 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           const errorMessage = error instanceof Error ? error.message : '인증 초기화에 실패했습니다.'
           setError(errorMessage)
-          console.error('Auth initialization error:', error)
         }
       } finally {
         if (mounted) {
