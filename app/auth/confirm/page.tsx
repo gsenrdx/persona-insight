@@ -36,11 +36,6 @@ export default function AuthConfirmPage() {
         setStatus('success')
         setMessage('이메일 인증이 완료되었습니다!')
         
-        // 3초 후 홈페이지로 이동
-        setTimeout(() => {
-          router.push('/')
-        }, 3000)
-        
       } catch (error) {
         setStatus('error')
         setMessage('인증 중 오류가 발생했습니다.')
@@ -78,19 +73,32 @@ export default function AuthConfirmPage() {
               <h1 className="text-xl font-semibold text-gray-900 mb-2">
                 인증 완료!
               </h1>
-              <p className="text-gray-500 text-sm mb-6">
+              <p className="text-gray-500 text-sm mb-2">
                 {message}
               </p>
+              <p className="text-gray-600 text-sm mb-6">
+                이제 홈페이지에서 로그인해주세요.
+              </p>
               <div className="space-y-3">
-                <p className="text-xs text-gray-400">
-                  3초 후 자동으로 이동합니다...
-                </p>
                 <Button 
-                  onClick={() => router.push('/')}
+                  onClick={() => {
+                    // 모바일인지 확인
+                    const isMobile = window.innerWidth < 768
+                    if (isMobile) {
+                      // 모바일이면 알림 메시지
+                      alert('PC에서 Persona Insight에 로그인해주세요!')
+                    } else {
+                      // PC면 로그인 페이지로
+                      router.push('/login')
+                    }
+                  }}
                   className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                 >
-                  지금 시작하기
+                  로그인하러 가기
                 </Button>
+                <p className="text-xs text-gray-400">
+                  PC에서 Persona Insight를 이용해주세요
+                </p>
               </div>
             </>
           )}

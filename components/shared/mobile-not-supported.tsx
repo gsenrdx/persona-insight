@@ -51,9 +51,9 @@ export default function MobileNotSupported() {
   // 모바일이 아니면 표시하지 않음
   if (!isMobile) return null
 
-  // 인증 관련 페이지는 모바일에서도 접근 허용
-  const isAuthPage = pathname?.startsWith('/auth') || pathname?.startsWith('/login')
-  if (isAuthPage) return null
+  // 인증 확인 페이지만 모바일에서 접근 허용 (/login은 차단)
+  const isAuthConfirmPage = pathname?.startsWith('/auth')
+  if (isAuthConfirmPage) return null
 
   return (
     <div className="fixed inset-0 z-50 bg-white dark:bg-black flex flex-col items-center justify-center p-8">
