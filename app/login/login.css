@@ -1,0 +1,327 @@
+/* 로그인 페이지 전용 CSS */
+
+/* 기하학적 도형 효과 */
+.insight-orb {
+  position: absolute;
+  filter: blur(8px);
+  opacity: 0.6;
+  will-change: transform;
+}
+
+/* 원본 SVG를 직접 사용한 정확한 도형들 */
+.insight-orb-blue {
+  /* SVG 6: 직사각형 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="89" height="132" viewBox="0 0 89 132" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.6357 0.760437H0.736328V131.219H88.6357V0.760437Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="44.686" y1="131.219" x2="44.686" y2="0.760437" gradientUnits="userSpaceOnUse"><stop stop-color="%2353ADE1"/><stop offset="1" stop-color="%23337EC2"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-indigo {
+  /* SVG 5: 곡선 형태 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="122" height="271" viewBox="0 0 122 271" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M121.733 138.68V270.761C-35.7918 263.809 -43.4252 18.1859 121.733 0.806885C121.039 1.27032 121.502 124.314 121.733 138.68Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="61.1288" y1="1.27032" x2="61.1288" y2="271.224" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-sky {
+  /* SVG 4: 삼각형 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="192" height="154" viewBox="0 0 192 154" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M191.57 153.468H0.736328L93.2619 0.300537L191.57 153.468Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="96.269" y1="153.468" x2="96.269" y2="0.300537" gradientUnits="userSpaceOnUse"><stop stop-color="%23FFDF5D"/><stop offset="1" stop-color="%23FFB607"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-cyan {
+  /* SVG 3: 복잡한 삼각형 곡선 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="188" height="228" viewBox="0 0 188 228" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M134.184 227.723C261.406 135.035 136.034 -59.1464 0.25293 19.1749L134.184 227.723Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="-1.57908" y1="117.267" x2="186.017" y2="119.139" gradientUnits="userSpaceOnUse"><stop stop-color="%2300CFB5"/><stop offset="0.21" stop-color="%2307D0B1"/><stop offset="0.53" stop-color="%231BD1A7"/><stop offset="0.9" stop-color="%233BD397"/><stop offset="1" stop-color="%2345D492"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-violet {
+  /* SVG 2: 원형 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="205" height="205" viewBox="0 0 205 205" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M102.01 204.749C158.348 204.749 204.019 158.997 204.019 102.56C204.019 46.123 158.348 0.371643 102.01 0.371643C45.6712 0.371643 0 46.123 0 102.56C0 158.997 45.6712 204.749 102.01 204.749Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="899.724" y1="756.567" x2="899.724" y2="2559.17" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-slate {
+  /* SVG 1: L자 형태 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="198" height="189" viewBox="0 0 198 189" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M104.554 86.6001V187.862L0 188.789L1.38788 0.863678L198.005 0.631958L197.542 87.2953L104.554 86.6001Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="847.461" y1="1528.46" x2="847.461" y2="0.631958" gradientUnits="userSpaceOnUse"><stop stop-color="%23FFDF5D"/><stop offset="1" stop-color="%23FFB607"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-teal {
+  /* SVG 6 변형: 직사각형 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="89" height="132" viewBox="0 0 89 132" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.6357 0.760437H0.736328V131.219H88.6357V0.760437Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="44.686" y1="131.219" x2="44.686" y2="0.760437" gradientUnits="userSpaceOnUse"><stop stop-color="%2353ADE1"/><stop offset="1" stop-color="%23337EC2"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.insight-orb-azure {
+  /* SVG 3 변형: 삼각형 곡선 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="188" height="228" viewBox="0 0 188 228" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M134.184 227.723C261.406 135.035 136.034 -59.1464 0.25293 19.1749L134.184 227.723Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="-1.57908" y1="117.267" x2="186.017" y2="119.139" gradientUnits="userSpaceOnUse"><stop stop-color="%2300CFB5"/><stop offset="0.21" stop-color="%2307D0B1"/><stop offset="0.53" stop-color="%231BD1A7"/><stop offset="0.9" stop-color="%233BD397"/><stop offset="1" stop-color="%2345D492"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* 자유분방한 빛의 움직임 */
+@keyframes gentle-float-1 {
+  0% {
+    transform: translate(-30vw, 40vh) scale(0.7) rotate(-45deg);
+    opacity: 0.5;
+  }
+  20% {
+    transform: translate(25vw, -15vh) scale(1.3) rotate(20deg);
+    opacity: 0.9;
+  }
+  40% {
+    transform: translate(70vw, 10vh) scale(0.8) rotate(-60deg);
+    opacity: 0.6;
+  }
+  60% {
+    transform: translate(-10vw, -45vh) scale(1.5) rotate(80deg);
+    opacity: 0.8;
+  }
+  80% {
+    transform: translate(45vw, 25vh) scale(0.9) rotate(-30deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50vw, -20vh) scale(1.1) rotate(100deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes gentle-float-2 {
+  0% {
+    transform: translate(80vw, 30vh) scale(1.2) rotate(70deg);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translate(-20vw, -30vh) scale(0.6) rotate(-90deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(40vw, -60vh) scale(1.4) rotate(150deg);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translate(-60vw, 15vh) scale(0.9) rotate(-45deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(10vw, 45vh) scale(1.1) rotate(200deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes gentle-float-3 {
+  0% {
+    transform: translate(-70vw, -40vh) scale(1.6) rotate(-120deg);
+    opacity: 0.3;
+  }
+  30% {
+    transform: translate(60vw, 20vh) scale(0.5) rotate(60deg);
+    opacity: 0.9;
+  }
+  60% {
+    transform: translate(-30vw, 50vh) scale(1.2) rotate(-180deg);
+    opacity: 0.7;
+  }
+  90% {
+    transform: translate(85vw, -25vh) scale(0.8) rotate(240deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(15vw, -65vh) scale(1.4) rotate(-60deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes gentle-float-4 {
+  0% {
+    transform: translate(90vw, -70vh) scale(0.4) rotate(300deg);
+    opacity: 0.8;
+  }
+  15% {
+    transform: translate(-40vw, 35vh) scale(1.7) rotate(-150deg);
+    opacity: 0.4;
+  }
+  45% {
+    transform: translate(35vw, -90vh) scale(0.7) rotate(180deg);
+    opacity: 0.9;
+  }
+  70% {
+    transform: translate(-80vw, 10vh) scale(1.3) rotate(-270deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(20vw, 60vh) scale(0.9) rotate(420deg);
+    opacity: 0.5;
+  }
+}
+
+@keyframes gentle-float-5 {
+  0% {
+    transform: translate(-95vw, 80vh) scale(1.8) rotate(-360deg);
+    opacity: 0.3;
+  }
+  28% {
+    transform: translate(75vw, -50vh) scale(0.6) rotate(120deg);
+    opacity: 0.9;
+  }
+  55% {
+    transform: translate(-25vw, -10vh) scale(1.5) rotate(-180deg);
+    opacity: 0.6;
+  }
+  82% {
+    transform: translate(95vw, 40vh) scale(0.8) rotate(270deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-15vw, -80vh) scale(1.2) rotate(-480deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes gentle-float-6 {
+  0% {
+    transform: translate(110vw, -95vh) scale(0.3) rotate(540deg);
+    opacity: 0.7;
+  }
+  22% {
+    transform: translate(-85vw, 25vh) scale(1.9) rotate(-210deg);
+    opacity: 0.4;
+  }
+  48% {
+    transform: translate(50vw, 70vh) scale(0.5) rotate(330deg);
+    opacity: 0.9;
+  }
+  76% {
+    transform: translate(-50vw, -60vh) scale(1.4) rotate(-90deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(5vw, 5vh) scale(1.0) rotate(180deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes gentle-float-7 {
+  0% {
+    transform: translate(45vw, 10vh) scale(0.9) rotate(40deg);
+    opacity: 0.7;
+  }
+  40% {
+    transform: translate(70vw, -30vh) scale(1.5) rotate(-25deg);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate(85vw, -60vh) scale(0.7) rotate(35deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(55vw, -35vh) scale(1.2) rotate(-15deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes gentle-float-8 {
+  0% {
+    transform: translate(-35vw, 20vh) scale(1.1) rotate(-45deg);
+    opacity: 0.6;
+  }
+  30% {
+    transform: translate(-60vw, -25vh) scale(1.6) rotate(30deg);
+    opacity: 0.9;
+  }
+  65% {
+    transform: translate(-85vw, -55vh) scale(0.8) rotate(-25deg);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-45vw, -30vh) scale(1.25) rotate(15deg);
+    opacity: 0.7;
+  }
+}
+
+/* 자연스럽고 느린 애니메이션 */
+.animate-gentle-float-1 {
+  animation: gentle-float-1 80s ease-in-out infinite;
+}
+
+.animate-gentle-float-2 {
+  animation: gentle-float-2 75s ease-in-out infinite;
+}
+
+.animate-gentle-float-3 {
+  animation: gentle-float-3 85s ease-in-out infinite;
+}
+
+.animate-gentle-float-4 {
+  animation: gentle-float-4 70s ease-in-out infinite;
+}
+
+.animate-gentle-float-5 {
+  animation: gentle-float-5 90s ease-in-out infinite;
+}
+
+.animate-gentle-float-6 {
+  animation: gentle-float-6 78s ease-in-out infinite;
+}
+
+.animate-gentle-float-7 {
+  animation: gentle-float-7 82s ease-in-out infinite;
+}
+
+.animate-gentle-float-8 {
+  animation: gentle-float-8 88s ease-in-out infinite;
+}
+
+/* 거대한 오브들의 자연스러운 움직임 */
+@keyframes giant-float-1 {
+  0% {
+    transform: translate(-20vw, 30vh) scale(0.8) rotate(-60deg);
+    opacity: 0.4;
+  }
+  60% {
+    transform: translate(40vw, -35vh) scale(1.4) rotate(120deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(15vw, -15vh) scale(1.1) rotate(-30deg);
+    opacity: 0.5;
+  }
+}
+
+@keyframes giant-float-2 {
+  0% {
+    transform: translate(50vw, 15vh) scale(1.2) rotate(80deg);
+    opacity: 0.3;
+  }
+  45% {
+    transform: translate(-30vw, -45vh) scale(1.8) rotate(-100deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-10vw, -25vh) scale(0.9) rotate(160deg);
+    opacity: 0.4;
+  }
+}
+
+.animate-giant-float-1 {
+  animation: giant-float-1 85s cubic-bezier(0.165, 0.84, 0.44, 1) infinite;
+}
+
+.animate-giant-float-2 {
+  animation: giant-float-2 92s cubic-bezier(0.19, 1, 0.22, 1) infinite;
+}
