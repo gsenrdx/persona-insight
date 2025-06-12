@@ -178,16 +178,9 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     }
   }
 
+  // 로딩 중에도 기본 레이아웃을 보여주되, 각 탭 컴포넌트에서 자체 로딩 처리
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">프로젝트 로딩 중...</h2>
-          <p className="text-sm text-slate-500">잠시만 기다려주세요</p>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen bg-slate-50" />
   }
 
   if (error || !project) {
