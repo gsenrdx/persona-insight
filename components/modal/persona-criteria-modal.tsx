@@ -37,7 +37,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
-import { Plus, Eye, Image, Loader2, AlertTriangle } from 'lucide-react'
+import { Plus, Eye, Image, Loader2, AlertTriangle, Upload } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
@@ -253,18 +253,29 @@ export const PersonaCriteriaModal = ({
 
     setUnclassifiedCells(prev => prev.filter(c => !(c.xIndex === xIndex && c.yIndex === yIndex)))
 
+    // 해당 좌표에 이미 있는 페르소나 찾기
+    const existingPersonaAtCell = personaTypes.find(p => p.xIndex === xIndex && p.yIndex === yIndex)
+
     if (personaId && formData) {
+      // ID로 업데이트
       setPersonaTypes(prev => prev.map(p => (p.id === personaId ? { 
         ...p, 
         title: formData.title,
         description: formData.description,
-        // personaType이 있으면 업데이트
-        ...(formData.personaType && { personaType: formData.personaType }),
-        // thumbnail이 있으면 업데이트
-        ...(formData.thumbnail && { thumbnail: formData.thumbnail })
+        personaType: formData.personaType,
+        thumbnail: formData.thumbnail
+      } : p)))
+    } else if (existingPersonaAtCell && formData) {
+      // 해당 좌표에 이미 페르소나가 있으면 업데이트
+      setPersonaTypes(prev => prev.map(p => (p.id === existingPersonaAtCell.id ? { 
+        ...p, 
+        title: formData.title,
+        description: formData.description,
+        personaType: formData.personaType,
+        thumbnail: formData.thumbnail
       } : p)))
     } else if (formData && (formData.title || formData.description)) {
-      // 좌표 레이블 생성 (A1, A2, B1, B2... 형태)
+      // 새로운 페르소나 생성
       const coordinates = generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
       const coordinate = coordinates.find(c => c.xIndex === xIndex && c.yIndex === yIndex)
       const coordinateLabel = coordinate?.label || `${String.fromCharCode(65 + yIndex)}${xIndex + 1}`
@@ -378,35 +389,42 @@ export const PersonaCriteriaModal = ({
 
   const syncPersonasTable = async () => {
     try {
+      // persona_type이 비어있는 페르소나들 필터링
+      const validPersonas = personaTypes.filter(p => p.personaType && p.personaType.trim() !== '')
+      
+      if (validPersonas.length === 0) {
+        return
+      }
+
+      const syncData = {
+        company_id: profile?.company_id,
+        project_id: projectId,
+        personas: validPersonas.map(p => ({
+          persona_type: p.personaType,
+          persona_title: p.title,
+          persona_description: p.description,
+          thumbnail: (p as any).thumbnail || null,
+          matrix_position: {
+            xIndex: p.xIndex,
+            yIndex: p.yIndex,
+            coordinate: generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
+              .find(c => c.xIndex === p.xIndex && c.yIndex === p.yIndex)?.label || ''
+          }
+        }))
+      }
+
       const response = await fetch('/api/supabase/persona/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          company_id: profile?.company_id,
-          project_id: projectId,
-          personas: personaTypes.map(p => ({
-            persona_type: p.personaType,
-            persona_title: p.title,
-            persona_description: p.description,
-            thumbnail: (p as any).thumbnail || null,
-            matrix_position: {
-              xIndex: p.xIndex,
-              yIndex: p.yIndex,
-              coordinate: generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
-                .find(c => c.xIndex === p.xIndex && c.yIndex === p.yIndex)?.label || ''
-            }
-          }))
-        })
+        body: JSON.stringify(syncData)
       })
 
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || '페르소나 동기화에 실패했습니다')
       }
-
-      console.log('페르소나 테이블 동기화 완료')
     } catch (error) {
       console.error('페르소나 테이블 동기화 오류:', error)
       toast.error('페르소나 동기화 중 오류가 발생했습니다')
@@ -525,6 +543,7 @@ export const PersonaCriteriaModal = ({
     const [initialFormData, setInitialFormData] = useState(initialPersonaForm)
     const [showImagePromptDialog, setShowImagePromptDialog] = useState(false)
     const [imagePrompt, setImagePrompt] = useState('')
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
 
     // 최대 셀 개수 계산 (드롭다운 옵션 개수)
     const maxCells = xAxis.segments.length * yAxis.segments.length
@@ -607,6 +626,70 @@ export const PersonaCriteriaModal = ({
       // 빈 프롬프트로 시작
       setImagePrompt('')
       setShowImagePromptDialog(true)
+    }
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      // 파일 타입 검증
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('JPEG, PNG, WebP 형식의 이미지만 업로드 가능합니다')
+        return
+      }
+
+      // 파일 크기 검증 (5MB)
+      const maxSize = 5 * 1024 * 1024
+      if (file.size > maxSize) {
+        toast.error('파일 크기가 너무 큽니다. 5MB 이하의 파일만 업로드 가능합니다')
+        return
+      }
+
+      setIsUploadingImage(true)
+      
+      try {
+        const formData = new FormData()
+        formData.append('image', file)
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/upload-persona-image`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            },
+            body: formData,
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('이미지 업로드에 실패했습니다')
+        }
+
+        const result = await response.json()
+        
+        if (result.success && result.url) {
+          setFormData(prev => ({ ...prev, thumbnail: result.url }))
+          toast.success('이미지가 성공적으로 업로드되었습니다!')
+          
+          // 압축 정보 표시
+          if (result.metadata?.compressionRatio > 0) {
+            toast.info(`이미지가 ${result.metadata.compressionRatio}% 압축되어 최적화되었습니다`)
+          }
+        } else {
+          throw new Error(result.error || '이미지 업로드에 실패했습니다')
+        }
+      } catch (error) {
+        console.error('이미지 업로드 오류:', error)
+        toast.error(error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했습니다')
+      } finally {
+        setIsUploadingImage(false)
+        // 파일 입력 초기화
+        if (event.target) {
+          event.target.value = ''
+        }
+      }
     }
 
 
@@ -759,39 +842,88 @@ export const PersonaCriteriaModal = ({
                 <div className="space-y-3">
                   <Label>썸네일</Label>
                   <div className="space-y-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenImagePromptDialog}
-                      disabled={markAsUnclassified || isGeneratingThumbnail}
-                      className="w-full"
-                    >
-                      {isGeneratingThumbnail ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Image className="h-4 w-4 mr-2" />
-                      )}
-                      {isGeneratingThumbnail ? '생성 중...' : 'AI로 이미지 생성'}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenImagePromptDialog}
+                        disabled={markAsUnclassified || isGeneratingThumbnail || isUploadingImage}
+                        className="w-full"
+                      >
+                        {isGeneratingThumbnail ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Image className="h-4 w-4 mr-2" />
+                        )}
+                        {isGeneratingThumbnail ? '생성 중...' : 'AI 생성'}
+                      </Button>
+                      
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleImageUpload}
+                          disabled={markAsUnclassified || isGeneratingThumbnail || isUploadingImage}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                          id="image-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={markAsUnclassified || isGeneratingThumbnail || isUploadingImage}
+                          className="w-full pointer-events-none"
+                          asChild
+                        >
+                          <label htmlFor="image-upload" className="pointer-events-auto cursor-pointer">
+                            {isUploadingImage ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            {isUploadingImage ? '업로드 중...' : '직접 업로드'}
+                          </label>
+                        </Button>
+                      </div>
+                    </div>
                     
                     {formData.thumbnail && (
-                      <div className="flex justify-center">
-                        <img
-                          src={formData.thumbnail}
-                          alt="페르소나 썸네일 미리보기"
-                          className="w-24 h-24 object-cover rounded-lg border shadow-sm"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none'
-                          }}
-                        />
+                      <div className="space-y-2">
+                        <div className="flex justify-center">
+                          <img
+                            src={formData.thumbnail}
+                            alt="페르소나 썸네일 미리보기"
+                            className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none'
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-center">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFormData(prev => ({ ...prev, thumbnail: '' }))}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={markAsUnclassified}
+                          >
+                            이미지 제거
+                          </Button>
+                        </div>
                       </div>
                     )}
                     
                     {!formData.thumbnail && (
-                      <p className="text-xs text-muted-foreground text-center bg-blue-50 p-2 rounded">
-                        💡 AI로 페르소나에 맞는 이미지를 생성할 수 있습니다.
-                      </p>
+                      <div className="text-xs text-muted-foreground text-center bg-blue-50 p-3 rounded space-y-2">
+                        <p className="font-medium">💡 썸네일 추가 방법</p>
+                        <div className="text-left space-y-1">
+                          <p>• <strong>AI 생성:</strong> 키워드로 맞춤형 이미지 생성</p>
+                          <p>• <strong>직접 업로드:</strong> 기존 이미지 파일 업로드</p>
+                          <p className="text-gray-500">※ 업로드된 이미지는 512x512로 자동 최적화됩니다</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1028,7 +1160,7 @@ export const PersonaCriteriaModal = ({
                       const isIndividuallyUnclassified = unclassifiedCells.some(
                         c => c.xIndex === xIndex && c.yIndex === yIndex,
                       )
-                      const cellPersonas = personaTypes.filter(
+                      const cellPersona = personaTypes.find(
                         p => p.xIndex === xIndex && p.yIndex === yIndex,
                       )
                       return (
@@ -1064,10 +1196,10 @@ export const PersonaCriteriaModal = ({
                             </PersonaEditDialog>
                           ) : (
                             <div className="absolute inset-0">
-                              {cellPersonas.map(p => (
+                              {cellPersona ? (
                                 <PersonaEditDialog
-                                  key={p.id}
-                                  persona={p}
+                                  key={cellPersona.id}
+                                  persona={cellPersona}
                                   onCellUpdate={handleCellUpdate}
                                   onDelete={handleDeletePersona}
                                   xIndex={xIndex}
@@ -1078,10 +1210,10 @@ export const PersonaCriteriaModal = ({
                                     {/* 메인 콘텐츠 */}
                                     <div className="relative h-full flex flex-col">
                                       {/* 썸네일 캐릭터 이미지 - 배경처럼 우측 하단에 크게 배치 */}
-                                      {(p as any).thumbnail && (
+                                      {(cellPersona as any).thumbnail && (
                                         <div className="absolute bottom-0 right-0 w-24 h-24 z-0 opacity-30">
                                           <img
-                                            src={(p as any).thumbnail}
+                                            src={(cellPersona as any).thumbnail}
                                             alt=""
                                             className="w-full h-full object-cover rounded-md"
                                             onError={(e) => {
@@ -1092,9 +1224,9 @@ export const PersonaCriteriaModal = ({
                                       )}
                                       
                                       <div className="flex items-center gap-2 mb-1 relative z-10">
-                                        {(p as any).personaType && (
+                                        {(cellPersona as any).personaType && (
                                           <span className="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full flex-shrink-0">
-                                            {(p as any).personaType}
+                                            {(cellPersona as any).personaType}
                                           </span>
                                         )}
                                         <p 
@@ -1106,7 +1238,7 @@ export const PersonaCriteriaModal = ({
                                             overflow: 'hidden'
                                           }}
                                         >
-                                          {p.title}
+                                          {cellPersona.title}
                                         </p>
                                       </div>
                                       
@@ -1121,17 +1253,14 @@ export const PersonaCriteriaModal = ({
                                               overflow: 'hidden'
                                             }}
                                           >
-                                            {p.description}
+                                            {cellPersona.description}
                                           </p>
                                         </div>
                                       </div>
                                     </div>
                                   </button>
                                 </PersonaEditDialog>
-                              ))}
-                              
-                              {/* 페르소나가 없을 때만 추가 버튼 표시 (읽기 모드에서는 숨김) */}
-                              {cellPersonas.length === 0 && !isReadOnly && (
+                              ) : !isReadOnly ? (
                                 <PersonaEditDialog
                                   onCellUpdate={handleCellUpdate}
                                   persona={null}
@@ -1152,10 +1281,10 @@ export const PersonaCriteriaModal = ({
                                     <span className="text-xs mt-1 opacity-70">클릭하여 생성</span>
                                   </button>
                                 </PersonaEditDialog>
-                              )}
+                              ) : null}
                               
                               {/* 읽기 모드에서 빈 셀 표시 */}
-                              {cellPersonas.length === 0 && isReadOnly && (
+                              {!cellPersona && isReadOnly && (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <div className="text-center text-gray-400">
                                     <p className="text-sm">페르소나 없음</p>

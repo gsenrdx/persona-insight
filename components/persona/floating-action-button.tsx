@@ -106,7 +106,7 @@ const FloatingActionButton = React.memo(({
                   <div className="flex items-center gap-2.5 w-full">
                     <Plus className="h-4 w-4 flex-shrink-0" />
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate">페르소나 추가하기</span>
+                      <span className="text-sm font-medium truncate">인터뷰 추가하기</span>
                       {jobsLength > 0 && (
                         <Badge variant="secondary" className="bg-white/20 text-white border-0 px-2 py-0.5 text-xs">
                           {completedJobsLength + failedJobsLength}/{jobsLength}

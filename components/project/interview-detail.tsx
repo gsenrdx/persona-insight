@@ -89,7 +89,6 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
         
         return JSON.parse(fixedJson)
       } catch (error) {
-        console.error('JSON 파싱 오류:', error)
         return null
       }
     }
@@ -106,22 +105,16 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
 
   // 동적 점수 계산 로직 (workflow/route.ts와 동일)
   const getPersonaCoordinates = () => {
-    console.log('Debug - interview data:', {
-      x_axis: interview.x_axis,
-      y_axis: interview.y_axis
-    })
     
     if (!interview.x_axis || !interview.y_axis || 
         !Array.isArray(interview.x_axis) || !Array.isArray(interview.y_axis) ||
         interview.x_axis.length === 0 || interview.y_axis.length === 0) {
-      console.log('Debug - No valid axis data')
       return null
     }
     
     const xScore = interview.x_axis[0]
     const yScore = interview.y_axis[0]
     
-    console.log('Debug - scores:', { xScore, yScore })
     
     // X축 점수: high score 필드 동적 감지
     const xHighKeys = Object.keys(xScore).filter(key => 
@@ -152,16 +145,6 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
     const xLow = xLowKeys.length > 0 ? (xScore as any)[xLowKeys[0]] : 0
     const yLow = yLowKeys.length > 0 ? (yScore as any)[yLowKeys[0]] : 0
     
-    console.log('Debug - final coordinates:', {
-      x: xCoordinate,
-      y: yCoordinate,
-      xLow,
-      yLow,
-      xHighKeys,
-      yHighKeys,
-      xLowKeys,
-      yLowKeys
-    })
     
     return { 
       x: xCoordinate, 
@@ -177,13 +160,6 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
 
   const coordinates = getPersonaCoordinates()
   
-  // 디버깅을 위한 로그
-  console.log('Debug - render data:', {
-    coordinates,
-    criteriaConfig,
-    hasCoordinates: !!coordinates,
-    hasCriteriaConfig: !!criteriaConfig
-  })
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 min-h-screen">

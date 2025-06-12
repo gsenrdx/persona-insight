@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
 import { Navigation } from "@/components/shared"
-import { PersonaCriteriaModal } from './persona-criteria-modal'
+import { PersonaCriteriaModal } from '@/components/modal'
 
 // 프로젝트 수정을 위한 인터페이스
 interface ProjectEditData {

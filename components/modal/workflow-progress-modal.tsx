@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Clock, 
   CheckCircle2, 
@@ -35,9 +36,11 @@ import {
   Eye
 } from "lucide-react";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -277,6 +280,7 @@ const JobDetailPanel = React.memo(({
   onRemoveJob: (jobId: string) => void;
   onStartPersonaSynthesis?: (jobId: string) => void;
 }) => {
+  const { profile } = useAuth();
   const config = statusConfig[job.status];
   const StatusIcon = config.icon;
 
@@ -284,26 +288,196 @@ const JobDetailPanel = React.memo(({
   const isPersonaSynthesized = job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED;
   const hasAnalysisResult = job.result && (job.status === WorkflowStatus.COMPLETED || isPersonaSynthesized);
 
+  // 상세 인터뷰 데이터 상태
+  const [interviewDetail, setInterviewDetail] = useState<any[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
   // 실제 반환된 데이터 구조에 맞게 추출
-  // job.result는 { type, description, summary, date, interviewee_style, charging_pattern_scores, value_orientation_scores } 형태
+  // job.result는 { type, description, summary, date, interviewee_style, x_axis, y_axis, interviewee_fake_name, interview_detail } 형태
   const analysisResult = job.result;
+
+  // JSON 파싱 헬퍼 함수 (interview-detail.tsx에서 가져옴)
+  const parseInterviewDetail = (detail: any) => {
+    if (!detail) return null
+    if (Array.isArray(detail)) return detail
+    if (typeof detail === 'string') {
+      try {
+        let cleanedDetail = detail.trim()
+        cleanedDetail = cleanedDetail.replace(/^```[\s\S]*?\n/, '').replace(/\n```[\s\S]*$/, '')
+        
+        let jsonStartIndex = cleanedDetail.indexOf('[')
+        if (jsonStartIndex === -1) return null
+        
+        let bracketCount = 0
+        let jsonEndIndex = -1
+        
+        for (let i = jsonStartIndex; i < cleanedDetail.length; i++) {
+          if (cleanedDetail[i] === '[') bracketCount++
+          else if (cleanedDetail[i] === ']') {
+            bracketCount--
+            if (bracketCount === 0) {
+              jsonEndIndex = i
+              break
+            }
+          }
+        }
+        
+        if (jsonEndIndex === -1) return null
+        
+        cleanedDetail = cleanedDetail.substring(jsonStartIndex, jsonEndIndex + 1)
+        let fixedJson = cleanedDetail
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/([}\]]),\s*([}\]])/g, '$1$2')
+          .replace(/\n/g, ' ')
+          .replace(/\s+/g, ' ')
+        
+        return JSON.parse(fixedJson)
+      } catch (error) {
+        return null
+      }
+    }
+    return null
+  }
+
+  // 인터뷰 상세 데이터 가져오기 - project-interviews.tsx와 동일한 방식 사용
+  useEffect(() => {
+    if (hasAnalysisResult && job.projectId) {
+      console.log('🔍 상세 데이터 로딩 시작:', {
+        hasAnalysisResult,
+        projectId: job.projectId,
+        companyId: profile?.company_id,
+        analysisResult
+      });
+      
+      setLoadingDetail(true);
+      
+      const fetchInterviewDetail = async () => {
+        try {
+          // API를 통해 인터뷰 데이터 조회 (project-interviews.tsx와 동일한 방식)
+          const apiUrl = `/api/supabase/interviewee?company_id=${profile?.company_id}&project_id=${job.projectId}&limit=100&offset=0`;
+          console.log('📡 API 호출:', apiUrl);
+          
+          const response = await fetch(apiUrl);
+          
+          if (!response.ok) {
+            throw new Error('인터뷰 데이터를 가져오는데 실패했습니다');
+          }
+          
+          const result = await response.json();
+          const interviews = result.data || [];
+          
+          console.log('📊 API 응답:', {
+            totalInterviews: interviews.length,
+            interviews: interviews.map((i: any) => ({
+              id: i.id,
+              name: i.interviewee_fake_name,
+              hasDetail: !!i.interview_detail,
+              createdAt: i.created_at
+            }))
+          });
+          
+          // 여러 조건으로 매칭 시도
+          let matchedInterview = null;
+          
+          // 1. interviewee_id로 직접 매칭
+          if (analysisResult?.interviewee_id) {
+            matchedInterview = interviews.find((interview: any) => interview.id === analysisResult.interviewee_id);
+            console.log('🎯 ID 매칭 결과:', {
+              searchId: analysisResult.interviewee_id,
+              found: !!matchedInterview,
+              matchedId: matchedInterview?.id
+            });
+          }
+          
+          // 2. interviewee_fake_name으로 매칭
+          if (!matchedInterview && analysisResult?.interviewee_fake_name) {
+            matchedInterview = interviews.find((interview: any) => 
+              interview.interviewee_fake_name === analysisResult.interviewee_fake_name
+            );
+            console.log('🏷️ 이름 매칭 결과:', {
+              searchName: analysisResult.interviewee_fake_name,
+              found: !!matchedInterview,
+              matchedName: matchedInterview?.interviewee_fake_name
+            });
+          }
+          
+          // 3. 가장 최신 인터뷰로 fallback
+          if (!matchedInterview && interviews.length > 0) {
+            // 최근 5분 이내 생성된 인터뷰 찾기
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const recentInterviews = interviews.filter((interview: any) => 
+              new Date(interview.created_at) > fiveMinutesAgo
+            );
+            
+            if (recentInterviews.length > 0) {
+              matchedInterview = recentInterviews[0];
+              console.log('⏰ 최신 인터뷰 fallback:', {
+                recentCount: recentInterviews.length,
+                selectedId: matchedInterview.id
+              });
+            }
+          }
+          
+          if (matchedInterview?.interview_detail) {
+            console.log('📝 매칭된 인터뷰:', {
+              id: matchedInterview.id,
+              name: matchedInterview.interviewee_fake_name,
+              detailType: typeof matchedInterview.interview_detail,
+              detailLength: matchedInterview.interview_detail?.length || 0
+            });
+            
+            // interview-detail.tsx와 동일한 방식으로 파싱
+            const parsedDetail = parseInterviewDetail(matchedInterview.interview_detail);
+            
+            console.log('🔧 파싱 결과:', {
+              parsedType: typeof parsedDetail,
+              isArray: Array.isArray(parsedDetail),
+              length: parsedDetail?.length || 0,
+              sample: parsedDetail?.[0]
+            });
+            
+            if (parsedDetail && Array.isArray(parsedDetail) && parsedDetail.length > 0) {
+              setInterviewDetail(parsedDetail);
+              console.log('✅ 상세 데이터 설정 완료:', parsedDetail.length, '개 토픽');
+            } else {
+              console.log('❌ 파싱된 데이터가 유효하지 않음');
+            }
+          } else {
+            console.log('❌ 매칭된 인터뷰가 없거나 interview_detail이 없음');
+          }
+          
+        } catch (error) {
+          console.error('❌ 인터뷰 상세 데이터 로드 실패:', error);
+        } finally {
+          setLoadingDetail(false);
+        }
+      };
+
+      fetchInterviewDetail();
+    } else {
+      console.log('⚠️ 조건 미충족:', {
+        hasAnalysisResult,
+        projectId: job.projectId,
+        profileLoaded: !!profile
+      });
+    }
+  }, [hasAnalysisResult, job.projectId, analysisResult?.interviewee_id, analysisResult?.interviewee_fake_name, profile?.company_id]);
   
-  // 충전 패턴과 가치 지향성 점수
-  const chargingPatternScore = analysisResult?.charging_pattern_scores?.[0];
-  const valueOrientationScore = analysisResult?.value_orientation_scores?.[0];
 
   return (
-    <div className="flex flex-col h-full border-l bg-white">
+    <div className="flex flex-col h-full max-h-[85vh] border-l bg-white">
       {/* 컴팩트 헤더 */}
       <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 text-gray-600" />
-          </button>
-          <h2 className="text-base font-medium text-gray-900">분석 결과</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-600" />
+            </button>
+            <h2 className="text-base font-medium text-gray-900">분석 결과</h2>
+          </div>
         </div>
         
         <div className="flex items-center gap-3">
@@ -327,6 +501,87 @@ const JobDetailPanel = React.memo(({
               )}
             </div>
           </div>
+          
+          {/* 컴팩트 평가 점수 */}
+          {hasAnalysisResult && analysisResult && (
+            <div className="flex flex-col gap-1.5 w-32">
+              {/* X축 점수 바 */}
+              {analysisResult.x_axis && Array.isArray(analysisResult.x_axis) && analysisResult.x_axis.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const xData = analysisResult.x_axis[0] || {};
+                    const keys = Object.keys(xData);
+                    const values = Object.values(xData) as number[];
+                    if (keys.length >= 2 && values.length >= 2) {
+                      const [key1, key2] = keys;
+                      const [val1, val2] = values;
+                      const total = val1 + val2;
+                      const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
+                      return (
+                        <>
+                          <span className="text-xs text-gray-600 w-6 text-left truncate" title={key1.replace('_score', '')}>
+                            {key1.split('_score')[0].substring(0, 2)}
+                          </span>
+                          <div className="relative flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
+                              style={{ width: `${leftPercent}%` }}
+                            />
+                            <div 
+                              className="absolute right-0 top-0 h-full bg-blue-300 transition-all duration-500"
+                              style={{ width: `${100 - leftPercent}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600 w-6 text-right truncate" title={key2.replace('_score', '')}>
+                            {key2.split('_score')[0].substring(0, 2)}
+                          </span>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+              
+              {/* Y축 점수 바 */}
+              {analysisResult.y_axis && Array.isArray(analysisResult.y_axis) && analysisResult.y_axis.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const yData = analysisResult.y_axis[0] || {};
+                    const keys = Object.keys(yData);
+                    const values = Object.values(yData) as number[];
+                    if (keys.length >= 2 && values.length >= 2) {
+                      const [key1, key2] = keys;
+                      const [val1, val2] = values;
+                      const total = val1 + val2;
+                      const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
+                      return (
+                        <>
+                          <span className="text-xs text-gray-600 w-6 text-left truncate" title={key1.replace('_score', '')}>
+                            {key1.split('_score')[0].substring(0, 2)}
+                          </span>
+                          <div className="relative flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="absolute left-0 top-0 h-full bg-purple-500 transition-all duration-500"
+                              style={{ width: `${leftPercent}%` }}
+                            />
+                            <div 
+                              className="absolute right-0 top-0 h-full bg-purple-300 transition-all duration-500"
+                              style={{ width: `${100 - leftPercent}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600 w-6 text-right truncate" title={key2.replace('_score', '')}>
+                            {key2.split('_score')[0].substring(0, 2)}
+                          </span>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 진행률 (처리중일 때만) */}
@@ -347,7 +602,7 @@ const JobDetailPanel = React.memo(({
       </div>
 
       {/* 컨텐츠 - 2열 그리드 */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-y-auto">
         <div className="p-4">
           {/* 오류 정보 */}
           {job.error && (
@@ -362,199 +617,220 @@ const JobDetailPanel = React.memo(({
             </div>
           )}
 
-                         {/* 분석 결과 */}
-               {hasAnalysisResult && (
-                 <div className="space-y-3">
-                   {/* 분석 개요 */}
-                   <div className="bg-gray-50 rounded-lg p-3">
-                     <div className="flex items-center justify-between mb-2">
-                       <h4 className="text-sm font-medium text-gray-900">분석 개요</h4>
-                       {analysisResult?.type && (
-                         <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                           Type {analysisResult.type}
-                         </Badge>
-                       )}
-                     </div>
-                     
-                     {/* 페르소나 설명 */}
-                     {analysisResult?.description && (
-                       <p className="text-xs text-gray-600 mb-2">
-                         {analysisResult.description}
-                       </p>
-                     )}
-                     
-                     {/* 분석 날짜 */}
-                     {analysisResult?.date && (
-                       <div className="flex items-center gap-1 text-xs text-gray-500">
-                         <Calendar className="h-3 w-3" />
-                         {analysisResult.date}
-                       </div>
-                     )}
-                   </div>
+          {/* 분석 결과 */}
+          {hasAnalysisResult && (
+            <div className="space-y-3 min-h-0">
+              {/* 2열 구조 - 요약 정보 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* 핵심 요약 */}
+                {analysisResult?.summary && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <div className="w-2 h-4 bg-blue-500 rounded-full"></div>
+                      핵심 요약
+                    </h3>
+                    <div className="max-h-20 overflow-y-auto">
+                      <p className="text-xs text-gray-700 leading-relaxed">
+                        {analysisResult.summary}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-                   {/* 주요 인사이트 */}
-                   {analysisResult?.summary && (
-                     <div className="bg-white border border-gray-200 rounded-lg p-3">
-                       <h5 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-                         <Target className="h-4 w-4 text-blue-600" />
-                         핵심 인사이트
-                       </h5>
-                       <p className="text-xs text-gray-700 leading-relaxed">
-                         {analysisResult.summary}
-                       </p>
-                     </div>
-                   )}
+                {/* 인터뷰 스타일 */}
+                {analysisResult?.interviewee_style && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <div className="w-2 h-4 bg-indigo-500 rounded-full"></div>
+                      인터뷰 스타일
+                    </h3>
+                    <div className="max-h-20 overflow-y-auto">
+                      <p className="text-xs text-gray-700 leading-relaxed">
+                        {analysisResult.interviewee_style}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                   {/* 인터뷰 스타일 */}
-                   {analysisResult?.interviewee_style && (
-                     <div className="bg-white border border-gray-200 rounded-lg p-3">
-                       <h5 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-                         <MessageSquare className="h-4 w-4 text-purple-600" />
-                         인터뷰 스타일
-                       </h5>
-                       <p className="text-xs text-gray-700 leading-relaxed">
-                         {analysisResult.interviewee_style}
-                       </p>
-                     </div>
-                   )}
+              {/* 평가 점수 */}
+              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <div className="w-2 h-4 bg-green-500 rounded-full"></div>
+                  평가 점수
+                </h3>
+                
+                <div className="max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {/* X축 점수 */}
+                    {analysisResult?.x_axis && Array.isArray(analysisResult.x_axis) && analysisResult.x_axis.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-gray-700 mb-2">X축 평가</div>
+                        <div className="space-y-2">
+                          {Object.entries(analysisResult.x_axis[0] || {}).map(([key, value]) => (
+                            <div key={key}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-600">{key.replace('_score', '')}</span>
+                                <span className="text-xs font-bold text-blue-600">{value as number}점</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${value}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Y축 점수 */}
+                    {analysisResult?.y_axis && Array.isArray(analysisResult.y_axis) && analysisResult.y_axis.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-gray-700 mb-2">Y축 평가</div>
+                        <div className="space-y-2">
+                          {Object.entries(analysisResult.y_axis[0] || {}).map(([key, value]) => (
+                            <div key={key}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-600">{key.replace('_score', '')}</span>
+                                <span className="text-xs font-bold text-purple-600">{value as number}점</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${value}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 점수 데이터가 없을 때 */}
+                  {(!analysisResult?.x_axis && !analysisResult?.y_axis) && (
+                    <div className="w-full bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 text-center">
+                      <div className="text-xs text-gray-400">평가 데이터 없음</div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                   {/* 인터뷰 대상자 가짜 이름 */}
-                   {analysisResult?.interviewee_fake_name && (
-                     <div className="bg-white border border-gray-200 rounded-lg p-3">
-                       <h5 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-                         <User className="h-4 w-4 text-blue-600" />
-                         인터뷰 대상자
-                       </h5>
-                       <p className="text-xs text-gray-700 leading-relaxed">
-                         {analysisResult.interviewee_fake_name}
-                       </p>
-                     </div>
-                   )}
+              {/* 상세 분석 보고서 - 기존 2열 구조에 통합 */}
+              {loadingDetail ? (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-sm text-gray-600">상세 분석 데이터 로딩 중...</span>
+                  </div>
+                </div>
+              ) : interviewDetail.length > 0 ? (
+                interviewDetail.map((detail: any, index: number) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                        {index + 1}
+                      </div>
+                      {detail.topic_name}
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* 페인포인트 */}
+                      {detail.painpoint && detail.painpoint.length > 0 && (
+                        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <h4 className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-2">
+                            <div className="w-2 h-4 bg-red-500 rounded-full"></div>
+                            페인포인트 ({detail.painpoint.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {detail.painpoint.map((pain: string, idx: number) => (
+                              <div key={idx} className="text-xs text-gray-700 bg-red-50 rounded p-3">
+                                <span className="text-red-600 font-medium">{idx + 1}.</span> {pain}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                   {/* 충전 패턴 점수 */}
-                   {chargingPatternScore && (
-                     <div className="bg-white border border-gray-200 rounded-lg p-3">
-                       <h5 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                         <Battery className="h-4 w-4 text-green-600" />
-                         충전 패턴 분석
-                       </h5>
-                       <div className="space-y-2">
-                         <div>
-                           <div className="flex justify-between items-center mb-1">
-                             <span className="text-xs text-gray-600">완속(Home) 중심</span>
-                             <span className="text-xs font-medium">{chargingPatternScore.home_centric_score}%</span>
-                           </div>
-                           <div className="w-full h-1 bg-gray-200 rounded-full">
-                             <div 
-                               className="h-1 bg-green-500 rounded-full transition-all duration-500" 
-                               style={{ width: `${chargingPatternScore.home_centric_score}%` }} 
-                             />
-                           </div>
-                         </div>
-                         <div>
-                           <div className="flex justify-between items-center mb-1">
-                             <span className="text-xs text-gray-600">급속(Road) 중심</span>
-                             <span className="text-xs font-medium">{chargingPatternScore.road_centric_score}%</span>
-                           </div>
-                           <div className="w-full h-1 bg-gray-200 rounded-full">
-                             <div 
-                               className="h-1 bg-blue-500 rounded-full transition-all duration-500" 
-                               style={{ width: `${chargingPatternScore.road_centric_score}%` }} 
-                             />
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                   )}
+                      {/* 니즈 */}
+                      {detail.need && detail.need.length > 0 && (
+                        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <h4 className="text-sm font-semibold text-blue-700 mb-3 flex items-center gap-2">
+                            <div className="w-2 h-4 bg-blue-500 rounded-full"></div>
+                            니즈 ({detail.need.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {detail.need.map((need: string, idx: number) => (
+                              <div key={idx} className="text-xs text-gray-700 bg-blue-50 rounded p-3">
+                                <span className="text-blue-600 font-medium">{idx + 1}.</span> {need}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                   {/* 가치 지향성 점수 */}
-                   {valueOrientationScore && (
-                     <div className="bg-white border border-gray-200 rounded-lg p-3">
-                       <h5 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                         <TrendingUp className="h-4 w-4 text-orange-600" />
-                         가치 지향성 분석
-                       </h5>
-                       <div className="space-y-2">
-                         <div>
-                           <div className="flex justify-between items-center mb-1">
-                             <span className="text-xs text-gray-600">기술/브랜드 중심</span>
-                             <span className="text-xs font-medium">{valueOrientationScore.tech_brand_driven_score}%</span>
-                           </div>
-                           <div className="w-full h-1 bg-gray-200 rounded-full">
-                             <div 
-                               className="h-1 bg-purple-500 rounded-full transition-all duration-500" 
-                               style={{ width: `${valueOrientationScore.tech_brand_driven_score}%` }} 
-                             />
-                           </div>
-                         </div>
-                         <div>
-                           <div className="flex justify-between items-center mb-1">
-                             <span className="text-xs text-gray-600">비용 중심</span>
-                             <span className="text-xs font-medium">{valueOrientationScore.cost_driven_score}%</span>
-                           </div>
-                           <div className="w-full h-1 bg-gray-200 rounded-full">
-                             <div 
-                               className="h-1 bg-orange-500 rounded-full transition-all duration-500" 
-                               style={{ width: `${valueOrientationScore.cost_driven_score}%` }} 
-                             />
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                   )}
-                 </div>
-               )}
+                      {/* 인사이트 인용구 */}
+                      {detail.insight_quote && detail.insight_quote.length > 0 && (
+                        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <h4 className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-2">
+                            <div className="w-2 h-4 bg-green-500 rounded-full"></div>
+                            인사이트 ({detail.insight_quote.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {detail.insight_quote.map((quote: string, idx: number) => (
+                              <div key={idx} className="bg-green-50 rounded p-3 border-l-3 border-green-200">
+                                <p className="text-xs text-gray-700 italic">"{quote}"</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 키워드 */}
+                      {detail.keyword_cluster && detail.keyword_cluster.length > 0 && (
+                        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <h4 className="text-sm font-semibold text-purple-700 mb-3 flex items-center gap-2">
+                            <div className="w-2 h-4 bg-purple-500 rounded-full"></div>
+                            키워드 ({detail.keyword_cluster.length})
+                          </h4>
+                          <div className="flex flex-wrap gap-1">
+                            {detail.keyword_cluster.map((keyword: string, idx: number) => (
+                              <Badge 
+                                key={idx} 
+                                variant="outline" 
+                                className="bg-purple-50 border-purple-200 text-purple-700 text-xs px-2 py-0.5"
+                              >
+                                {keyword}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : null}
+            </div>
+          )}
         </div>
       </ScrollArea>
 
-      {/* 컴팩트 액션 영역 */}
-      {(job.status === WorkflowStatus.FAILED || 
-        job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED || 
-        job.status === WorkflowStatus.COMPLETED ||
-        job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED) && (
+      {/* 컴팩트 액션 영역 - 재시도 버튼만 남김 */}
+      {(job.status === WorkflowStatus.FAILED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
         <div className="p-4 border-t border-gray-100">
-          <div className="flex gap-2">
-            {/* 페르소나 합성 버튼 - 인터뷰 분석 완료 시에만 표시 */}
-            {job.status === WorkflowStatus.COMPLETED && job.personaType && onStartPersonaSynthesis && (
-              <Button
-                onClick={() => {
-                  onStartPersonaSynthesis(job.id);
-                }}
-                size="sm"
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-8 text-xs"
-              >
-                <Sparkles className="h-3 w-3 mr-1" />
-                페르소나 반영
-              </Button>
-            )}
-            
-            {(job.status === WorkflowStatus.FAILED || job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED) && (
-              <Button
-                onClick={() => {
-                  onRetryJob(job.id);
-                  onClose();
-                }}
-                size="sm"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs"
-                              >
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  다시 시도
-              </Button>
-            )}
-            
-            <Button
-              onClick={() => {
-                onRemoveJob(job.id);
-                onClose();
-              }}
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs px-3"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              제거
-            </Button>
-          </div>
+          <Button
+            onClick={() => {
+              onRetryJob(job.id);
+              onClose();
+            }}
+            size="sm"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            다시 시도
+          </Button>
         </div>
       )}
     </div>
@@ -633,7 +909,7 @@ export default function WorkflowProgressModal({
           <DialogTitle>작업 진행 상황</DialogTitle>
         </VisuallyHidden>
         
-        <div className="flex h-full min-h-[700px]">
+        <div className="flex h-full max-h-[85vh]">
           {/* 리스트 페이지 */}
           {!selectedJob && (
             <div className="flex flex-col w-full min-w-0">
@@ -694,24 +970,15 @@ export default function WorkflowProgressModal({
                       파일 추가
                     </Button>
                     
-                    {(completedJobs.length > 0 || failedJobs.length > 0) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                            <MoreHorizontal className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          {completedJobs.length > 0 && (
-                            <DropdownMenuItem onClick={onClearCompleted} className="text-xs">
-                              완료된 작업 정리
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={onClearAll} className="text-red-600 text-xs">
-                            모든 작업 정리
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    {completedJobs.length > 0 && (
+                      <Button
+                        onClick={onClearCompleted}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                      >
+                        완료된 작업 정리
+                      </Button>
                     )}
                   </div>
                 </div>

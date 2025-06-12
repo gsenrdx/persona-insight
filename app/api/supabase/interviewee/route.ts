@@ -6,6 +6,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
+    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const offset = parseInt(searchParams.get('offset') || '0', 10)
 
     // company_id가 필수로 제공되어야 함
     if (!company_id) {
@@ -28,6 +30,7 @@ export async function GET(request: Request) {
       `)
       .eq('company_id', company_id)
       .order('session_date', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     // 프로젝트 필터링 추가
     if (project_id) {

@@ -97,7 +97,6 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      console.log(`삭제된 페르소나: ${personasToDelete.map(p => p.persona_type).join(', ')}`)
     }
 
     // 6. 새로운/업데이트할 페르소나들 처리
@@ -119,7 +118,6 @@ export async function POST(req: NextRequest) {
         needs: existingPersona?.needs || '',
         insight: existingPersona?.insight || '',
         insight_quote: existingPersona?.insight_quote || '',
-        persona_reflected: existingPersona?.persona_reflected || false,
         updated_at: new Date().toISOString()
       }
 
@@ -135,7 +133,6 @@ export async function POST(req: NextRequest) {
           throw error
         }
 
-        console.log(`페르소나 ${persona.persona_type} 업데이트 완료`)
       } else {
         // 새로 생성
         const { error } = await supabase
@@ -150,7 +147,6 @@ export async function POST(req: NextRequest) {
           throw error
         }
 
-        console.log(`페르소나 ${persona.persona_type} 생성 완료`)
       }
     })
 

@@ -27,8 +27,11 @@ export interface ExtractionCriteria {
 
 export interface AddInterviewModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onFilesSubmit: (files: File[], criteria: ExtractionCriteria[], projectId?: string) => void;
+  onClose?: () => void;
+  onComplete?: () => void;
+  onOpenChange?: (open: boolean) => void;
+  onFilesSubmit?: (files: File[], criteria: ExtractionCriteria[], projectId?: string) => void;
+  projectId?: string;
 }
 
 // 10MB 크기 제한 (바이트 단위)
@@ -78,8 +81,8 @@ const SUGGESTED_CRITERIA = [
   { name: '사용 패턴', description: '이용 방식과 습관' }
 ];
 
-export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }: AddInterviewModalProps) {
-  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드, 2: 분석 기준
+export default function AddInterviewModal({ open, onClose, onComplete, onOpenChange, onFilesSubmit, projectId }: AddInterviewModalProps) {
+  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,9 +127,15 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   // 모달이 열릴 때 프로젝트 목록 가져오기
   useEffect(() => {
     if (open && profile?.company_id && profile?.id) {
-      fetchProjects();
+      if (projectId) {
+        // projectId가 있으면 프로젝트 선택 단계 건너뛰기
+        setSelectedProjectId(projectId);
+        setCurrentStep(1); // 파일 업로드 단계로 바로 이동
+      } else {
+        fetchProjects();
+      }
     }
-  }, [open, profile?.company_id, profile?.id]);
+  }, [open, profile?.company_id, profile?.id, projectId]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -282,7 +291,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
   };
 
   const handleNextStep = () => {
-    if (currentStep === 0) {
+    if (currentStep === 0 && !projectId) {
       if (!selectedProjectId) {
         setError("프로젝트를 선택해주세요");
         return;
@@ -295,15 +304,13 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
         return;
       }
       setError(null);
-      setCurrentStep(2);
+      // 파일 업로드 후 바로 제출
+      handleSubmit();
     }
   };
 
   const handlePreviousStep = () => {
-    if (currentStep === 2) {
-      setCurrentStep(1);
-      setError(null);
-    } else if (currentStep === 1) {
+    if (currentStep === 1 && !projectId) {
       setCurrentStep(0);
       setError(null);
     }
@@ -320,32 +327,39 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
       return;
     }
     
-    onFilesSubmit(files, extractionCriteria, selectedProjectId);
+    if (onFilesSubmit) {
+      onFilesSubmit(files, extractionCriteria, selectedProjectId);
+    }
     
-    setCurrentStep(0);
-    setFiles([]);
-    setExtractionCriteria(DEFAULT_CRITERIA);
-    setNewCriteriaName('');
-    setNewCriteriaDescription('');
-    setEditingCriteria(null);
-    setShowFileList(false);
-    setSelectedProjectId('');
-    setError(null);
-    onOpenChange(false);
+    // 성공적으로 완료되면 onComplete 호출
+    if (onComplete) {
+      onComplete();
+    }
+    
+    // 모달 닫기
+    handleModalClose(false);
   };
 
   const handleModalClose = (newOpen: boolean) => {
-    onOpenChange(newOpen);
     if (!newOpen) {
-      setCurrentStep(0);
+      setCurrentStep(projectId ? 1 : 0); // projectId가 있으면 파일 업로드 단계로 리셋
       setFiles([]);
       setExtractionCriteria(DEFAULT_CRITERIA);
       setNewCriteriaName('');
       setNewCriteriaDescription('');
       setEditingCriteria(null);
       setShowFileList(false);
-      setSelectedProjectId('');
+      if (!projectId) {
+        setSelectedProjectId('');
+      }
       setError(null);
+      if (onClose) {
+        onClose();
+      } else if (onOpenChange) {
+        onOpenChange(false);
+      }
+    } else if (onOpenChange) {
+      onOpenChange(newOpen);
     }
   };
 
@@ -720,9 +734,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              {currentStep === 0 && <ProjectSelectionStep />}
+              {currentStep === 0 && !projectId && <ProjectSelectionStep />}
               {currentStep === 1 && <FileUploadStep />}
-              {currentStep === 2 && <CriteriaSetupStep />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -765,7 +778,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
               )}
               <Button
                 variant="ghost"
-                onClick={() => onOpenChange(false)}
+                onClick={() => onOpenChange?.(false)}
                 size="sm"
                 className="text-gray-600"
               >
@@ -773,30 +786,27 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit }:
               </Button>
             </div>
             
-            {currentStep < 2 ? (
-              <Button
-                onClick={handleNextStep}
-                disabled={
-                  (currentStep === 0 && !selectedProjectId) ||
-                  (currentStep === 1 && files.length === 0)
-                }
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                다음
-                <ArrowRight className="h-3 w-3 ml-2" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSubmit}
-                disabled={files.length === 0 || !!error}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Sparkles className="h-3 w-3 mr-2" />
-                분석 시작
-              </Button>
-            )}
+            <Button
+              onClick={handleNextStep}
+              disabled={
+                (currentStep === 0 && !projectId && !selectedProjectId) ||
+                (currentStep === 1 && files.length === 0)
+              }
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {currentStep === 1 ? (
+                <>
+                  <Sparkles className="h-3 w-3 mr-2" />
+                  분석 시작
+                </>
+              ) : (
+                <>
+                  다음
+                  <ArrowRight className="h-3 w-3 ml-2" />
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </DialogContent>

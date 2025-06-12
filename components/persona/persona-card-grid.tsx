@@ -34,13 +34,10 @@ export default function PersonaCardGrid() {
     queryKey: ['personas', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return []
-      
-      console.log('페르소나 데이터 로드 중 - 회사 단위:', profile?.company?.name, 'ID:', profile?.company_id);
-      
+            
       // 회사 단위로 모든 페르소나 로드 (프로젝트 필터링 없음)
       const data = await fetchPersonas(profile?.company_id)
       
-      console.log('페르소나 데이터 로드 완료:', data.length, '개');
       return data
     },
     enabled: !!profile?.company_id,

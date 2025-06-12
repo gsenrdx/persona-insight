@@ -48,6 +48,7 @@ interface SerializableWorkflowJob {
   error?: string;
   personaType?: string;
   synthesisResult?: any;
+  projectId?: string;
   extractionCriteria?: ExtractionCriteria[];
 }
 
@@ -105,6 +106,7 @@ const serializeJob = async (job: WorkflowJob): Promise<SerializableWorkflowJob> 
     error: job.error,
     personaType: job.personaType,
     synthesisResult: job.synthesisResult,
+    projectId: job.projectId,
     extractionCriteria: job.extractionCriteria
   };
 };
@@ -127,6 +129,7 @@ const deserializeJob = (serializedJob: SerializableWorkflowJob): WorkflowJob => 
     error: serializedJob.error,
     personaType: serializedJob.personaType,
     synthesisResult: serializedJob.synthesisResult,
+    projectId: serializedJob.projectId,
     extractionCriteria: serializedJob.extractionCriteria
   };
 };
@@ -137,7 +140,6 @@ const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
     const serializedJobs = await Promise.all(jobs.map(serializeJob));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializedJobs));
   } catch (error) {
-    console.error('Failed to save jobs to localStorage:', error);
   }
 };
 
@@ -150,7 +152,6 @@ const loadJobsFromStorage = (): WorkflowJob[] => {
     const serializedJobs: SerializableWorkflowJob[] = JSON.parse(stored);
     return serializedJobs.map(deserializeJob);
   } catch (error) {
-    console.error('Failed to load jobs from localStorage:', error);
     return [];
   }
 };
@@ -237,15 +238,11 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       }
 
       // 워크플로우 결과에서 selected_interviewee 데이터 추출
-      console.log('[페르소나 합성] job.result:', job.result);
-      console.log('[페르소나 합성] job.result 타입:', typeof job.result);
       
       const selectedInterviewee = typeof job.result === 'string' 
         ? job.result 
         : JSON.stringify(job.result);
       
-      console.log('[페르소나 합성] selectedInterviewee:', selectedInterviewee);
-      console.log('[페르소나 합성] personaType:', job.personaType);
 
       // 페르소나 합성 API 호출
       const response = await fetch('/api/persona-synthesis', {
@@ -264,11 +261,9 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
         let errorMessage = '페르소나 합성 중 오류가 발생했습니다';
         try {
           const errorData = await response.json();
-          console.error('[페르소나 합성] API 오류 응답:', errorData);
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
           const errorText = await response.text();
-          console.error('[페르소나 합성] API 오류 응답:', errorText);
           errorMessage = errorText || errorMessage;
         }
         throw new Error(errorMessage);
@@ -276,7 +271,6 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
 
       const result = await response.json();
       const synthesisResult = result.data;
-      console.log('[페르소나 합성] 성공:', synthesisResult);
 
       // 페르소나 합성 완료 상태로 변경
       setJobs(prev => prev.map(j => 
@@ -292,7 +286,6 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       ));
 
     } catch (error: any) {
-      console.error('[페르소나 합성] 오류:', error);
       // 페르소나 합성 실패 상태로 변경
       setJobs(prev => prev.map(j => 
         j.id === job.id 
@@ -340,12 +333,10 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       // 프로젝트 ID가 있으면 추가
       if (job.projectId) {
         formData.append('projectId', job.projectId);
-        console.log('[워크플로우] 프로젝트 ID 전송:', job.projectId);
       }
 
       if (job.extractionCriteria) {
         formData.append('extractionCriteria', JSON.stringify(job.extractionCriteria));
-        console.log('[워크플로우] 추출 기준 전송:', job.extractionCriteria);
       }
       
       const response = await fetch('/api/workflow', {
@@ -364,13 +355,10 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
         
         try {
           const errorData = await response.json();
-          console.error('[워크플로우] API 오류 응답:', errorData);
           errorMessage = errorData.error || errorMessage;
           errorDetails = errorData.details;
         } catch (parseError) {
           const errorText = await response.text();
-          console.error('[워크플로우] API 응답 상태:', response.status, response.statusText);
-          console.error('[워크플로우] API 오류 응답:', errorText);
           errorMessage = errorText || errorMessage;
         }
         
@@ -396,7 +384,6 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
           : j
       ));
 
-      console.log('[워크플로우] 인터뷰 분석 완료 - user_type:', userType);
 
     } catch (error: any) {
       // 실패 상태로 변경
