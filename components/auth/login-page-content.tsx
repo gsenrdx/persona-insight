@@ -72,9 +72,10 @@ export default function LoginPageContent() {
     defaultValues: { email: '', password: '', confirmPassword: '', name: '', companyId: '' },
   })
 
-  // 이미 로그인된 사용자라면 메인 페이지로 리다이렉트
+  // 로그인된 사용자 체크
   useEffect(() => {
     if (user && !loading) {
+      console.log('LoginPageContent: User is logged in, redirecting to home')
       router.push('/')
     }
   }, [user, loading, router])
@@ -138,15 +139,9 @@ export default function LoginPageContent() {
       }
 
       if (authData.user) {
-        console.log('로그인 성공 - auth context 상태 업데이트 대기중...')
-        
-        // auth context의 상태 변경을 위해 적절한 지연 시간 제공
-        // onAuthStateChange 리스너가 처리할 시간을 줌
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // 페이지 새로고침으로 최신 상태 보장
-        router.refresh()
-        router.push('/')
+        console.log('로그인 성공 - auth provider가 상태를 업데이트할 때까지 대기')
+        // AuthProvider의 onAuthStateChange가 상태를 업데이트하면
+        // useEffect에서 자동으로 리다이렉트됨
       }
     } catch (err) {
       setError('네트워크 오류가 발생했어요')
@@ -206,6 +201,7 @@ export default function LoginPageContent() {
     }
   }
 
+  // 로딩 중이거나 이미 로그인된 경우 처리
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">

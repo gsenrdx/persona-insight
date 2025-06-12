@@ -30,8 +30,8 @@ export default function UserMenu() {
   }
   
   // 버전 정보
-  const version = 'v1.0.1'
-  const updateDate = '2025.06.10'
+  const version = 'v1.0.2'
+  const updateDate = '2025.06.12'
   const updateLink = 'https://example.com/changelog'
   
   const handleUpdateClick = () => {

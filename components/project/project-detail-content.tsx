@@ -64,34 +64,96 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState('interviews')
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
-    if (!profile?.id || !projectId) return
+    if (!projectId) {
+      setError('프로젝트 ID가 없습니다')
+      setLoading(false)
+      return
+    }
+    
+    if (!profile?.id) {
+      // 프로필이 로딩 중일 수 있으므로 잠시 기다림
+      const timer = setTimeout(() => {
+        if (!profile?.id) {
+          setError('사용자 인증 정보가 없습니다. 다시 로그인해주세요.')
+          setLoading(false)
+        }
+      }, 5000) // 5초 후 타임아웃
+      
+      return () => clearTimeout(timer)
+    }
+    
     fetchProject()
   }, [profile?.id, projectId])
 
-  const fetchProject = async () => {
+  const fetchProject = async (isRetry = false) => {
     try {
       setLoading(true)
-      setError(null)
+      if (!isRetry) {
+        setError(null)
+      }
 
       if (!profile?.id) {
         throw new Error('사용자 인증 정보가 없습니다')
       }
 
-      const response = await fetch(`/api/supabase/projects/${projectId}?user_id=${profile.id}`)
+      console.log(`Fetching project ${projectId} for user ${profile.id}${isRetry ? ' (retry)' : ''}`)
+
+      // 타임아웃이 있는 fetch 함수
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
+
+      const response = await fetch(`/api/supabase/projects/${projectId}?user_id=${profile.id}&t=${Date.now()}`, {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+      
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '프로젝트를 불러올 수 없습니다')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('API Error:', response.status, errorData)
+        
+        // 403 에러인 경우 권한 문제
+        if (response.status === 403) {
+          throw new Error('프로젝트에 접근할 권한이 없습니다')
+        }
+        
+        throw new Error(errorData.error || `서버 오류 (${response.status})`)
       }
       
       const data = await response.json()
+      console.log('Project data received:', data)
+      
+      if (!data.data) {
+        throw new Error('프로젝트 데이터가 없습니다')
+      }
+      
       setProject(data.data)
+      setRetryCount(0) // 성공 시 재시도 카운트 리셋
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '프로젝트를 불러오는 중 오류가 발생했습니다'
-      setError(errorMessage)
-      toast.error(errorMessage)
+      console.error('fetchProject error:', err)
+      
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('요청 시간이 초과되었습니다. 다시 시도해주세요.')
+      } else {
+        const errorMessage = err instanceof Error ? err.message : '프로젝트를 불러오는 중 오류가 발생했습니다'
+        setError(errorMessage)
+        
+        // 자동 재시도 (최대 2번)
+        if (retryCount < 2 && !isRetry) {
+          console.log(`Auto retry ${retryCount + 1}/2`)
+          setRetryCount(prev => prev + 1)
+          setTimeout(() => fetchProject(true), 2000 + retryCount * 1000) // 점진적 지연
+          return
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -118,22 +180,50 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <h2 className="text-lg font-medium text-slate-700 mb-2">프로젝트 로딩 중...</h2>
+          <p className="text-sm text-slate-500">잠시만 기다려주세요</p>
+        </div>
       </div>
     )
   }
 
   if (error || !project) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-16 bg-slate-50 rounded-lg">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">오류 발생</h2>
-          <p className="text-slate-600 mb-6">{error || '프로젝트를 찾을 수 없습니다.'}</p>
-          <Button variant="outline" onClick={() => router.push('/projects')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            프로젝트 목록으로 돌아가기
-          </Button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto text-center py-16 bg-white rounded-lg shadow-sm border">
+            <div className="text-red-100 bg-red-600 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <ArrowLeft className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold text-red-600 mb-4">프로젝트 로딩 실패</h2>
+            <p className="text-slate-600 mb-6 text-sm leading-relaxed">
+              {error || '프로젝트를 찾을 수 없습니다.'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setError(null)
+                  setRetryCount(0)
+                  fetchProject()
+                }}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                다시 시도
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/projects')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                프로젝트 목록
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     )

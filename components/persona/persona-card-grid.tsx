@@ -18,7 +18,7 @@ import FloatingActionButton from "./floating-action-button"
 // 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
 
 export default function PersonaCardGrid() {
-  const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
+  const { profile, loading: authLoading } = useAuth() // 사용자 프로필에서 company_id 가져오기
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
   const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
@@ -40,7 +40,7 @@ export default function PersonaCardGrid() {
       
       return data
     },
-    enabled: !!profile?.company_id,
+    enabled: !authLoading && !!profile?.company_id, // authLoading이 false이고 company_id가 있을 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   })
@@ -164,6 +164,19 @@ export default function PersonaCardGrid() {
   }
 
 
+
+  // 인증 로딩 중일 때
+  if (authLoading) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
+          <p className="text-muted-foreground">인증 정보 확인 중...</p>
+        </div>
+        <FloatingActionButton {...buttonProps} />
+      </>
+    )
+  }
 
   if (error) {
     return (

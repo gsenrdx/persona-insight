@@ -127,12 +127,12 @@ export default function PersonaCard({
               {summary && (
                 <div className="mb-4">
                   <p className={cn(
-                    "text-xs leading-relaxed line-clamp-3",
+                    "text-xs leading-relaxed",
                     isDark 
                       ? "text-zinc-400" 
                       : "text-zinc-600"
                   )}>
-                    {summary.length > 120 ? `${summary.substring(0, 120)}...` : summary}
+                    {summary}
                   </p>
                 </div>
               )}

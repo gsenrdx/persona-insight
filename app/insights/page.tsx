@@ -482,19 +482,23 @@ export default function InsightsPage() {
             {/* 고정 네비게이션 */}
             {isHeaderFixed && (
               <div className="fixed top-0 left-0 right-0 bg-background z-50 shadow-md border-b border-gray-200 dark:border-gray-800 py-3 transform transition-transform">
-                <div className="container mx-auto px-4">
+                <div className="w-full px-4">
                   <div className="flex justify-center items-center">
-                    <div className="flex gap-2 overflow-auto pb-1">
-                      {(currentYearData?.insights || []).map((insight, idx) => (
-                        <Button 
-                          key={idx} 
-                          variant={currentInsight === idx ? "default" : "outline"} 
-                          className="text-xs h-8 px-2 whitespace-nowrap"
-                          onClick={() => setCurrentInsight(idx)}
-                        >
-                          {insight?.title || `인사이트 ${idx + 1}`}
-                        </Button>
-                      ))}
+                    <div className="flex gap-2 overflow-auto pb-1 w-full justify-center">
+                      {(currentYearData?.insights || []).map((insight, idx) => {
+                        const isSelected = currentInsight === idx
+                        return (
+                          <Button 
+                            key={idx} 
+                            ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) : undefined}
+                            variant={isSelected ? "default" : "outline"} 
+                            className="text-xs h-8 px-2 whitespace-nowrap flex-shrink-0"
+                            onClick={() => setCurrentInsight(idx)}
+                          >
+                            {insight?.title || `인사이트 ${idx + 1}`}
+                          </Button>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>

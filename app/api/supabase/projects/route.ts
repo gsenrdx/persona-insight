@@ -46,9 +46,38 @@ export async function GET(request: Request) {
       )
     }
 
-    // 사용자가 소속된 프로젝트 조회 (통계 정보 포함)
-    // 1. 회사의 공개 프로젝트 (모든 회사 구성원이 볼 수 있음)
-    // 2. 사용자가 멤버로 등록된 비공개 프로젝트
+    // RPC 함수를 사용하여 프로젝트 목록과 멤버 정보 조회
+    const { data: rpcData, error: rpcError } = await supabaseAdmin
+      .rpc('get_projects_with_members', {
+        p_company_id: company_id,
+        p_user_id: user_id
+      })
+
+    if (!rpcError && rpcData) {
+      // RPC 함수 결과를 프론트엔드 형식으로 변환
+      const transformedRpcData = rpcData.map((project: any) => ({
+        id: project.project_id,
+        name: project.project_name,
+        description: project.project_description,
+        visibility: project.project_visibility,
+        join_method: project.project_join_method,
+        created_at: project.project_created_at,
+        created_by: project.project_created_by,
+        company_id,
+        is_active: true,
+        member_count: Number(project.member_count) || 0,
+        interview_count: Number(project.interview_count) || 0,
+        persona_count: Number(project.persona_count) || 0,
+        top_members: project.top_members || [],
+        membership: project.user_membership || null
+      }))
+
+      return NextResponse.json({ data: transformedRpcData })
+    }
+
+    // RPC 함수 실패 시 기존 방식으로 fallback
+    console.error("RPC 함수 오류:", rpcError)
+    
     const { data, error } = await supabaseAdmin
       .from('projects')
       .select(`
@@ -146,253 +175,107 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     console.log('프로젝트 생성 요청 데이터:', body)
-    
+
+    const {
+      name,
+      description,
+      visibility = 'public',
+      join_method = 'open',
+      password,
+      user_id,
+      company_id,
+      purpose,
+      target_audience,
+      research_method,
+      start_date,
+      end_date
+    } = body
+
     // 필수 필드 검증
-    if (!body.name || !body.company_id) {
-      console.log('필수 필드 누락:', { name: body.name, company_id: body.company_id })
+    if (!name || !user_id || !company_id) {
       return NextResponse.json(
-        { error: "프로젝트 이름과 회사 ID가 필요합니다" }, 
+        { error: "name, user_id, company_id는 필수 입력 사항입니다" },
         { status: 400 }
       )
     }
 
-    // 비밀번호 가입 방식일 때 비밀번호 필수 검증
-    if (body.join_method === 'password' && !body.password) {
-      return NextResponse.json(
-        { error: "비밀번호 가입 방식을 선택했을 때는 비밀번호가 필요합니다" }, 
-        { status: 400 }
-      )
-    }
-
-    if (!body.created_by) {
-      console.log('created_by 필드 누락')
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
-    }
-
-    // 같은 회사 내에서 중복된 프로젝트 이름 확인
-    const { data: existingProject } = await supabaseAdmin
-      .from('projects')
-      .select('id')
-      .eq('company_id', body.company_id)
-      .eq('name', body.name)
-      .eq('is_active', true)
+    // 사용자 프로필 조회 (권한 확인)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', user_id)
       .single()
 
-    if (existingProject) {
+    if (profileError || !profile) {
       return NextResponse.json(
-        { error: "같은 이름의 프로젝트가 이미 존재합니다" }, 
-        { status: 409 }
+        { error: "사용자 정보를 찾을 수 없습니다" },
+        { status: 404 }
       )
     }
-    
-    const insertData = {
-      name: body.name,
-      description: body.description || null,
-      company_id: body.company_id,
-      created_by: body.created_by,
-      master_id: body.created_by, // 생성자가 마스터가 됨
-      visibility: body.visibility || 'public',
-      join_method: body.join_method || 'open',
-      password: body.join_method === 'password' ? body.password : null
-    }
-    
-    console.log('Supabase에 삽입할 데이터:', insertData)
-    
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .insert([insertData])
-      .select()
 
-    if (error) {
-      console.error("Supabase 삽입 오류:", error)
+    // 회사 멤버인지 확인
+    if (profile.company_id !== company_id) {
       return NextResponse.json(
-        { error: `프로젝트 생성에 실패했습니다: ${error.message}` }, 
+        { error: "해당 회사의 멤버가 아닙니다" },
+        { status: 403 }
+      )
+    }
+
+    // 프로젝트 생성
+    const { data: project, error: projectError } = await supabaseAdmin
+      .from('projects')
+      .insert({
+        name,
+        description: description || '',
+        visibility,
+        join_method,
+        password: join_method === 'password' ? password : null,
+        created_by: user_id,
+        company_id,
+        purpose: purpose || null,
+        target_audience: target_audience || null,
+        research_method: research_method || null,
+        start_date: start_date || null,
+        end_date: end_date || null,
+        is_active: true
+      })
+      .select()
+      .single()
+
+    if (projectError) {
+      console.error('프로젝트 생성 실패:', projectError)
+      return NextResponse.json(
+        { error: "프로젝트 생성에 실패했습니다" },
         { status: 500 }
       )
     }
 
-    const newProject = data[0]
-    console.log('프로젝트 생성 성공:', newProject)
-
-    // 프로젝트 생성자를 owner로 멤버십 테이블에 추가
-    try {
-      const { error: membershipError } = await supabaseAdmin
-        .from('project_members')
-        .insert([{
-          project_id: newProject.id,
-          user_id: body.created_by,
-          role: 'owner'
-        }])
-
-      if (membershipError) {
-        console.error("프로젝트 멤버십 생성 오류:", membershipError)
-        // 멤버십 생성 실패는 경고만 하고 프로젝트 생성은 성공으로 처리
-        console.warn("프로젝트는 생성되었지만 멤버십 정보 생성에 실패했습니다")
-      }
-    } catch (membershipErr) {
-      console.error("프로젝트 멤버십 생성 예외:", membershipErr)
-    }
-
-    // 멤버십 정보를 포함한 프로젝트 데이터 반환
-    const projectWithMembership = {
-      ...newProject,
-      membership: {
-        id: null, // 새로 생성된 멤버십 ID는 모르지만 role은 확실함
-        project_id: newProject.id,
-        user_id: body.created_by,
+    // 프로젝트 생성자를 owner로 project_members에 추가
+    const { error: memberError } = await supabaseAdmin
+      .from('project_members')
+      .insert({
+        project_id: project.id,
+        user_id: user_id,
         role: 'owner',
         joined_at: new Date().toISOString()
-      }
+      })
+
+    if (memberError) {
+      console.error('프로젝트 멤버 추가 실패:', memberError)
+      // 프로젝트는 생성되었지만 멤버 추가에 실패한 경우
+      // 롤백하지 않고 경고만 로그
     }
 
-    return NextResponse.json({ data: projectWithMembership }, { status: 201 })
+    return NextResponse.json({
+      message: "프로젝트가 성공적으로 생성되었습니다",
+      data: project
+    })
+
   } catch (error) {
-    console.error("POST API route error:", error)
-    
+    console.error('프로젝트 생성 API 오류:', error)
     return NextResponse.json(
-      { error: "프로젝트 생성에 실패했습니다" }, 
+      { error: "서버 오류가 발생했습니다" },
       { status: 500 }
     )
   }
 }
-
-// 프로젝트 업데이트
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json()
-    const { id, user_id, ...updateData } = body
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: "프로젝트 ID가 필요합니다" }, 
-        { status: 400 }
-      )
-    }
-
-    if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
-    }
-
-    // 권한 확인
-    const authCheck = await checkProjectMaster(id, user_id)
-    if (!authCheck.isAuthorized) {
-      return NextResponse.json(
-        { error: authCheck.error || "프로젝트 수정 권한이 없습니다" }, 
-        { status: 403 }
-      )
-    }
-
-    // 마스터 위임의 경우 현재 마스터만 가능
-    if (updateData.master_id && !authCheck.isMaster) {
-      return NextResponse.json(
-        { error: "마스터 권한 위임은 현재 마스터만 할 수 있습니다" }, 
-        { status: 403 }
-      )
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-
-    if (error) {
-      console.error("Supabase 업데이트 오류:", error)
-      return NextResponse.json(
-        { error: "프로젝트 업데이트에 실패했습니다" }, 
-        { status: 500 }
-      )
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "해당 ID의 프로젝트를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({ data: data[0] })
-  } catch (error) {
-    console.error("PUT API route error:", error)
-    
-    return NextResponse.json(
-      { error: "프로젝트 업데이트에 실패했습니다" }, 
-      { status: 500 }
-    )
-  }
-}
-
-// 프로젝트 삭제 (비활성화) - 마스터만 가능
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    const user_id = searchParams.get('user_id')
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: "프로젝트 ID가 필요합니다" }, 
-        { status: 400 }
-      )
-    }
-
-    if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
-    }
-
-    // 마스터 권한 확인
-    const authCheck = await checkProjectMaster(id, user_id)
-    if (!authCheck.isMaster) {
-      return NextResponse.json(
-        { error: "프로젝트 삭제는 마스터만 할 수 있습니다" }, 
-        { status: 403 }
-      )
-    }
-
-    // 실제 삭제 대신 비활성화
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .update({ 
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-
-    if (error) {
-      console.error("Supabase 업데이트 오류:", error)
-      return NextResponse.json(
-        { error: "프로젝트 삭제에 실패했습니다" }, 
-        { status: 500 }
-      )
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "해당 ID의 프로젝트를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({ message: "프로젝트가 성공적으로 삭제되었습니다" })
-  } catch (error) {
-    console.error("DELETE API route error:", error)
-    
-    return NextResponse.json(
-      { error: "프로젝트 삭제에 실패했습니다" }, 
-      { status: 500 }
-    )
-  }
-} 

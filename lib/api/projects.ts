@@ -2,13 +2,32 @@ export interface Project {
   id: string
   name: string
   description: string | null
-  is_private: boolean
+  is_private?: boolean
+  visibility?: 'public' | 'private'
+  join_method?: 'open' | 'invite_only' | 'password'
+  password?: string | null
   created_at: string
-  updated_at: string
+  updated_at?: string
   company_id: string
   created_by: string
-  access_type: 'free' | 'invite_only' | 'password'
+  is_active?: boolean
+  master_id?: string
+  access_type?: 'free' | 'invite_only' | 'password'
   password_hash?: string | null
+  member_count?: number
+  interview_count?: number
+  persona_count?: number
+  top_members?: Array<{
+    user_id: string
+    role: string
+    name: string
+    avatar_url?: string
+  }>
+  membership?: {
+    is_member: boolean
+    role: string
+    joined_at: string
+  }
   project_members?: Array<{
     id: string
     user_id: string

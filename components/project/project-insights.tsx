@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -476,26 +477,40 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
             </Card>
           </div>
           
-          {/* 고정 네비게이션 */}
-          {isHeaderFixed && (
-            <div className="fixed top-0 left-0 right-0 bg-background z-50 shadow-md border-b border-gray-200 dark:border-gray-800 py-3 transform transition-transform">
-              <div className="container mx-auto px-4">
+          {/* 고정 네비게이션 - Portal을 사용하여 body에 직접 렌더링 */}
+          {isHeaderFixed && typeof window !== 'undefined' && createPortal(
+            <div 
+              className="fixed top-0 left-0 right-0 bg-background shadow-md border-b border-gray-200 dark:border-gray-800 py-3"
+              style={{
+                zIndex: 1000,
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0
+              }}
+            >
+              <div className="w-full px-4">
                 <div className="flex justify-center items-center">
-                  <div className="flex gap-2 overflow-auto pb-1">
-                    {(currentYearData?.insights || []).map((insight, idx) => (
-                      <Button 
-                        key={idx} 
-                        variant={currentInsight === idx ? "default" : "outline"} 
-                        className="text-xs h-8 px-2 whitespace-nowrap"
-                        onClick={() => setCurrentInsight(idx)}
-                      >
-                        {insight?.title || `인사이트 ${idx + 1}`}
-                      </Button>
-                    ))}
+                  <div className="flex gap-2 overflow-auto pb-1 w-full justify-center">
+                    {(currentYearData?.insights || []).map((insight, idx) => {
+                      const isSelected = currentInsight === idx
+                      return (
+                        <Button 
+                          key={idx} 
+                          ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) : undefined}
+                          variant={isSelected ? "default" : "outline"} 
+                          className="text-xs h-8 px-2 whitespace-nowrap flex-shrink-0"
+                          onClick={() => setCurrentInsight(idx)}
+                        >
+                          {insight?.title || `인사이트 ${idx + 1}`}
+                        </Button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
           
           {/* 선택된 인사이트 상세 보기 */}
@@ -508,7 +523,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               summary: selectedInsight?.summary || '요약 정보가 없습니다.',
               keywords: Array.isArray(selectedInsight?.keywords) ? selectedInsight.keywords : [],
               quotes: Array.isArray(selectedInsight?.quotes) ? selectedInsight.quotes : [],
-              mentionCount: selectedInsight?.mentionCount || 0
+              mentionCount: selectedInsight?.mentionCount || 0,
+              priority: selectedInsight?.priority || 1
             }
             
             return (
@@ -545,6 +561,16 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                               주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}" 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
+                            <p className="text-sm leading-relaxed">
+                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
+                              이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
+                              {safeSelectedInsight.priority <= 3 ? 
+                                '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
+                                safeSelectedInsight.priority <= 7 ?
+                                '중간 우선순위를 가진 이 인사이트는 중장기적 개선 계획에 포함되어야 할 요소입니다.' :
+                                '이 인사이트는 장기적 관점에서 지속적인 모니터링과 개선이 필요한 영역입니다.'
+                              }
+                            </p>
                             <div>
                               {safeSelectedInsight.keywords.slice(0, 3).map((keyword, idx) => 
                                 keyword?.name ? (
@@ -571,26 +597,48 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         <CardContent>
                           <div className="w-full h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
+                              <PieChart margin={{ top: 20, right: 20, bottom: 30, left: 20 }}>
                                 <Pie
                                   data={safeSelectedInsight.keywords}
                                   cx="50%"
                                   cy="50%"
                                   labelLine={false}
-                                  label={({ name, weight }) => `${name} ${weight}%`}
-                                  outerRadius={80}
+                                  outerRadius={90}
                                   fill="#8884d8"
                                   dataKey="weight"
+                                  nameKey="name"
+                                  label={({ name }) => name}
+                                  isAnimationActive={false}
                                 >
-                                  {safeSelectedInsight.keywords.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  {safeSelectedInsight.keywords.map((_, index) => (
+                                    <Cell 
+                                      key={`cell-${index}`} 
+                                      fill={[
+                                        'hsl(var(--primary) / 0.85)',
+                                        'hsl(215, 70%, 60%)',
+                                        'hsl(260, 60%, 65%)',
+                                        'hsl(330, 65%, 65%)'
+                                      ][index % 4]} 
+                                    />
                                   ))}
                                 </Pie>
-                                <Tooltip formatter={(value) => [`${value}%`, '비중']} />
-                                <Legend />
+                                <Tooltip formatter={(value: number, name: string) => [`${value}%`, name]} />
+                                <Legend verticalAlign="bottom" height={36} iconSize={12} />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
+                          <style jsx global>{`
+                            .recharts-default-legend {
+                              font-size: 12px;
+                              margin-top: 10px !important; 
+                            }
+                            .recharts-legend-item {
+                              margin-right: 15px !important;
+                            }
+                            .recharts-text {
+                              font-size: 11px;
+                            }
+                          `}</style>
                         </CardContent>
                       )}
                     </Card>
@@ -605,6 +653,56 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                   <div className="flex justify-between items-center mb-5">
                     <div>
                       <h3 className="text-xl font-bold">인사이트와 연관된 고객의 한마디</h3>
+                    </div>
+                    
+                    {/* 필터 */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
+                            <span className="text-sm">고객 유형</span>
+                            <ChevronDown className="h-4 w-4 ml-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                          <DropdownMenuLabel>고객 유형 필터</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem checked={true}>
+                            모든 고객
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem>
+                            학생
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem>
+                            직장인
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem>
+                            주부
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem>
+                            노년층
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
+                            <span className="text-sm">정렬 기준</span>
+                            <ChevronDown className="h-4 w-4 ml-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                          <DropdownMenuLabel>정렬 기준</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem checked={true}>
+                            최신순
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem>
+                            페르소나순
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   

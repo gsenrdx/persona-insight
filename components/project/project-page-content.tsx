@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,23 +34,23 @@ interface ProjectEditData {
 }
 
 const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: { 
-  project: any, 
-  onEdit: (project: any) => void,
-  onInvite: (project: any) => void,
-  onDelete: (project: any) => void,
-  onSelect: (project: any) => void
+  project: Project, 
+  onEdit: (project: Project) => void,
+  onInvite: (project: Project) => void,
+  onDelete: (project: Project) => void,
+  onSelect: (project: Project) => void
 }) => {
   const { profile } = useAuth()
   
   // 멤버십 상태 확인
-  const getMembershipStatus = (project: any) => {
+  const getMembershipStatus = (project: Project) => {
     if (!profile?.id) return null
     
     if (project.created_by === profile.id) {
       return { isMember: true, role: 'owner', isOwner: true }
     }
     
-    if (project.membership) {
+    if (project.membership && project.membership.is_member) {
       return { 
         isMember: true, 
         role: project.membership.role, 
@@ -62,7 +62,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
   }
 
   // 프로젝트 마스터 정보
-  const getProjectMaster = (project: any) => {
+  const getProjectMaster = (project: Project) => {
     if (project.master_id) {
       return {
         name: profile?.id === project.master_id ? (profile?.name || '마스터') : '마스터',
@@ -79,12 +79,12 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
   }
 
   // 공개 설정 확인
-  const isPrivateProject = (project: any) => {
+  const isPrivateProject = (project: Project) => {
     return project.visibility === 'private' || project.is_private === true
   }
 
   // 권한 확인 함수들
-  const canEditProject = (project: any) => {
+  const canEditProject = (project: Project) => {
     const membershipStatus = getMembershipStatus(project)
     const masterInfo = getProjectMaster(project)
     
@@ -97,7 +97,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
     )
   }
 
-  const canInviteMembers = (project: any) => {
+  const canInviteMembers = (project: Project) => {
     if (!isPrivateProject(project)) return false
     
     const membershipStatus = getMembershipStatus(project)
@@ -111,7 +111,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
     )
   }
 
-  const canDeleteProject = (project: any) => {
+  const canDeleteProject = (project: Project) => {
     return (
       project.created_by === profile?.id || 
       profile?.role === 'company_admin' || 
@@ -124,17 +124,49 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
   
   const isPrivate = isPrivateProject(project)
 
-  // 팀 멤버 정보 생성 (가상 데이터 - 실제로는 project_members에서 가져와야 함)
-  const getTeamMembers = () => {
-    const members = []
-    if (projectMaster.isMaster) {
-      members.push({ name: profile?.name || '마스터', initial: (profile?.name?.[0] || 'M') })
+  // 팀 멤버 타입 정의
+  interface TeamMember {
+    name: string
+    initial: string
+    role: string
+    avatar_url: string | null
+  }
+
+  // 팀 멤버 정보 가져오기 (실제 데이터 사용)
+  const getTeamMembers = (): TeamMember[] => {
+    const members: TeamMember[] = []
+    
+    // top_members 데이터가 있으면 사용
+    if (project.top_members && Array.isArray(project.top_members)) {
+      return project.top_members.slice(0, 4).map((member: any) => ({
+        name: member.name || 'Unknown User',
+        initial: (member.name?.[0] || 'U').toUpperCase(),
+        role: member.role || 'member',
+        avatar_url: member.avatar_url || null
+      }))
     }
-    // 추가 멤버들 (임시로 member_count 기반)
+    
+    // fallback: 기존 로직 (현재 사용자만 표시)
+    if (projectMaster.isMaster) {
+      members.push({ 
+        name: profile?.name || '마스터', 
+        initial: (profile?.name?.[0] || 'M').toUpperCase(),
+        role: 'owner',
+        avatar_url: profile?.avatar_url || null
+      })
+    }
+    
+    // 추가 멤버들 (가상 데이터로 채우기)
     const additionalMembers = Math.max(0, (project.member_count || 1) - 1)
     for (let i = 0; i < Math.min(additionalMembers, 3); i++) {
-      members.push({ name: `멤버${i + 1}`, initial: `${i + 1}` })
+      members.push({ 
+        name: `멤버${i + 1}`, 
+        initial: `${i + 1}`,
+        role: 'member',
+        avatar_url: null
+      })
     }
+    
     return members
   }
 
@@ -220,7 +252,12 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
           <div className="flex -space-x-2">
             {teamMembers.slice(0, 4).map((member, index) => (
               <Avatar key={index} className="w-7 h-7 border-2 border-white">
-                <AvatarFallback className="bg-indigo-500 text-white text-xs">
+                {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
+                <AvatarFallback className={`text-white text-xs ${
+                  member.role === 'owner' ? 'bg-yellow-500' :
+                  member.role === 'admin' ? 'bg-blue-500' : 
+                  'bg-indigo-500'
+                }`}>
                   {member.initial}
                 </AvatarFallback>
               </Avatar>
@@ -286,7 +323,7 @@ export function ProjectPageContent() {
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   
   // 초대 관련 (추후 구현)
-  const [inviteProject, setInviteProject] = useState<any>(null)
+  const [inviteProject, setInviteProject] = useState<Project | null>(null)
 
   // 프로젝트 필터링
   const filteredProjects = projects.filter(project =>
@@ -350,7 +387,7 @@ export function ProjectPageContent() {
   }
 
   // 프로젝트 편집
-  const handleEditProject = (project: any) => {
+  const handleEditProject = (project: Project) => {
     setEditingProject({
       id: project.id,
       name: project.name,

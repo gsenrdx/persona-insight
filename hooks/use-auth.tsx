@@ -98,59 +98,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'];
+    let mounted = true
+    let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription']
 
-    (async () => {
+    const initializeAuth = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
+        setError(null)
 
-        // 1) 먼저 현재 세션을 가져와 초기 상태를 설정합니다.
-        const {
-          data: { session }
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          setUser(session.user);
-          try {
-            const profileData = await fetchProfile(session.user.id);
-            setProfile(profileData);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : '프로필 로드에 실패했습니다.');
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
+        // 현재 세션 확인
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          throw new Error(`세션 확인 실패: ${sessionError.message}`)
         }
 
-        // 2) 이후 변화에 대응하도록 리스너를 등록합니다.
-        const listener = supabase.auth.onAuthStateChange(async (_event, session) => {
-          try {
-            if (session?.user) {
-              setUser(session.user);
-              const profileData = await fetchProfile(session.user.id);
-              setProfile(profileData);
-              setError(null);
-            } else {
-              setUser(null);
-              setProfile(null);
-              setError(null);
-            }
-          } catch (error) {
-            setError(error instanceof Error ? error.message : '프로필 로드에 실패했습니다.');
-            setProfile(null);
-          }
-        });
+        if (!mounted) return
 
-        subscription = listener.data.subscription;
+        if (session?.user) {
+          setUser(session.user)
+          try {
+            const profileData = await fetchProfile(session.user.id)
+            if (mounted) {
+              setProfile(profileData)
+              setError(null)
+            }
+          } catch (err) {
+            if (mounted) {
+              const errorMessage = err instanceof Error ? err.message : '프로필 로드에 실패했습니다.'
+              setError(errorMessage)
+              setProfile(null)
+            }
+          }
+        } else {
+          setUser(null)
+          setProfile(null)
+        }
+
+        // 인증 상태 변화 리스너 등록
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!mounted) return
+            
+            console.log('Auth state changed:', event, session?.user?.id)
+
+            try {
+              if (session?.user) {
+                setUser(session.user)
+                const profileData = await fetchProfile(session.user.id)
+                if (mounted) {
+                  setProfile(profileData)
+                  setError(null)
+                }
+              } else {
+                setUser(null)
+                setProfile(null)
+                setError(null)
+              }
+            } catch (error) {
+              if (mounted) {
+                const errorMessage = error instanceof Error ? error.message : '프로필 로드에 실패했습니다.'
+                setError(errorMessage)
+                setProfile(null)
+              }
+            }
+          }
+        )
+
+        subscription = authSubscription
+      } catch (error) {
+        if (mounted) {
+          const errorMessage = error instanceof Error ? error.message : '인증 초기화에 실패했습니다.'
+          setError(errorMessage)
+          console.error('Auth initialization error:', error)
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false)
+        }
       }
-    })();
+    }
+
+    initializeAuth()
 
     return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
+      mounted = false
+      subscription?.unsubscribe()
+    }
+  }, [])
 
   const value = {
     user,
