@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Play, FileText, Calendar, MoreHorizontal, Trash2, Plus, Eye } from "lucide-react"
+import { Play, FileText, Calendar, MoreHorizontal, Trash2, Plus, Eye, User } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { IntervieweeData } from '@/types/interviewee'
+import InterviewDetail from './interview-detail'
 
 interface Project {
   id: string
@@ -36,6 +38,8 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
   const [error, setError] = useState<string | null>(null)
   const [selectedAll, setSelectedAll] = useState(false)
   const [selectedInterviews, setSelectedInterviews] = useState<string[]>([])
+  const [selectedInterview, setSelectedInterview] = useState<IntervieweeData | null>(null)
+  const [criteriaConfig, setCriteriaConfig] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -43,6 +47,12 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       fetchInterviews()
     }
   }, [profile?.company_id, project?.id])
+
+  useEffect(() => {
+    if (profile?.company_id) {
+      fetchCriteriaConfig()
+    }
+  }, [profile?.company_id])
 
   const fetchInterviews = async () => {
     try {
@@ -69,29 +79,23 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     }
   }
 
-  const handleDelete = async (interviewId: string) => {
-    if (!confirm('정말로 이 인터뷰를 삭제하시겠습니까?')) {
-      return
-    }
-
+  const fetchCriteriaConfig = async () => {
     try {
-      const response = await fetch(`/api/supabase/interviewee/${interviewId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('인터뷰 삭제에 실패했습니다')
-      }
-
-      // 목록에서 삭제된 항목 제거
-      setInterviews(prev => prev.filter(item => item.id !== interviewId))
-      setSelectedInterviews(prev => prev.filter(id => id !== interviewId))
+      if (!profile?.company_id) return
       
-      alert('인터뷰가 삭제되었습니다')
+      const response = await fetch(`/api/supabase/persona-criteria?company_id=${profile.company_id}`)
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.data && result.data.length > 0) {
+          setCriteriaConfig(result.data[0])
+        }
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다')
+      console.error('페르소나 기준 설정을 가져오는데 실패했습니다:', err)
     }
   }
+
 
   const getTypeIcon = (userType: string) => {
     // 실제 user_type 필드는 문자열이므로 아이콘을 매핑
@@ -123,7 +127,32 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
   }
 
   const handleViewDetail = (interview: IntervieweeData) => {
-    router.push(`/interviews/${interview.id}`)
+    setSelectedInterview(interview)
+  }
+
+  const handleBackToList = () => {
+    setSelectedInterview(null)
+  }
+
+  const handleDeleteInterview = async (interviewId: string) => {
+    try {
+      const response = await fetch(`/api/supabase/interviewee/${interviewId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('인터뷰 삭제에 실패했습니다')
+      }
+
+      // 목록에서 삭제된 항목 제거
+      setInterviews(prev => prev.filter(item => item.id !== interviewId))
+      setSelectedInterviews(prev => prev.filter(id => id !== interviewId))
+      setSelectedInterview(null) // 상세보기도 닫기
+      
+      alert('인터뷰가 삭제되었습니다')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다')
+    }
   }
 
   if (loading) {
@@ -155,6 +184,19 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     )
   }
 
+  // 인터뷰 상세보기 모드일 때는 상세 컴포넌트 렌더링
+  if (selectedInterview) {
+    return (
+      <InterviewDetail
+        interview={selectedInterview}
+        criteriaConfig={criteriaConfig}
+        onBack={handleBackToList}
+        onDelete={handleDeleteInterview}
+      />
+    )
+  }
+
+  // 인터뷰 리스트 모드
   return (
     <div className="space-y-6 relative">
       {/* 헤더 */}
@@ -189,69 +231,118 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
             </div>
           </div>
 
-          {/* 인터뷰 목록 */}
-          <div className="space-y-2">
+          {/* 인터뷰 그리드 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {interviews.map((interview) => (
               <div
                 key={interview.id}
-                className="flex items-center gap-4 py-4 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-shadow duration-300 cursor-pointer group"
+                onClick={() => handleViewDetail(interview)}
               >
-                <Checkbox
-                  checked={selectedInterviews.includes(interview.id)}
-                  onCheckedChange={() => toggleSelectInterview(interview.id)}
-                />
-                
-                <div className="flex-shrink-0">
-                  {getTypeIcon(interview.user_type)}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">
-                    {interview.interviewee_fake_name || '이름 없음'}
-                  </h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                    <span>{interview.user_type}</span>
-                    <span className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(interview.session_date).toLocaleDateString('ko-KR')}
-                    </span>
-                    {interview.user_description && (
-                      <span className="truncate max-w-[200px]">{interview.user_description}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">
-                      {interview.interviewee_summary ? '분석 완료' : '분석 대기'}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {interview.created_at ? new Date(interview.created_at).toLocaleDateString('ko-KR') : ''}
-                    </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <Checkbox
+                      checked={selectedInterviews.includes(interview.id)}
+                      onCheckedChange={() => {
+                        toggleSelectInterview(interview.id)
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          handleViewDetail(interview)
+                        }}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          자세히 보기
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                          수정
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteInterview(interview.id)
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleViewDetail(interview)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        자세히 보기
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>수정</DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => handleDelete(interview.id)}
+                  <h3 className="font-bold text-base text-slate-800 line-clamp-1 mb-2">
+                    {interview.interviewee_fake_name || `인터뷰 ${interview.user_type}`}
+                  </h3>
+                  
+                  {interview.user_description && (
+                    <p className="text-xs text-slate-600 mb-3 line-clamp-2">
+                      {interview.user_description}
+                    </p>
+                  )}
+                  
+                  {interview.interviewee_summary && (
+                    <p className="text-xs text-slate-500 line-clamp-3 mb-3">
+                      {interview.interviewee_summary}
+                    </p>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">
+                        <Calendar className="h-3 w-3 inline mr-1" />
+                        {new Date(interview.session_date).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                      
+                      <Badge 
+                        variant={interview.interviewee_summary ? "secondary" : "outline"} 
+                        className={`text-xs ${
+                          interview.interviewee_summary 
+                            ? 'bg-green-100 text-green-700 hover:bg-green-100' 
+                            : 'bg-amber-50 text-amber-700 hover:bg-amber-50'
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        삭제
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {interview.interviewee_summary ? '분석 완료' : '분석 대기'}
+                      </Badge>
+                    </div>
+                    
+                    {interview.created_by && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <User className="h-3 w-3" />
+                        <span className="font-medium">
+                          {interview.created_by === profile?.id 
+                            ? '나' 
+                            : interview.created_by_profile?.name || '팀원'
+                          }
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {interview.personas && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 text-xs w-full justify-center">
+                        {interview.personas.persona_title || interview.personas.persona_type}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

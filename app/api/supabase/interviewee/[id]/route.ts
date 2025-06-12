@@ -17,7 +17,15 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('interviewees')
-      .select('*')
+      .select(`
+        *,
+        personas:persona_id(
+          id,
+          persona_type,
+          persona_title,
+          persona_description
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -36,7 +44,26 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ data })
+    // 작성자 정보 조회
+    let createdByProfile = null
+    if (data.created_by) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('id', data.created_by)
+        .single()
+
+      if (!profileError && profile) {
+        createdByProfile = profile
+      }
+    }
+
+    const responseData = {
+      ...data,
+      created_by_profile: createdByProfile
+    }
+
+    return NextResponse.json({ data: responseData })
   } catch (error) {
     console.error("API route error:", error)
     

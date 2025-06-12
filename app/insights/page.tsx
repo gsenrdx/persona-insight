@@ -469,16 +469,16 @@ export default function InsightsPage() {
               
               {/* 인사이트 상세 보기 */}
               <CardContent className="pb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 md:items-start">
                   {/* 인사이트 상세 요약 */}
                   <div>
-                    <Card className={`shadow-sm border-gray-200 dark:border-gray-800 ${showDetailAnalysis ? 'h-full' : ''}`}>
+                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
                       <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowDetailAnalysis(!showDetailAnalysis)}>
                         <CardTitle className="text-lg font-medium">상세 분석</CardTitle>
                         <ChevronDown className={`h-4 w-4 transition-transform ${showDetailAnalysis ? '' : 'transform rotate-180'}`} />
                       </CardHeader>
                       {showDetailAnalysis && (
-                        <CardContent className="flex flex-col justify-between h-full">
+                        <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
                               최근 고객 인터뷰에서 공통적으로 강조된 "{currentYearData.insights[currentInsight].title}"에 대한 분석입니다. 
@@ -515,7 +515,7 @@ export default function InsightsPage() {
                   
                   {/* 키워드 원형 그래프 */}
                   <div>
-                    <Card className={`shadow-sm border-gray-200 dark:border-gray-800 ${showRelatedKeywords ? 'h-full' : ''}`}>
+                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
                       <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowRelatedKeywords(!showRelatedKeywords)}>
                         <CardTitle className="text-lg font-medium">관련 키워드</CardTitle>
                         <ChevronDown className={`h-4 w-4 transition-transform ${showRelatedKeywords ? '' : 'transform rotate-180'}`} />

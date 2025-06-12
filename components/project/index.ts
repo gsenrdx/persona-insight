@@ -1,3 +1,3 @@
 export { ProjectPageContent } from './project-page-content'
-export { default as InterviewList } from './interview-list'
+export { default as ProjectInterviews } from './project-interviews'
 export { PersonaCriteriaModal } from './persona-criteria-modal' 

@@ -124,35 +124,40 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
   
   const isPrivate = isPrivateProject(project)
 
+  // 팀 멤버 정보 생성 (가상 데이터 - 실제로는 project_members에서 가져와야 함)
+  const getTeamMembers = () => {
+    const members = []
+    if (projectMaster.isMaster) {
+      members.push({ name: profile?.name || '마스터', initial: (profile?.name?.[0] || 'M') })
+    }
+    // 추가 멤버들 (임시로 member_count 기반)
+    const additionalMembers = Math.max(0, (project.member_count || 1) - 1)
+    for (let i = 0; i < Math.min(additionalMembers, 3); i++) {
+      members.push({ name: `멤버${i + 1}`, initial: `${i + 1}` })
+    }
+    return members
+  }
+
+  const teamMembers = getTeamMembers()
+
   return (
     <Card
-      className="cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] border group border-gray-200 hover:border-blue-300 bg-white hover:bg-gray-50/50"
+      className="bg-white hover:shadow-lg transition-shadow duration-300 h-full flex flex-col cursor-pointer group"
       onClick={() => onSelect(project)}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-sm font-semibold text-gray-900 truncate">
-                {project.name}
-              </CardTitle>
-            </div>
-            {project.description && (
-              <CardDescription className="text-sm text-gray-600 line-clamp-2">
-                {project.description}
-              </CardDescription>
-            )}
-          </div>
+      <CardContent className="p-4 flex-grow">
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="text-lg font-bold text-slate-800 line-clamp-1">{project.name}</h3>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -199,80 +204,45 @@ const ProjectCard = ({ project, onEdit, onInvite, onDelete, onSelect }: {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 space-y-4">
-        {/* 프로젝트 통계 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex items-center p-2.5 bg-blue-50 rounded-lg">
-            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full mr-2.5">
-              <FileText className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-blue-600">인터뷰</p>
-              <p className="text-sm font-semibold text-blue-800">{project.interview_count || 0}개</p>
-            </div>
-          </div>
-          <div className="flex items-center p-2.5 bg-purple-50 rounded-lg">
-            <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full mr-2.5">
-              <Users className="w-4 h-4 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-purple-600">페르소나</p>
-              <p className="text-sm font-semibold text-purple-800">{project.persona_count || 0}개</p>
-            </div>
-          </div>
+        
+        {project.description && (
+          <p className="text-slate-600 mb-3 text-xs line-clamp-2">{project.description}</p>
+        )}
+        
+        <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
+          <span className="flex items-center">
+            <FileText className="w-3.5 h-3.5 mr-1" />
+            {project.interview_count || 0}개 인터뷰
+          </span>
         </div>
 
-        {/* 프로젝트 기본 정보 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={isPrivate ? "destructive" : "secondary"} className="text-xs px-2 py-0.5">
-                {isPrivate ? (
-                  <><Lock className="h-3 w-3 mr-1" />비공개</>
-                ) : (
-                  <><Globe className="h-3 w-3 mr-1" />공개</>
-                )}
-              </Badge>
-              <Badge variant="outline" className="text-xs px-2 py-0.5">
-                <Users className="h-3 w-3 mr-1" />
-                {project.member_count || 1}명
-              </Badge>
-            </div>
-            <span className="text-xs text-gray-500 font-medium">
-              {new Date(project.created_at).toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-              })}
-            </span>
-          </div>
-        </div>
-
-        {/* 멤버십 상태 */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <div>
-            {membershipStatus?.isOwner || projectMaster.isMaster ? (
-              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-xs px-2 py-1">
-                <Crown className="h-3 w-3 mr-1" />
-                {projectMaster.isMaster ? '마스터' : '소유자'}
-              </Badge>
-            ) : membershipStatus?.isMember ? (
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs px-2 py-1">
-                <UserCheck className="h-3 w-3 mr-1" />
-                참여 중
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs px-2 py-1">
-                <User className="h-3 w-3 mr-1" />
-                미참여
-              </Badge>
+        <div className="flex items-center justify-between">
+          <div className="flex -space-x-2">
+            {teamMembers.slice(0, 4).map((member, index) => (
+              <Avatar key={index} className="w-7 h-7 border-2 border-white">
+                <AvatarFallback className="bg-indigo-500 text-white text-xs">
+                  {member.initial}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {(project.member_count || 1) > 4 && (
+              <Avatar className="w-7 h-7 border-2 border-white">
+                <AvatarFallback className="bg-gray-400 text-white text-xs">
+                  +{(project.member_count || 1) - 4}
+                </AvatarFallback>
+              </Avatar>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-xs text-green-600 font-medium">활성</span>
+
+          <div className="flex items-center gap-1.5">
+            {isPrivate && (
+              <Lock className="h-3.5 w-3.5 text-orange-500" />
+            )}
+            {membershipStatus?.isOwner || projectMaster.isMaster ? (
+              <Crown className="h-3.5 w-3.5 text-yellow-500" />
+            ) : membershipStatus?.isMember ? (
+              <UserCheck className="h-3.5 w-3.5 text-green-500" />
+            ) : null}
           </div>
         </div>
       </CardContent>
@@ -508,7 +478,7 @@ export function ProjectPageContent() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}
