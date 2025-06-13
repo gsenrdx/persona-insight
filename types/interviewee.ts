@@ -57,6 +57,7 @@ export interface IntervieweeData {
   project_id: string | null
   persona_id: string | null
   persona_reflected?: boolean | null
+  file_path: string | null // 첨부 파일 경로
   personas?: PersonaInfo | null
   profiles?: ProfileInfo | null
   created_by_profile?: ProfileInfo | null

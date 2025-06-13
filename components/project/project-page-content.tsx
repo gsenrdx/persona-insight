@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -264,6 +265,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onSelect }: {
 }
 
 export function ProjectPageContent() {
+  const router = useRouter()
   const { profile } = useAuth()
   const { data: projects = [], isLoading: loading, error, refetch } = useProjects(
     profile?.company_id || undefined, 
@@ -356,7 +358,7 @@ export function ProjectPageContent() {
 
   // 프로젝트 선택 (프로젝트 상세 페이지로 이동)
   const handleSelectProject = async (project: Project) => {
-    window.location.href = `/projects/${project.id}`
+    router.push(`/projects/${project.id}`)
   }
 
   // 프로젝트 편집

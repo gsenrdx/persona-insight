@@ -8,6 +8,7 @@ import {
   DEFAULT_Y_AXIS,
   DEFAULT_SCORING_GUIDELINES
 } from "@/lib/api/persona-criteria"
+import { fileStorageService } from "@/lib/file-utils"
 
 // 기본 프롬프트 생성 (설정이 없을 때)
 function generateDefaultPrompt(): string {
@@ -195,20 +196,55 @@ interface UpstreamLine {
  * 중복된 토픽은 건너뛰기
  */
 async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, companyId: string | null) {
-  if (!companyId || !Array.isArray(interviewDetail)) {
+  if (!companyId || !interviewDetail) {
+    console.log('Missing companyId or interviewDetail');
     return;
   }
 
   try {
+    let parsedDetail: any[] = [];
+    
+    // interview_detail이 문자열인 경우 파싱 시도
+    if (typeof interviewDetail === 'string') {
+      try {
+        // 불필요한 텍스트 제거 및 JSON 부분만 추출
+        let cleanedData = interviewDetail.trim();
+        
+        // 마크다운 코드 블록 제거
+        cleanedData = cleanedData.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        cleanedData = cleanedData.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        
+        // 여러 JSON 배열이 있는 경우 첫 번째 것만 사용
+        const matches = cleanedData.match(/\[[\s\S]*?\]/g);
+        if (matches && matches.length > 0) {
+          parsedDetail = JSON.parse(matches[0]);
+        }
+      } catch (parseError) {
+        console.log('Failed to parse interview_detail string:', parseError);
+        return;
+      }
+    } else if (Array.isArray(interviewDetail)) {
+      parsedDetail = interviewDetail;
+    } else {
+      console.log('Invalid interview_detail format');
+      return;
+    }
+
+    if (!Array.isArray(parsedDetail) || parsedDetail.length === 0) {
+      console.log('No valid array found in interview_detail');
+      return;
+    }
     
     // interview_detail에서 topic_name 추출
-    const topicNames = interviewDetail
+    const topicNames = parsedDetail
       .filter(topic => topic && typeof topic === 'object' && topic.topic_name)
       .map(topic => topic.topic_name.trim())
       .filter(name => name.length > 0);
 
+    console.log('Extracted topic names:', topicNames);
 
     if (topicNames.length === 0) {
+      console.log('No topic names found');
       return;
     }
 
@@ -226,15 +262,20 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
         if (topicError) {
           // 유니크 제약조건 위배 (중복)인 경우
           if (topicError.code === '23505') {
+            console.log(`Topic already exists: ${topicName}`);
           } else {
+            console.error(`Error inserting topic ${topicName}:`, topicError);
           }
         } else {
+          console.log(`Successfully inserted topic: ${topicName}`);
         }
       } catch (individualError) {
+        console.error(`Individual error for topic ${topicName}:`, individualError);
       }
     }
 
   } catch (error) {
+    console.error('Error in extractAndSaveMainTopics:', error);
   }
 }
 
@@ -320,7 +361,16 @@ export async function POST(req: NextRequest) {
     return new Response('인증 처리 중 오류가 발생했습니다.', { status: 401 });
   }
 
-  // 1단계: 파일을 Miso API에 직접 업로드하고 URL 받기
+  // 1단계: 파일을 Supabase Storage에 저장
+  let fileInfo: { path: string } | null = null;
+  try {
+    fileInfo = await fileStorageService.uploadFile(file, companyId!, projectId);
+  } catch (storageError) {
+    console.error('Storage operation failed:', storageError);
+    return new Response('파일 저장 시스템 오류가 발생했습니다.', { status: 500 });
+  }
+
+  // 2단계: 파일을 Miso API에 직접 업로드하고 URL 받기
   const uploadFormData = new FormData();
   uploadFormData.append('file', file);
   uploadFormData.append('user', 'persona-insight-user');
@@ -544,6 +594,8 @@ export async function POST(req: NextRequest) {
         interviewee_summary: output.interviewee_summary || null,
         interviewee_style: output.interviewee_style || null,
         interviewee_fake_name: output.interviewee_fake_name || null,
+        // 파일 경로만 저장
+        file_path: fileInfo?.path || null,
         interview_detail: (() => {
           // interviewee_detail 파싱 처리 개선
           try {

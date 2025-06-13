@@ -10,6 +10,7 @@ import {
   User, 
   Edit,
   Trash2,
+  Download,
   Quote,
   Tag,
   AlertTriangle,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react"
 import { IntervieweeData } from "@/types/interviewee"
 import { useAuth } from "@/hooks/use-auth"
+import { supabase } from "@/lib/supabase"
 
 interface CriteriaConfig {
   x_axis?: {
@@ -101,6 +103,59 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
     }
   }
 
+  const handleDownload = async () => {
+    if (!interview.file_path) {
+      alert('다운로드할 파일이 없습니다.')
+      return
+    }
+
+    try {
+      // Supabase에서 현재 세션 가져오기
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        alert('인증 정보를 찾을 수 없습니다. 다시 로그인해주세요.')
+        return
+      }
+
+      const response = await fetch(`/api/files/download?id=${interview.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('파일 다운로드에 실패했습니다.')
+      }
+
+      // 파일 다운로드 처리
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      
+      // Content-Disposition 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let filename = 'interview_file'
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('파일 다운로드 중 오류가 발생했습니다.')
+    }
+  }
+
   const parsedDetail = parseInterviewDetail(interview.interview_detail)
 
   // 동적 점수 계산 로직 (workflow/route.ts와 동일)
@@ -176,18 +231,33 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
             목록으로
           </Button>
           
-          {/* 삭제 버튼 - 생성자만 표시 */}
-          {interview.created_by === profile?.id && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={handleDelete}
-              className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              삭제
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* 파일 다운로드 버튼 */}
+            {interview.file_path && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownload}
+                className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                인터뷰 원본
+              </Button>
+            )}
+            
+            {/* 삭제 버튼 - 생성자만 표시 */}
+            {interview.created_by === profile?.id && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDelete}
+                className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                삭제
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
