@@ -64,13 +64,11 @@ export default function SignupForm({ onSwitchToLogin, onClose }: SignupFormProps
         .order('name')
 
       if (error) {
-        console.error('회사 목록 로드 실패:', error)
         setCompanies([])
         return
       }
       setCompanies(data || [])
     } catch (err) {
-      console.error('회사 목록 로드 중 예외 발생:', err)
       setCompanies([])
     } finally {
       setLoadingCompanies(false)

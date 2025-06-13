@@ -96,9 +96,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "검색어가 필요합니다." }, { status: 400 })
     }
     
-    // 전달되는 값 콘솔 출력 (디버깅용)
-    console.log('[페르소나 검색 요청] query:', query)
-    
     // 구글 시트에서 페르소나 데이터 가져오기
     const personas = await fetchGoogleSheetsData()
     

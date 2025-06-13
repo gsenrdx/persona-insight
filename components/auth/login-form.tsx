@@ -57,8 +57,6 @@ export default function LoginForm({ onSwitchToSignup, onClose }: LoginFormProps)
       }
 
       if (authData.user) {
-        console.log('로그인 성공 - auth context 상태 업데이트 대기중...')
-        
         // 모달을 닫아서 사용자에게 로그인이 진행중임을 알림
         onClose()
         

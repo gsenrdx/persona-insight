@@ -99,7 +99,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         throw new Error('사용자 인증 정보가 없습니다')
       }
 
-      console.log(`Fetching project ${projectId} for user ${profile.id}${isRetry ? ' (retry)' : ''}`)
 
       // 타임아웃이 있는 fetch 함수
       const controller = new AbortController()
@@ -118,7 +117,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('API Error:', response.status, errorData)
         
         // 403 에러인 경우 권한 문제
         if (response.status === 403) {
@@ -129,7 +127,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       }
       
       const data = await response.json()
-      console.log('Project data received:', data)
       
       if (!data.data) {
         throw new Error('프로젝트 데이터가 없습니다')
@@ -138,7 +135,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       setProject(data.data)
       setRetryCount(0) // 성공 시 재시도 카운트 리셋
     } catch (err) {
-      console.error('fetchProject error:', err)
       
       if (err instanceof Error && err.name === 'AbortError') {
         setError('요청 시간이 초과되었습니다. 다시 시도해주세요.')
@@ -148,7 +144,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         
         // 자동 재시도 (최대 2번)
         if (retryCount < 2 && !isRetry) {
-          console.log(`Auto retry ${retryCount + 1}/2`)
           setRetryCount(prev => prev + 1)
           setTimeout(() => fetchProject(true), 2000 + retryCount * 1000) // 점진적 지연
           return

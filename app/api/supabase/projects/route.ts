@@ -174,8 +174,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    console.log('프로젝트 생성 요청 데이터:', body)
-
+    
     const {
       name,
       description,

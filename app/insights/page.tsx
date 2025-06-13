@@ -74,15 +74,12 @@ export default function InsightsPage() {
     async function loadAvailableYears() {
       try {
         if (!profile?.company_id) return;
-        
-        console.log('연도 데이터 로드 중 - 회사 단위:', profile.company?.name, 'ID:', profile.company_id);
-        
+                
         const response = await fetch(`/api/insights/years?company_id=${profile.company_id}`)
         if (response.ok) {
           const data = await response.json()
           setAvailableYears(data.years || [])
           
-          console.log('연도 데이터 로드 완료:', data.years?.length || 0, '개');
         } else {
           console.error("연도 조회 실패")
           // 오류 시 현재 연도 기준 3년으로 fallback
@@ -110,9 +107,7 @@ export default function InsightsPage() {
         setLoading(true)
         
         if (!profile?.company_id) return;
-        
-        console.log('인사이트 데이터 로드 중 - 회사 단위:', profile.company?.name);
-        
+                
         const yearDataPromises = availableYears.map(async (year) => {
           const response = await fetch(`/api/insights?company_id=${profile.company_id}&year=${year}`)
           if (response.ok) {

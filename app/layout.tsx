@@ -27,6 +27,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // 프로덕션 환경에서 console 제거
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    console.log = () => {};
+    console.warn = () => {};
+    console.error = () => {};
+  }
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>

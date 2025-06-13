@@ -12,8 +12,6 @@ export async function POST(req: NextRequest) {
 
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
-  console.log('[MISO API 요청] query:', lastUser)
-  console.log('[MISO API 요청] conversationId:', clientConversationId)
 
   // MISO API 호출
   const upstream = await fetch(
@@ -45,7 +43,6 @@ export async function POST(req: NextRequest) {
 
   if (!upstream.ok || !upstream.body) {
     const err = await upstream.text().catch(() => '')
-    console.error('⛔ Upstream error', upstream.status, err)
     return new Response('외부 API 오류', { status: 500 })
   }
 
@@ -119,7 +116,6 @@ export async function POST(req: NextRequest) {
       }
       
     } catch (error) {
-      console.error('스트리밍 처리 오류:', error)
     } finally {
       await writer.close()
     }

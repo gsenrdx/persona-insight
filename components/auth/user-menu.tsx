@@ -23,15 +23,15 @@ export default function UserMenu() {
     try {
       await signOut()
     } catch (error) {
-      console.error('로그아웃 실패:', error)
+      // 로그아웃 실패 시 에러 처리
     } finally {
       setLoading(false)
     }
   }
   
   // 버전 정보
-  const version = 'v1.0.2'
-  const updateDate = '2025.06.12'
+  const version = 'v1.0.3'
+  const updateDate = '2025.06.13'
   const updateLink = 'https://example.com/changelog'
   
   const handleUpdateClick = () => {

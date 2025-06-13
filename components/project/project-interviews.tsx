@@ -139,7 +139,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
         }
       }
     } catch (err) {
-      console.error('페르소나 기준 설정을 가져오는데 실패했습니다:', err)
+      // 페르소나 기준 설정 로드 실패 처리
     }
   }
 
@@ -262,7 +262,6 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       
       toast.success('페르소나 반영이 완료되었습니다')
     } catch (error: any) {
-      console.error('페르소나 반영 오류:', error)
       toast.error(error.message || '페르소나 반영 중 오류가 발생했습니다')
     } finally {
       setPersonaSynthesizing(prev => prev.filter(id => id !== selectedInterviewForPersona.id))

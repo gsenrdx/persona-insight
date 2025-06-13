@@ -84,7 +84,6 @@ async function createPersonasFromMatrix(
       .insert(personasToCreate)
 
     if (error) {
-      console.error("페르소나 생성 오류:", error)
       throw error
     }
   }
@@ -166,7 +165,6 @@ export async function GET(request: Request) {
     const { data, error } = await query.single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error("Supabase 조회 오류:", error)
       return NextResponse.json(
         { error: "페르소나 분류 기준을 가져오는데 실패했습니다" }, 
         { status: 500 }
@@ -175,7 +173,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ configuration: data })
   } catch (error) {
-    console.error("GET API route error:", error)
     
     return NextResponse.json(
       { error: "페르소나 분류 기준을 가져오는데 실패했습니다" }, 
@@ -188,7 +185,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    console.log('페르소나 분류 기준 생성 요청 데이터:', body)
     
     // 필수 필드 검증
     if (!body.company_id || !body.x_axis || !body.y_axis) {
@@ -248,7 +244,6 @@ export async function POST(request: Request) {
       created_by: body.created_by
     }
     
-    console.log('Supabase에 삽입할 데이터:', insertData)
     
     const { data, error } = await supabaseAdmin
       .from('persona_criteria_configurations')
@@ -256,7 +251,6 @@ export async function POST(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 삽입 오류:", error)
       return NextResponse.json(
         { error: `페르소나 분류 기준 생성에 실패했습니다: ${error.message}` }, 
         { status: 500 }
@@ -264,7 +258,6 @@ export async function POST(request: Request) {
     }
 
     const newConfiguration = data[0]
-    console.log('페르소나 분류 기준 생성 성공:', newConfiguration)
 
     // 페르소나 자동 생성
     try {
@@ -277,15 +270,12 @@ export async function POST(request: Request) {
         body.persona_matrix || {},
         body.unclassified_cells || []
       )
-      console.log(`${personaCount}개의 페르소나가 자동 생성되었습니다`)
     } catch (personaError) {
-      console.error("페르소나 자동 생성 중 오류:", personaError)
       // 페르소나 생성 실패는 경고만 하고 계속 진행
     }
 
     return NextResponse.json({ configuration: newConfiguration }, { status: 201 })
   } catch (error) {
-    console.error("POST API route error:", error)
     
     return NextResponse.json(
       { error: "페르소나 분류 기준 생성에 실패했습니다" }, 
@@ -352,7 +342,6 @@ export async function PUT(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
       return NextResponse.json(
         { error: "페르소나 분류 기준 업데이트에 실패했습니다" }, 
         { status: 500 }
@@ -385,16 +374,13 @@ export async function PUT(request: Request) {
           updateData.persona_matrix || {},
           updateData.unclassified_cells || []
         )
-        console.log(`${personaCount}개의 페르소나가 재생성되었습니다`)
       } catch (personaError) {
-        console.error("페르소나 재생성 중 오류:", personaError)
         // 페르소나 생성 실패는 경고만 하고 계속 진행
       }
     }
 
     return NextResponse.json({ configuration: data[0] })
   } catch (error) {
-    console.error("PUT API route error:", error)
     
     return NextResponse.json(
       { error: "페르소나 분류 기준 업데이트에 실패했습니다" }, 
@@ -463,7 +449,6 @@ export async function DELETE(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
       return NextResponse.json(
         { error: "페르소나 분류 기준 삭제에 실패했습니다" }, 
         { status: 500 }
@@ -479,7 +464,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ message: "페르소나 분류 기준이 성공적으로 삭제되었습니다" })
   } catch (error) {
-    console.error("DELETE API route error:", error)
     
     return NextResponse.json(
       { error: "페르소나 분류 기준 삭제에 실패했습니다" }, 

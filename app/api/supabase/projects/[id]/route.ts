@@ -149,9 +149,6 @@ export async function PUT(
       )
     }
 
-    console.log('🔄 Updating project with data:', updateData)
-    console.log('📋 Project ID:', projectId)
-
     const { data, error } = await supabaseAdmin
       .from('projects')
       .update({
@@ -174,8 +171,6 @@ export async function PUT(
         { status: 500 }
       )
     }
-
-    console.log('✅ Supabase update successful:', data)
 
     if (!data || data.length === 0) {
       return NextResponse.json(

@@ -61,7 +61,6 @@ export default function LoginPageContent() {
   // 로그인된 사용자 체크
   useEffect(() => {
     if (user && !loading) {
-      console.log('LoginPageContent: User is logged in, redirecting to home')
       router.push('/')
     }
   }, [user, loading, router])
@@ -77,13 +76,11 @@ export default function LoginPageContent() {
         .order('name')
 
       if (error) {
-        console.error('회사 목록 로드 실패:', error)
         setCompanies([])
         return
       }
       setCompanies(data || [])
     } catch (err) {
-      console.error('회사 목록 로드 중 예외 발생:', err)
       setCompanies([])
     } finally {
       setLoadingCompanies(false)
@@ -125,7 +122,6 @@ export default function LoginPageContent() {
       }
 
       if (authData.user) {
-        console.log('로그인 성공 - auth provider가 상태를 업데이트할 때까지 대기')
         // AuthProvider의 onAuthStateChange가 상태를 업데이트하면
         // useEffect에서 자동으로 리다이렉트됨
       }
@@ -377,9 +373,6 @@ export default function LoginPageContent() {
                   <DialogTitle className="text-xl font-semibold text-gray-900 mb-2">
                     회원가입
                   </DialogTitle>
-                  <p className="text-gray-500 text-sm">
-                    인증 메일이 발송되었어요!
-                  </p>
                 </div>
               </DialogHeader>
 
