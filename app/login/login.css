@@ -18,8 +18,8 @@
 }
 
 .insight-orb-indigo {
-  /* SVG 5: 곡선 형태 */
-  background-image: url('data:image/svg+xml;utf8,<svg width="122" height="271" viewBox="0 0 122 271" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M121.733 138.68V270.761C-35.7918 263.809 -43.4252 18.1859 121.733 0.806885C121.039 1.27032 121.502 124.314 121.733 138.68Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="61.1288" y1="1.27032" x2="61.1288" y2="271.224" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
+  /* SVG 5: 1/4이 없어진 원형 (3/4 원) */
+  background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 100 L200 100 A100 100 0 1 1 100 0 Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="100" y1="0" x2="100" y2="200" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -75,7 +75,7 @@
 
 /* 자유분방한 빛의 움직임 */
 @keyframes gentle-float-1 {
-  0% {
+  0%, 100% {
     transform: translate(-30vw, 40vh) scale(0.7) rotate(-45deg);
     opacity: 0.5;
   }
@@ -95,14 +95,10 @@
     transform: translate(45vw, 25vh) scale(0.9) rotate(-30deg);
     opacity: 0.7;
   }
-  100% {
-    transform: translate(-50vw, -20vh) scale(1.1) rotate(100deg);
-    opacity: 0.6;
-  }
 }
 
 @keyframes gentle-float-2 {
-  0% {
+  0%, 100% {
     transform: translate(80vw, 30vh) scale(1.2) rotate(70deg);
     opacity: 0.4;
   }
@@ -118,14 +114,10 @@
     transform: translate(-60vw, 15vh) scale(0.9) rotate(-45deg);
     opacity: 0.9;
   }
-  100% {
-    transform: translate(10vw, 45vh) scale(1.1) rotate(200deg);
-    opacity: 0.6;
-  }
 }
 
 @keyframes gentle-float-3 {
-  0% {
+  0%, 100% {
     transform: translate(-70vw, -40vh) scale(1.6) rotate(-120deg);
     opacity: 0.3;
   }
@@ -141,14 +133,10 @@
     transform: translate(85vw, -25vh) scale(0.8) rotate(240deg);
     opacity: 0.5;
   }
-  100% {
-    transform: translate(15vw, -65vh) scale(1.4) rotate(-60deg);
-    opacity: 0.8;
-  }
 }
 
 @keyframes gentle-float-4 {
-  0% {
+  0%, 100% {
     transform: translate(90vw, -70vh) scale(0.4) rotate(300deg);
     opacity: 0.8;
   }
@@ -164,14 +152,10 @@
     transform: translate(-80vw, 10vh) scale(1.3) rotate(-270deg);
     opacity: 0.6;
   }
-  100% {
-    transform: translate(20vw, 60vh) scale(0.9) rotate(420deg);
-    opacity: 0.5;
-  }
 }
 
 @keyframes gentle-float-5 {
-  0% {
+  0%, 100% {
     transform: translate(-95vw, 80vh) scale(1.8) rotate(-360deg);
     opacity: 0.3;
   }
@@ -187,14 +171,10 @@
     transform: translate(95vw, 40vh) scale(0.8) rotate(270deg);
     opacity: 0.8;
   }
-  100% {
-    transform: translate(-15vw, -80vh) scale(1.2) rotate(-480deg);
-    opacity: 0.4;
-  }
 }
 
 @keyframes gentle-float-6 {
-  0% {
+  0%, 100% {
     transform: translate(110vw, -95vh) scale(0.3) rotate(540deg);
     opacity: 0.7;
   }
@@ -210,14 +190,10 @@
     transform: translate(-50vw, -60vh) scale(1.4) rotate(-90deg);
     opacity: 0.6;
   }
-  100% {
-    transform: translate(5vw, 5vh) scale(1.0) rotate(180deg);
-    opacity: 0.8;
-  }
 }
 
 @keyframes gentle-float-7 {
-  0% {
+  0%, 100% {
     transform: translate(45vw, 10vh) scale(0.9) rotate(40deg);
     opacity: 0.7;
   }
@@ -229,14 +205,10 @@
     transform: translate(85vw, -60vh) scale(0.7) rotate(35deg);
     opacity: 0.5;
   }
-  100% {
-    transform: translate(55vw, -35vh) scale(1.2) rotate(-15deg);
-    opacity: 0.8;
-  }
 }
 
 @keyframes gentle-float-8 {
-  0% {
+  0%, 100% {
     transform: translate(-35vw, 20vh) scale(1.1) rotate(-45deg);
     opacity: 0.6;
   }
@@ -247,10 +219,6 @@
   65% {
     transform: translate(-85vw, -55vh) scale(0.8) rotate(-25deg);
     opacity: 0.4;
-  }
-  100% {
-    transform: translate(-45vw, -30vh) scale(1.25) rotate(15deg);
-    opacity: 0.7;
   }
 }
 
@@ -289,7 +257,7 @@
 
 /* 거대한 오브들의 자연스러운 움직임 */
 @keyframes giant-float-1 {
-  0% {
+  0%, 100% {
     transform: translate(-20vw, 30vh) scale(0.8) rotate(-60deg);
     opacity: 0.4;
   }
@@ -297,24 +265,16 @@
     transform: translate(40vw, -35vh) scale(1.4) rotate(120deg);
     opacity: 0.7;
   }
-  100% {
-    transform: translate(15vw, -15vh) scale(1.1) rotate(-30deg);
-    opacity: 0.5;
-  }
 }
 
 @keyframes giant-float-2 {
-  0% {
+  0%, 100% {
     transform: translate(50vw, 15vh) scale(1.2) rotate(80deg);
     opacity: 0.3;
   }
   45% {
     transform: translate(-30vw, -45vh) scale(1.8) rotate(-100deg);
     opacity: 0.6;
-  }
-  100% {
-    transform: translate(-10vw, -25vh) scale(0.9) rotate(160deg);
-    opacity: 0.4;
   }
 }
 
