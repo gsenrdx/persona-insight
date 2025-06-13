@@ -61,7 +61,7 @@ export default function LoginPageContent() {
   // 로그인된 사용자 체크
   useEffect(() => {
     if (user && !loading) {
-      router.push('/')
+      router.replace('/')
     }
   }, [user, loading, router])
 

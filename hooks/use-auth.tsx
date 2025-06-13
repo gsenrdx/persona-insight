@@ -85,9 +85,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setError(null)
+      
+      // Supabase 로그아웃 실행
       await supabase.auth.signOut()
+      
+      // 상태 초기화
       setUser(null)
       setProfile(null)
+      
+      // localStorage의 workflow queue 데이터 정리
+      localStorage.removeItem('workflow_queue_jobs')
+      
+      // 다른 관련 localStorage 데이터 정리 (필요시)
+      // localStorage.clear() // 전체 정리가 필요한 경우
+      
+      // 로그인 페이지로 리다이렉트
+      window.location.href = '/login'
+      
     } catch (error) {
       setError('로그아웃에 실패했습니다.')
     }
@@ -138,6 +152,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           async (event, session) => {
             if (!mounted) return
             
+            // SIGNED_OUT 이벤트 처리
+            if (event === 'SIGNED_OUT') {
+              setUser(null)
+              setProfile(null)
+              setError(null)
+              // localStorage 정리
+              localStorage.removeItem('workflow_queue_jobs')
+              return
+            }
 
             try {
               if (session?.user) {
@@ -151,6 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null)
                 setProfile(null)
                 setError(null)
+                // localStorage 정리
+                localStorage.removeItem('workflow_queue_jobs')
               }
             } catch (error) {
               if (mounted) {

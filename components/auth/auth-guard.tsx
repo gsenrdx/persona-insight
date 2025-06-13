@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -17,6 +19,14 @@ function AuthLoadingScreen() {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading, error, refreshProfile } = useAuth()
+  const router = useRouter()
+
+  // 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login')
+    }
+  }, [user, loading, router])
 
   // 로딩 중일 때
   if (loading) {
@@ -67,9 +77,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     )
   }
 
-  // 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+  // 사용자가 로그인되지 않은 경우 로딩 화면 표시
   if (!user) {
-    window.location.href = '/login'
     return <AuthLoadingScreen />
   }
 
