@@ -68,27 +68,35 @@ export default function InsightsPage() {
   // 사용 가능한 연도 먼저 로드 (회사 단위)
   useEffect(() => {
     if (!profile?.company_id) {
+      setLoading(false)
       return
     }
 
     async function loadAvailableYears() {
       try {
-        if (!profile?.company_id) return;
-                
-        const response = await fetch(`/api/insights/years?company_id=${profile.company_id}`)
+        const response = await fetch(`/api/insights/years?company_id=${profile?.company_id}`)
         if (response.ok) {
           const data = await response.json()
-          setAvailableYears(data.years || [])
+          const years = data.years || []
+          setAvailableYears(years)
           
+          // API에서 연도 목록이 비어있으면 빈 데이터로 설정하고 로딩 완료
+          if (years.length === 0) {
+            setInsightData({})
+            setLoading(false)
+          }
         } else {
-          // 오류 시 현재 연도 기준 3년으로 fallback
-          const currentYear = new Date().getFullYear()
-          setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
+          // API 실패 시 빈 데이터로 설정하고 로딩 완료
+          setAvailableYears([])
+          setInsightData({})
+          setLoading(false)
         }
       } catch (error) {
-        // 오류 시 현재 연도 기준 3년으로 fallback
-        const currentYear = new Date().getFullYear()
-        setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
+        console.error('연도 로드 실패:', error)
+        // 오류 시 빈 데이터로 설정하고 로딩 완료
+        setAvailableYears([])
+        setInsightData({})
+        setLoading(false)
       }
     }
     
@@ -97,29 +105,32 @@ export default function InsightsPage() {
 
   // 인사이트 데이터 로드 (사용 가능한 연도가 로드된 후에 실행) - 회사 단위
   useEffect(() => {
-    if (availableYears.length === 0) return // 연도가 로드되지 않았으면 대기
+    // 연도 목록이 비어있으면 로딩 완료 (이미 첫 번째 useEffect에서 처리됨)
+    if (availableYears.length === 0) return
     if (!profile?.company_id) return
     
     async function loadInsights() {
       try {
         setLoading(true)
-        
-        if (!profile?.company_id) return;
                 
         const yearDataPromises = availableYears.map(async (year) => {
-          const response = await fetch(`/api/insights?company_id=${profile.company_id}&year=${year}`)
-          if (response.ok) {
-            const data = await response.json()
-            return { year, data }
+          try {
+            const response = await fetch(`/api/insights?company_id=${profile?.company_id}&year=${year}`)
+            if (response.ok) {
+              const data = await response.json()
+              return { year, data }
+            }
+            return { year, data: { intervieweeCount: 0, insights: [] } }
+          } catch (err) {
+            console.error(`${year}년 인사이트 로드 실패:`, err)
+            return { year, data: { intervieweeCount: 0, insights: [] } }
           }
-          return { year, data: { intervieweeCount: 0, insights: [] } }
         })
         
         const yearResults = await Promise.all(yearDataPromises)
         const newInsightData: InsightData = {}
         
         yearResults.forEach(({ year, data }) => {
-          
           newInsightData[year] = {
             intervieweeCount: data.intervieweeCount || 0,
             insights: data.insights || []
@@ -129,6 +140,7 @@ export default function InsightsPage() {
         setInsightData(newInsightData)
         
       } catch (error) {
+        console.error('인사이트 데이터 로드 실패:', error)
         // 오류 시 빈 데이터로 초기화
         const emptyData: InsightData = {}
         availableYears.forEach(year => {
@@ -368,8 +380,22 @@ export default function InsightsPage() {
         
         {/* 종합 인사이트 요약 카드와 내용 */}
         {(() => {
-          const hasInsights = currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights.length > 0
+          // 인터뷰 데이터가 있는지 먼저 확인
+          const hasInterviews = selectedYears.some(year => 
+            insightData[year]?.intervieweeCount > 0
+          )
           
+          // 인사이트 데이터가 있는지 확인
+          const hasInsights = currentYearData?.insights && 
+            Array.isArray(currentYearData.insights) && 
+            currentYearData.insights.length > 0
+          
+          // 인터뷰가 없으면 인터뷰 없음 메시지
+          if (!hasInterviews) {
+            return false
+          }
+          
+          // 인터뷰는 있지만 인사이트가 없으면 인사이트 없음 메시지는 아래에서 처리
           return hasInsights
         })() ? (
           <>
@@ -711,14 +737,34 @@ export default function InsightsPage() {
             })()}
           </>
         ) : (
-          <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
-            <div className="text-center text-muted-foreground">
-              <p className="mb-4">선택한 연도에 대한 인터뷰가 없습니다.</p>
-              <Button variant="outline" className="border-gray-200 dark:border-gray-800" onClick={() => setSelectedYears(["2023"])}>
-                2023년
-              </Button>
-            </div>
-          </Card>
+          (() => {
+            // 인터뷰 데이터가 있는지 확인
+            const hasInterviews = selectedYears.some(year => 
+              insightData[year]?.intervieweeCount > 0
+            )
+
+            if (!hasInterviews) {
+              // 인터뷰가 없는 경우
+              return (
+                <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
+                  <div className="text-center text-muted-foreground">
+                    <p className="mb-4">회사에 대한 인터뷰가 없습니다.</p>
+                    <p className="text-sm mb-4">인터뷰를 업로드하여 인사이트를 생성해보세요.</p>
+                  </div>
+                </Card>
+              )
+            } else {
+              // 인터뷰는 있지만 인사이트가 없는 경우
+              return (
+                <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
+                  <div className="text-center text-muted-foreground">
+                    <p className="mb-4">선택된 연도에 대한 인사이트 데이터가 없습니다.</p>
+                    <p className="text-sm mb-4">인터뷰 분석이 완료되면 인사이트가 생성됩니다.</p>
+                  </div>
+                </Card>
+              )
+            }
+          })()
         )}
       </main>
       

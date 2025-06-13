@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, Users, Calendar, CheckCircle, Loader2 } from "lucide-react"
+import { User, Users, CheckCircle, Loader2 } from "lucide-react"
 import { IntervieweeData } from '@/types/interviewee'
 import { useAuth } from '@/hooks/use-auth'
 import { useQuery } from '@tanstack/react-query'
@@ -93,9 +93,9 @@ export default function PersonaClassificationModal({
 
   const { classifications, unclassifiedInterviews } = processClassifications()
 
-  // 첫 번째 페르소나 또는 미분류를 기본 선택
+  // 로딩 완료 후 첫 번째 페르소나 또는 미분류를 기본 선택
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !personasLoading) {
       if (classifications.length > 0) {
         setSelectedPersonaId(classifications[0].id)
       } else if (unclassifiedInterviews.length > 0) {
@@ -104,7 +104,7 @@ export default function PersonaClassificationModal({
         setSelectedPersonaId(null)
       }
     }
-  }, [isOpen, classifications.length, unclassifiedInterviews.length])
+  }, [isOpen, personasLoading, classifications.length, unclassifiedInterviews.length])
 
   const selectedClassification = classifications.find(c => c.id === selectedPersonaId)
   const selectedInterviews = selectedClassification?.interviews || []
@@ -122,18 +122,19 @@ export default function PersonaClassificationModal({
           </p>
         </DialogHeader>
 
-        <div className="flex-1 flex gap-6 overflow-hidden">
-          {/* 왼쪽: 페르소나 리스트 */}
-          <div className="w-80 flex-shrink-0">
-            <div className="h-full overflow-y-auto space-y-3">
-              {personasLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  <span className="ml-2 text-sm text-gray-500">페르소나 목록 로딩 중...</span>
-                </div>
-              ) : (
-                <>
-                  {/* 전체 페르소나 목록 (A-Z 순서, 인터뷰 배정 여부와 관계없이) */}
+        {personasLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-gray-400" />
+              <p className="text-sm text-gray-500">페르소나 분류 현황을 불러오는 중...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex gap-6 overflow-hidden">
+            {/* 왼쪽: 페르소나 리스트 */}
+            <div className="w-80 flex-shrink-0">
+              <div className="h-full overflow-y-auto space-y-3">
+                {/* 전체 페르소나 목록 (A-Z 순서, 인터뷰 배정 여부와 관계없이) */}
                   {classifications.map((classification) => (
                     <div
                       key={classification.id}
@@ -169,10 +170,7 @@ export default function PersonaClassificationModal({
                       </div>
                     </div>
                   ))}
-                </>
-              )}
-
-              {/* 미분류 섹션 */}
+                {/* 미분류 섹션 */}
               {unclassifiedInterviews.length > 0 && (
                 <div
                   className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${
@@ -197,8 +195,8 @@ export default function PersonaClassificationModal({
                 </div>
               )}
 
-                  {/* 빈 상태 */}
-                  {!personasLoading && classifications.length === 0 && unclassifiedInterviews.length === 0 && (
+              {/* 빈 상태 */}
+              {classifications.length === 0 && unclassifiedInterviews.length === 0 && (
                     <div className="text-center py-8">
                       <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                       <p className="text-sm text-gray-500">페르소나가 없습니다</p>
@@ -207,9 +205,9 @@ export default function PersonaClassificationModal({
             </div>
           </div>
 
-          {/* 오른쪽: 선택된 페르소나의 인터뷰 목록 */}
-          <div className="flex-1 overflow-hidden">
-            {selectedPersonaId === 'unclassified' ? (
+            {/* 오른쪽: 선택된 페르소나의 인터뷰 목록 */}
+            <div className="flex-1 overflow-hidden">
+              {selectedPersonaId === 'unclassified' ? (
               <div className="h-full">
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">미분류 인터뷰</h3>
@@ -319,8 +317,9 @@ export default function PersonaClassificationModal({
                 </div>
               </div>
             )}
+            </div>
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   )

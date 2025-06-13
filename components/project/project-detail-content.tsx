@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Settings, FileText, BarChart3, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
@@ -175,7 +176,53 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
   // 로딩 중에도 기본 레이아웃을 보여주되, 각 탭 컴포넌트에서 자체 로딩 처리
   if (loading) {
-    return <div className="min-h-screen bg-slate-50" />
+    return (
+      <div className="min-h-screen bg-slate-50/50">
+        {/* 헤더 스켈레톤 */}
+        <header className="bg-white border-b border-slate-200">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-32" />
+              </div>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex">
+          {/* 사이드바 스켈레톤 */}
+          <aside className="w-64 bg-white border-r border-slate-200 min-h-[calc(100vh-73px)]">
+            <div className="p-4 border-b border-slate-200">
+              <Skeleton className="h-9 w-32" />
+            </div>
+            <nav className="p-4">
+              <div className="space-y-1">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </nav>
+          </aside>
+
+          {/* 메인 콘텐츠 스켈레톤 */}
+          <main className="flex-1 bg-white">
+            <div className="p-6">
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <p className="text-sm text-slate-600">프로젝트 정보를 불러오는 중...</p>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   if (error || !project) {
