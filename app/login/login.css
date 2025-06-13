@@ -6,6 +6,8 @@
   filter: blur(8px);
   opacity: 0.6;
   will-change: transform;
+  pointer-events: auto;
+  z-index: 25;
 }
 
 /* 원본 SVG를 직접 사용한 정확한 도형들 */
@@ -18,8 +20,8 @@
 }
 
 .insight-orb-indigo {
-  /* SVG 5: 1/4이 없어진 원형 (3/4 원) */
-  background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 100 L200 100 A100 100 0 1 1 100 0 Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="100" y1="0" x2="100" y2="200" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
+  /* SVG 5: 1/4이 없어진 원형 (왼쪽 위 1/4 삭제) */
+  background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 100 L200 100 A100 100 0 0 1 100 200 A100 100 0 0 1 0 100 A100 100 0 0 1 100 0 L100 100 Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="100" y1="0" x2="100" y2="200" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -284,4 +286,32 @@
 
 .animate-giant-float-2 {
   animation: giant-float-2 92s cubic-bezier(0.19, 1, 0.22, 1) infinite;
+}
+
+/* 로고 완성 시 빤딱 애니메이션 (한 번만 실행) */
+@keyframes sparkle-once {
+  0% {
+    transform: translateX(-200%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(200%);
+    opacity: 0;
+  }
+}
+
+.animate-sparkle-once {
+  animation: sparkle-once 1.5s ease-out forwards;
+}
+
+/* 초승달형 곡선 도형 */
+.insight-orb-crescent {
+  /* SVG 5 원본: 곡선 형태 */
+  background-image: url('data:image/svg+xml;utf8,<svg width="122" height="271" viewBox="0 0 122 271" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M121.733 138.68V270.761C-35.7918 263.809 -43.4252 18.1859 121.733 0.806885C121.039 1.27032 121.502 124.314 121.733 138.68Z" fill="url(%23paint0_linear)"/><defs><linearGradient id="paint0_linear" x1="61.1288" y1="1.27032" x2="61.1288" y2="271.224" gradientUnits="userSpaceOnUse"><stop stop-color="%23FF674C"/><stop offset="0.27" stop-color="%23FF6E4D"/><stop offset="0.66" stop-color="%23FF8250"/><stop offset="1" stop-color="%23FF9953"/></linearGradient></defs></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
