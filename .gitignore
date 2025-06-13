@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/.pnp
+.pnp.js
 
 # next.js
 /.next/
@@ -9,19 +11,94 @@
 
 # production
 /build
+/dist
+
+# runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# coverage
+/coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# eslint cache
+.eslintcache
+
+# optional npm cache directory
+.npm
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
 
+# turbo
+.turbo
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# temporary files
+*.tmp
+*.temp
+/tmp/
+
+# logs
+logs
+*.log
+
+# Supabase
+.supabase/
+
+# Claude Desktop config (contains sensitive info)
+claude_desktop_config.json
+
+# Support folder (Claude temp files)
+/Support/
+
+# Documentation drafts/temp files in docs
+docs/miso_api_guide_agent,chatflow.md
+docs/miso_api_guide_agent.txt
+docs/지식API.txt
