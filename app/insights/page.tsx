@@ -81,13 +81,11 @@ export default function InsightsPage() {
           setAvailableYears(data.years || [])
           
         } else {
-          console.error("연도 조회 실패")
           // 오류 시 현재 연도 기준 3년으로 fallback
           const currentYear = new Date().getFullYear()
           setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
         }
       } catch (error) {
-        console.error("연도 로드 오류:", error)
         // 오류 시 현재 연도 기준 3년으로 fallback
         const currentYear = new Date().getFullYear()
         setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
@@ -121,11 +119,6 @@ export default function InsightsPage() {
         const newInsightData: InsightData = {}
         
         yearResults.forEach(({ year, data }) => {
-          console.log(`📊 ${year}년 연간 인사이트 데이터:`, {
-            intervieweeCount: data.intervieweeCount,
-            insightsCount: data.insights?.length || 0,
-            sampleInsight: data.insights?.[0]
-          })
           
           newInsightData[year] = {
             intervieweeCount: data.intervieweeCount || 0,
@@ -135,13 +128,7 @@ export default function InsightsPage() {
         
         setInsightData(newInsightData)
         
-        console.log('📦 연간 인사이트 데이터 로드 완료:', {
-          totalYears: Object.keys(newInsightData).length,
-          dataKeys: Object.keys(newInsightData),
-          newInsightData
-        });
       } catch (error) {
-        console.error("인사이트 데이터 로드 실패:", error)
         // 오류 시 빈 데이터로 초기화
         const emptyData: InsightData = {}
         availableYears.forEach(year => {
@@ -174,14 +161,6 @@ export default function InsightsPage() {
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
     : (insightData[years[0]] || { intervieweeCount: 0, insights: [] })
 
-  // 디버깅 로그
-  console.log('🔍 연간 인사이트 표시 상태:', {
-    selectedYears,
-    availableYears: years,
-    currentYearData,
-    insightDataKeys: Object.keys(insightData),
-    loading
-  })
 
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
@@ -390,13 +369,6 @@ export default function InsightsPage() {
         {/* 종합 인사이트 요약 카드와 내용 */}
         {(() => {
           const hasInsights = currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights.length > 0
-          console.log('📊 연간 인사이트 표시 조건 체크:', {
-            'currentYearData?.insights': !!currentYearData?.insights,
-            'Array.isArray(currentYearData.insights)': Array.isArray(currentYearData?.insights),
-            'currentYearData.insights.length': currentYearData?.insights?.length,
-            hasInsights,
-            insightsData: currentYearData?.insights
-          })
           
           return hasInsights
         })() ? (
@@ -419,7 +391,6 @@ export default function InsightsPage() {
                     {(currentYearData?.insights || []).map((insight, idx) => {
                       // 데이터 유효성 검사
                       if (!insight || typeof insight !== 'object') {
-                        console.warn(`연간 인사이트 ${idx}가 유효하지 않음:`, insight)
                         return null
                       }
 

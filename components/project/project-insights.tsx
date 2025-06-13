@@ -100,7 +100,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
 
     async function loadAvailableYears() {
       try {
-        console.log('연도 데이터 로드 중 - 프로젝트 단위:', project.name, 'ID:', project.id);
         
         if (!profile?.company_id) return;
         
@@ -109,15 +108,12 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           const data = await response.json()
           setAvailableYears(data.years || [])
           
-          console.log('연도 데이터 로드 완료:', data.years?.length || 0, '개');
         } else {
-          console.error("연도 조회 실패")
           // 오류 시 현재 연도 기준 3년으로 fallback
           const currentYear = new Date().getFullYear()
           setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
         }
       } catch (error) {
-        console.error("연도 로드 오류:", error)
         // 오류 시 현재 연도 기준 3년으로 fallback
         const currentYear = new Date().getFullYear()
         setAvailableYears([currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()])
@@ -137,7 +133,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         setLoading(true)
         setError(null)
         
-        console.log('인사이트 데이터 로드 중 - 프로젝트 단위:', project.name);
         
         if (!profile?.company_id) return;
         
@@ -145,11 +140,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           const response = await fetch(`/api/insights?company_id=${profile.company_id}&project_id=${project.id}&year=${year}`)
           if (response.ok) {
             const data = await response.json()
-            console.log(`📊 ${year}년 인사이트 데이터:`, {
-              intervieweeCount: data.intervieweeCount,
-              insightsCount: data.insights?.length || 0,
-              sampleInsight: data.insights?.[0]
-            })
             return { year, data }
           }
           return { year, data: { intervieweeCount: 0, insights: [] } }
@@ -159,11 +149,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         const newInsightData: InsightApiData = {}
         
         yearResults.forEach(({ year, data }) => {
-          console.log(`🗂️ ${year}년 데이터 처리:`, {
-            intervieweeCount: data.intervieweeCount,
-            insightsLength: data.insights?.length,
-            insights: data.insights
-          })
           
           newInsightData[year] = {
             intervieweeCount: data.intervieweeCount || 0,
@@ -173,13 +158,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         
         setInsightData(newInsightData)
         
-        console.log('📦 인사이트 데이터 로드 완료:', {
-          totalYears: Object.keys(newInsightData).length,
-          dataKeys: Object.keys(newInsightData),
-          newInsightData
-        });
       } catch (error) {
-        console.error("인사이트 데이터 로드 실패:", error)
         setError('인사이트 데이터를 불러오는데 실패했습니다')
         // 오류 시 빈 데이터로 초기화
         const emptyData: InsightApiData = {}
@@ -207,15 +186,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
     : (insightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
 
-  // 디버깅 로그
-  console.log('🔍 인사이트 표시 상태:', {
-    selectedYears,
-    availableYears,
-    currentYearData,
-    insightDataKeys: Object.keys(insightData),
-    loading,
-    error
-  })
 
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
@@ -393,13 +363,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       {/* 종합 인사이트 요약 카드와 내용 */}
       {(() => {
         const hasInsights = currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights.length > 0
-        console.log('📊 인사이트 표시 조건 체크:', {
-          'currentYearData?.insights': !!currentYearData?.insights,
-          'Array.isArray(currentYearData.insights)': Array.isArray(currentYearData?.insights),
-          'currentYearData.insights.length': currentYearData?.insights?.length,
-          hasInsights,
-          insightsData: currentYearData?.insights
-        })
         
         return hasInsights
       })() ? (
@@ -422,7 +385,6 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                   {(currentYearData?.insights || []).map((insight, idx) => {
                     // 데이터 유효성 검사
                     if (!insight || typeof insight !== 'object') {
-                      console.warn(`인사이트 ${idx}가 유효하지 않음:`, insight)
                       return null
                     }
 

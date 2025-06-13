@@ -135,13 +135,9 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
   const handleSave = async () => {
     try {
       setLoading(true)
-      console.log('🔄 Saving project with data:', editData)
-      console.log('🔑 User ID:', profile?.id)
-      console.log('📁 Project ID:', project.id)
 
       // Supabase 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('🎫 Session token available:', !!session?.access_token)
       
       if (!session?.access_token) {
         console.error('❌ No access token available')
@@ -156,8 +152,6 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         user_id: profile?.id
       }
 
-      console.log('🧹 Cleaned data:', cleanedData)
-
       const response = await fetch(`/api/supabase/projects/${project.id}`, {
         method: 'PUT',
         headers: { 
@@ -167,11 +161,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         body: JSON.stringify(cleanedData)
       })
 
-      console.log('📡 Save response status:', response.status)
-      console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()))
-
       const responseText = await response.text()
-      console.log('📄 Raw response:', responseText)
 
       if (!response.ok) {
         let errorData
@@ -185,7 +175,6 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       }
 
       const result = JSON.parse(responseText)
-      console.log('✅ Save result:', result)
       onProjectUpdate(result.data)
       setEditMode(false)
       toast.success('프로젝트가 수정되었습니다')

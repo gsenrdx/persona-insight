@@ -342,12 +342,6 @@ const JobDetailPanel = React.memo(({
   // 인터뷰 상세 데이터 가져오기 - project-interviews.tsx와 동일한 방식 사용
   useEffect(() => {
     if (hasAnalysisResult && job.projectId) {
-      console.log('🔍 상세 데이터 로딩 시작:', {
-        hasAnalysisResult,
-        projectId: job.projectId,
-        companyId: profile?.company_id,
-        analysisResult
-      });
       
       setLoadingDetail(true);
       
@@ -355,7 +349,6 @@ const JobDetailPanel = React.memo(({
         try {
           // API를 통해 인터뷰 데이터 조회 (project-interviews.tsx와 동일한 방식)
           const apiUrl = `/api/supabase/interviewee?company_id=${profile?.company_id}&project_id=${job.projectId}&limit=100&offset=0`;
-          console.log('📡 API 호출:', apiUrl);
           
           const response = await fetch(apiUrl);
           
@@ -366,15 +359,6 @@ const JobDetailPanel = React.memo(({
           const result = await response.json();
           const interviews = result.data || [];
           
-          console.log('📊 API 응답:', {
-            totalInterviews: interviews.length,
-            interviews: interviews.map((i: any) => ({
-              id: i.id,
-              name: i.interviewee_fake_name,
-              hasDetail: !!i.interview_detail,
-              createdAt: i.created_at
-            }))
-          });
           
           // 여러 조건으로 매칭 시도
           let matchedInterview = null;
@@ -382,11 +366,6 @@ const JobDetailPanel = React.memo(({
           // 1. interviewee_id로 직접 매칭
           if (analysisResult?.interviewee_id) {
             matchedInterview = interviews.find((interview: any) => interview.id === analysisResult.interviewee_id);
-            console.log('🎯 ID 매칭 결과:', {
-              searchId: analysisResult.interviewee_id,
-              found: !!matchedInterview,
-              matchedId: matchedInterview?.id
-            });
           }
           
           // 2. interviewee_fake_name으로 매칭
@@ -394,11 +373,6 @@ const JobDetailPanel = React.memo(({
             matchedInterview = interviews.find((interview: any) => 
               interview.interviewee_fake_name === analysisResult.interviewee_fake_name
             );
-            console.log('🏷️ 이름 매칭 결과:', {
-              searchName: analysisResult.interviewee_fake_name,
-              found: !!matchedInterview,
-              matchedName: matchedInterview?.interviewee_fake_name
-            });
           }
           
           // 3. 가장 최신 인터뷰로 fallback
@@ -411,43 +385,23 @@ const JobDetailPanel = React.memo(({
             
             if (recentInterviews.length > 0) {
               matchedInterview = recentInterviews[0];
-              console.log('⏰ 최신 인터뷰 fallback:', {
-                recentCount: recentInterviews.length,
-                selectedId: matchedInterview.id
-              });
             }
           }
           
           if (matchedInterview?.interview_detail) {
-            console.log('📝 매칭된 인터뷰:', {
-              id: matchedInterview.id,
-              name: matchedInterview.interviewee_fake_name,
-              detailType: typeof matchedInterview.interview_detail,
-              detailLength: matchedInterview.interview_detail?.length || 0
-            });
             
             // interview-detail.tsx와 동일한 방식으로 파싱
             const parsedDetail = parseInterviewDetail(matchedInterview.interview_detail);
             
-            console.log('🔧 파싱 결과:', {
-              parsedType: typeof parsedDetail,
-              isArray: Array.isArray(parsedDetail),
-              length: parsedDetail?.length || 0,
-              sample: parsedDetail?.[0]
-            });
             
             if (parsedDetail && Array.isArray(parsedDetail) && parsedDetail.length > 0) {
               setInterviewDetail(parsedDetail);
-              console.log('✅ 상세 데이터 설정 완료:', parsedDetail.length, '개 토픽');
             } else {
-              console.log('❌ 파싱된 데이터가 유효하지 않음');
             }
           } else {
-            console.log('❌ 매칭된 인터뷰가 없거나 interview_detail이 없음');
           }
           
         } catch (error) {
-          console.error('❌ 인터뷰 상세 데이터 로드 실패:', error);
         } finally {
           setLoadingDetail(false);
         }
@@ -455,11 +409,6 @@ const JobDetailPanel = React.memo(({
 
       fetchInterviewDetail();
     } else {
-      console.log('⚠️ 조건 미충족:', {
-        hasAnalysisResult,
-        projectId: job.projectId,
-        profileLoaded: !!profile
-      });
     }
   }, [hasAnalysisResult, job.projectId, analysisResult?.interviewee_id, analysisResult?.interviewee_fake_name, profile?.company_id]);
   

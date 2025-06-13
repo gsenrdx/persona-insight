@@ -418,7 +418,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         // 서버에서 파싱에 실패한 경우 클라이언트에서 재시도
         if (result.mindmapData.error === 'JSON 파싱 실패' && result.mindmapData.raw) {
           try {
-            console.log('클라이언트에서 JSON 파싱 재시도...');
             let cleanedData = result.mindmapData.raw.trim();
             
             // 마크다운 코드 블록 제거
@@ -428,7 +427,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             
             if (cleanedData.startsWith('{') && cleanedData.endsWith('}')) {
               finalMindmapData = JSON.parse(cleanedData);
-              console.log('클라이언트 JSON 파싱 성공!');
             }
           } catch (clientParseError) {
             console.error('클라이언트 파싱도 실패:', clientParseError);
@@ -438,7 +436,6 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         
         // 최종 데이터 확인
         if (finalMindmapData && !finalMindmapData.error) {
-          console.log('대화 요약 데이터:', finalMindmapData);
           setMindmapData(finalMindmapData);
           setMindmapModalOpen(true);
         } else {
