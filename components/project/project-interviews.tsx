@@ -134,12 +134,12 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     try {
       if (!profile?.company_id) return
       
-      const response = await fetch(`/api/supabase/persona-criteria?company_id=${profile.company_id}`)
+      const response = await fetch(`/api/persona-criteria?company_id=${profile.company_id}`)
       
       if (response.ok) {
-        const result = await response.json()
-        if (result.data && result.data.length > 0) {
-          setCriteriaConfig(result.data[0])
+        const { configuration, success } = await response.json()
+        if (success && configuration) {
+          setCriteriaConfig(configuration)
         }
       }
     } catch (err) {

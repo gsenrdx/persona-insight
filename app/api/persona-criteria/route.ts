@@ -143,10 +143,10 @@ export async function GET(request: Request) {
     const project_id = searchParams.get('project_id')
 
     if (!company_id) {
-      return NextResponse.json(
-        { error: "company_id가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "company_id가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     // 프로젝트별 설정 우선, 없으면 회사별 설정
@@ -165,19 +165,22 @@ export async function GET(request: Request) {
     const { data, error } = await query.single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-      return NextResponse.json(
-        { error: "페르소나 분류 기준을 가져오는데 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "페르소나 분류 기준을 가져오는데 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
-    return NextResponse.json({ configuration: data })
+    return NextResponse.json({
+      configuration: data,
+      success: true
+    })
   } catch (error) {
     
-    return NextResponse.json(
-      { error: "페르소나 분류 기준을 가져오는데 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "페르소나 분류 기준을 가져오는데 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -188,26 +191,26 @@ export async function POST(request: Request) {
     
     // 필수 필드 검증
     if (!body.company_id || !body.x_axis || !body.y_axis) {
-      return NextResponse.json(
-        { error: "필수 필드가 누락되었습니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "필수 필드가 누락되었습니다",
+        success: false
+      }, { status: 400 })
     }
 
     if (!body.created_by) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
+      return NextResponse.json({
+        error: "사용자 인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
     // 권한 확인
     const authCheck = await checkPermission(body.company_id, body.created_by, body.project_id)
     if (!authCheck.isAuthorized || !authCheck.canEdit) {
-      return NextResponse.json(
-        { error: authCheck.error || "페르소나 분류 기준 생성 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: authCheck.error || "페르소나 분류 기준 생성 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
     // 중복 설정 확인
@@ -226,10 +229,10 @@ export async function POST(request: Request) {
     const { data: existing } = await duplicateQuery.single()
 
     if (existing) {
-      return NextResponse.json(
-        { error: "이미 설정이 존재합니다. 업데이트를 사용해주세요." }, 
-        { status: 409 }
-      )
+      return NextResponse.json({
+        error: "이미 설정이 존재합니다. 업데이트를 사용해주세요.",
+        success: false
+      }, { status: 409 })
     }
     
     const insertData = {
@@ -251,10 +254,10 @@ export async function POST(request: Request) {
       .select()
 
     if (error) {
-      return NextResponse.json(
-        { error: `페르소나 분류 기준 생성에 실패했습니다: ${error.message}` }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: `페르소나 분류 기준 생성에 실패했습니다: ${error.message}`,
+        success: false
+      }, { status: 500 })
     }
 
     const newConfiguration = data[0]
@@ -274,13 +277,16 @@ export async function POST(request: Request) {
       // 페르소나 생성 실패는 경고만 하고 계속 진행
     }
 
-    return NextResponse.json({ configuration: newConfiguration }, { status: 201 })
+    return NextResponse.json({
+      configuration: newConfiguration,
+      success: true
+    }, { status: 201 })
   } catch (error) {
     
-    return NextResponse.json(
-      { error: "페르소나 분류 기준 생성에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "페르소나 분류 기준 생성에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -291,17 +297,17 @@ export async function PUT(request: Request) {
     const { id, user_id, ...updateData } = body
     
     if (!id) {
-      return NextResponse.json(
-        { error: "설정 ID가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "설정 ID가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
+      return NextResponse.json({
+        error: "사용자 인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
     // 기존 설정 조회하여 권한 확인
@@ -312,10 +318,10 @@ export async function PUT(request: Request) {
       .single()
 
     if (!existingConfig) {
-      return NextResponse.json(
-        { error: "해당 설정을 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "해당 설정을 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 권한 확인
@@ -326,10 +332,10 @@ export async function PUT(request: Request) {
     )
     
     if (!authCheck.isAuthorized || !authCheck.canEdit) {
-      return NextResponse.json(
-        { error: authCheck.error || "페르소나 분류 기준 수정 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: authCheck.error || "페르소나 분류 기준 수정 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
     const { data, error } = await supabaseAdmin
@@ -342,17 +348,17 @@ export async function PUT(request: Request) {
       .select()
 
     if (error) {
-      return NextResponse.json(
-        { error: "페르소나 분류 기준 업데이트에 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "페르소나 분류 기준 업데이트에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "해당 ID의 설정을 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "해당 ID의 설정을 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 기존 페르소나 삭제 후 새로 생성
@@ -379,13 +385,16 @@ export async function PUT(request: Request) {
       }
     }
 
-    return NextResponse.json({ configuration: data[0] })
+    return NextResponse.json({
+      configuration: data[0],
+      success: true
+    })
   } catch (error) {
     
-    return NextResponse.json(
-      { error: "페르소나 분류 기준 업데이트에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "페르소나 분류 기준 업데이트에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -397,17 +406,17 @@ export async function DELETE(request: Request) {
     const user_id = searchParams.get('user_id')
     
     if (!id) {
-      return NextResponse.json(
-        { error: "설정 ID가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "설정 ID가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
+      return NextResponse.json({
+        error: "사용자 인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
     // 기존 설정 조회하여 권한 확인
@@ -418,10 +427,10 @@ export async function DELETE(request: Request) {
       .single()
 
     if (!existingConfig) {
-      return NextResponse.json(
-        { error: "해당 설정을 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "해당 설정을 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 권한 확인
@@ -432,10 +441,10 @@ export async function DELETE(request: Request) {
     )
     
     if (!authCheck.isAuthorized || !authCheck.canEdit) {
-      return NextResponse.json(
-        { error: authCheck.error || "페르소나 분류 기준 삭제 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: authCheck.error || "페르소나 분류 기준 삭제 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
     // 실제 삭제 대신 비활성화
@@ -449,25 +458,28 @@ export async function DELETE(request: Request) {
       .select()
 
     if (error) {
-      return NextResponse.json(
-        { error: "페르소나 분류 기준 삭제에 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "페르소나 분류 기준 삭제에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "해당 ID의 설정을 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "해당 ID의 설정을 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
-    return NextResponse.json({ message: "페르소나 분류 기준이 성공적으로 삭제되었습니다" })
+    return NextResponse.json({
+      message: "페르소나 분류 기준이 성공적으로 삭제되었습니다",
+      success: true
+    })
   } catch (error) {
     
-    return NextResponse.json(
-      { error: "페르소나 분류 기준 삭제에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "페르소나 분류 기준 삭제에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
-} 
+}

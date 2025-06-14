@@ -14,7 +14,7 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
     }
 
     // 항상 회사 단위로만 조회 (프로젝트 필터링 제거)
-    const url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
+    const url = `${baseUrl}/api/personas?company_id=${company_id}`
 
     const response = await fetch(url)
 
@@ -27,14 +27,18 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
       throw new Error(`Failed to fetch personas: ${response.status} ${response.statusText}`)
     }
 
-    const result: PersonaApiResponse = await response.json()
+    const { data, success, error } = await response.json()
 
-    if (!result.data || !Array.isArray(result.data)) {
+    if (!success) {
+      throw new Error(error || "Failed to fetch personas")
+    }
+
+    if (!data || !Array.isArray(data)) {
       throw new Error("Invalid persona data format received from API")
     }
 
     // Supabase 데이터를 UI 컴포넌트 형식으로 변환 후 persona_type으로 정렬
-    return result.data
+    return data
       .map((persona: PersonaData) => {
         const typeInfo = getPersonaTypeInfo(persona.persona_type)
         
@@ -74,7 +78,7 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
       return null
     }
     
-    let url = `${baseUrl}/api/supabase/persona?company_id=${company_id}`
+    let url = `${baseUrl}/api/personas?company_id=${company_id}`
     if (project_id) {
       url += `&project_id=${project_id}`
     }
@@ -85,14 +89,18 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
       throw new Error(`Failed to fetch personas: ${response.status} ${response.statusText}`)
     }
 
-    const result: PersonaApiResponse = await response.json()
+    const { data, success, error } = await response.json()
 
-    if (!result.data || !Array.isArray(result.data)) {
+    if (!success) {
+      throw new Error(error || "Failed to fetch personas")
+    }
+
+    if (!data || !Array.isArray(data)) {
       throw new Error("Invalid persona data format received from API")
     }
 
     // 특정 ID의 페르소나 찾기
-    const persona = result.data.find((p: PersonaData) => p.id === id)
+    const persona = data.find((p: PersonaData) => p.id === id)
     
     if (!persona) {
       console.error(`Persona with ID ${id} not found`)

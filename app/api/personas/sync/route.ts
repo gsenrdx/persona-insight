@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
     const { company_id, project_id, personas } = await req.json()
     
     if (!company_id || !personas || !Array.isArray(personas)) {
-      return NextResponse.json(
-        { error: 'company_id와 personas 배열이 필요합니다' },
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: 'company_id와 personas 배열이 필요합니다',
+        success: false
+      }, { status: 400 })
     }
 
     // 1. 기존 페르소나들 조회 (persona_type으로 매칭)
@@ -40,10 +40,10 @@ export async function POST(req: NextRequest) {
 
     if (fetchError) {
       console.error('기존 페르소나 조회 오류:', fetchError)
-      return NextResponse.json(
-        { error: '기존 페르소나 조회에 실패했습니다' },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: '기존 페르소나 조회에 실패했습니다',
+        success: false
+      }, { status: 500 })
     }
 
     const existingPersonaMap = new Map(
@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
             linkedInterviews: linkedInterviews.length,
             examples: linkedInterviews.map(i => i.interviewee_fake_name || `인터뷰 ${i.id.slice(0, 8)}`),
             personasToDelete: personasToDelete.map(p => p.persona_type)
-          }
+          },
+          success: false
         }, { status: 409 })
       }
 
@@ -91,10 +92,10 @@ export async function POST(req: NextRequest) {
 
       if (deleteError) {
         console.error('페르소나 삭제 오류:', deleteError)
-        return NextResponse.json(
-          { error: '페르소나 삭제에 실패했습니다' },
-          { status: 500 }
-        )
+        return NextResponse.json({
+          error: '페르소나 삭제에 실패했습니다',
+          success: false
+        }, { status: 500 })
       }
 
     }
@@ -165,12 +166,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('페르소나 동기화 오류:', error)
-    return NextResponse.json(
-      { 
-        error: '페르소나 동기화 중 오류가 발생했습니다',
-        details: error.message 
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ 
+      error: '페르소나 동기화 중 오류가 발생했습니다',
+      details: error.message,
+      success: false
+    }, { status: 500 })
   }
 }

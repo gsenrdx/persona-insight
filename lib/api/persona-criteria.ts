@@ -19,7 +19,7 @@ export async function fetchPersonaCriteria(
     params.append('project_id', projectId)
   }
 
-  const response = await fetch(`/api/supabase/persona-criteria?${params}`, {
+  const response = await fetch(`/api/persona-criteria?${params}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -31,15 +31,18 @@ export async function fetchPersonaCriteria(
     throw new Error(errorData.error || '페르소나 분류 기준을 불러오는데 실패했습니다.')
   }
 
-  const data = await response.json()
-  return data.configuration || null
+  const { configuration, success, error } = await response.json()
+  if (!success) {
+    throw new Error(error || '페르소나 분류 기준을 불러오는데 실패했습니다.')
+  }
+  return configuration || null
 }
 
 // 페르소나 분류 기준 설정 생성
 export async function createPersonaCriteria(
   criteriaData: CreatePersonaCriteriaData
 ): Promise<PersonaCriteriaConfiguration> {
-  const response = await fetch('/api/supabase/persona-criteria', {
+  const response = await fetch('/api/persona-criteria', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -52,15 +55,18 @@ export async function createPersonaCriteria(
     throw new Error(errorData.error || '페르소나 분류 기준 생성에 실패했습니다.')
   }
 
-  const data = await response.json()
-  return data.configuration
+  const { configuration, success, error } = await response.json()
+  if (!success) {
+    throw new Error(error || '요청에 실패했습니다.')
+  }
+  return configuration
 }
 
 // 페르소나 분류 기준 설정 업데이트
 export async function updatePersonaCriteria(
   criteriaData: UpdatePersonaCriteriaData
 ): Promise<PersonaCriteriaConfiguration> {
-  const response = await fetch('/api/supabase/persona-criteria', {
+  const response = await fetch('/api/persona-criteria', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -73,13 +79,16 @@ export async function updatePersonaCriteria(
     throw new Error(errorData.error || '페르소나 분류 기준 업데이트에 실패했습니다.')
   }
 
-  const data = await response.json()
-  return data.configuration
+  const { configuration, success, error } = await response.json()
+  if (!success) {
+    throw new Error(error || '요청에 실패했습니다.')
+  }
+  return configuration
 }
 
 // 페르소나 분류 기준 설정 삭제
 export async function deletePersonaCriteria(configId: string): Promise<void> {
-  const response = await fetch(`/api/supabase/persona-criteria?id=${configId}`, {
+  const response = await fetch(`/api/persona-criteria?id=${configId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',

@@ -415,7 +415,7 @@ export const PersonaCriteriaModal = ({
         }))
       }
 
-      const response = await fetch('/api/supabase/persona/sync', {
+      const response = await fetch('/api/personas/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -426,6 +426,15 @@ export const PersonaCriteriaModal = ({
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || '페르소나 동기화에 실패했습니다')
+      }
+
+      const { success, error, message } = await response.json()
+      if (!success) {
+        throw new Error(error || '페르소나 동기화에 실패했습니다')
+      }
+      
+      if (message) {
+        toast.success(message)
       }
     } catch (error) {
       console.error('페르소나 테이블 동기화 오류:', error)
