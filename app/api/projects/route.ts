@@ -40,10 +40,10 @@ export async function GET(request: Request) {
 
     // company_id와 user_id가 필수로 제공되어야 함
     if (!company_id || !user_id) {
-      return NextResponse.json(
-        { error: "company_id와 user_id가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "company_id와 user_id가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     // RPC 함수를 사용하여 프로젝트 목록과 멤버 정보 조회
@@ -72,7 +72,10 @@ export async function GET(request: Request) {
         membership: project.user_membership || null
       }))
 
-      return NextResponse.json({ data: transformedRpcData })
+      return NextResponse.json({
+        data: transformedRpcData,
+        success: true
+      })
     }
 
     // RPC 함수 실패 시 기존 방식으로 fallback
@@ -116,10 +119,10 @@ export async function GET(request: Request) {
 
       if (fallbackError) {
         console.error("Fallback 조회도 실패:", fallbackError)
-        return NextResponse.json(
-          { error: "프로젝트 데이터를 가져오는데 실패했습니다" }, 
-          { status: 500 }
-        )
+        return NextResponse.json({
+          error: "프로젝트 데이터를 가져오는데 실패했습니다",
+          success: false
+        }, { status: 500 })
       }
 
       // fallback 데이터 변환
@@ -133,7 +136,10 @@ export async function GET(request: Request) {
         personas: undefined
       }))
 
-      return NextResponse.json({ data: transformedFallbackData })
+      return NextResponse.json({
+        data: transformedFallbackData,
+        success: true
+      })
     }
 
     // 데이터 변환: 멤버십 정보와 통계 정보를 프로젝트 객체에 직접 포함
@@ -159,14 +165,17 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({ data: transformedData })
+    return NextResponse.json({
+      data: transformedData,
+      success: true
+    })
   } catch (error) {
     console.error("API route error:", error)
     
-    return NextResponse.json(
-      { error: "프로젝트 데이터를 가져오는데 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "프로젝트 데이터를 가져오는데 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -192,10 +201,10 @@ export async function POST(request: Request) {
 
     // 필수 필드 검증
     if (!name || !user_id || !company_id) {
-      return NextResponse.json(
-        { error: "name, user_id, company_id는 필수 입력 사항입니다" },
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "name, user_id, company_id는 필수 입력 사항입니다",
+        success: false
+      }, { status: 400 })
     }
 
     // 사용자 프로필 조회 (권한 확인)
@@ -206,18 +215,18 @@ export async function POST(request: Request) {
       .single()
 
     if (profileError || !profile) {
-      return NextResponse.json(
-        { error: "사용자 정보를 찾을 수 없습니다" },
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "사용자 정보를 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 회사 멤버인지 확인
     if (profile.company_id !== company_id) {
-      return NextResponse.json(
-        { error: "해당 회사의 멤버가 아닙니다" },
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: "해당 회사의 멤버가 아닙니다",
+        success: false
+      }, { status: 403 })
     }
 
     // 프로젝트 생성
@@ -243,10 +252,10 @@ export async function POST(request: Request) {
 
     if (projectError) {
       console.error('프로젝트 생성 실패:', projectError)
-      return NextResponse.json(
-        { error: "프로젝트 생성에 실패했습니다" },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 생성에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     // 프로젝트 생성자를 owner로 project_members에 추가
@@ -267,14 +276,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: "프로젝트가 성공적으로 생성되었습니다",
-      data: project
+      data: project,
+      success: true
     })
 
   } catch (error) {
     console.error('프로젝트 생성 API 오류:', error)
-    return NextResponse.json(
-      { error: "서버 오류가 발생했습니다" },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "서버 오류가 발생했습니다",
+      success: false
+    }, { status: 500 })
   }
 }

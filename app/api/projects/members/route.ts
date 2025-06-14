@@ -8,10 +8,10 @@ export async function GET(request: Request) {
     const project_id = searchParams.get('project_id')
 
     if (!project_id) {
-      return NextResponse.json(
-        { error: "project_id가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "project_id가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     // 프로젝트 정보 조회
@@ -22,10 +22,10 @@ export async function GET(request: Request) {
       .single()
 
     if (projectError || !project) {
-      return NextResponse.json(
-        { error: "프로젝트를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "프로젝트를 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 회사 구성원 목록 조회
@@ -38,19 +38,22 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("Supabase 조회 오류:", error)
-      return NextResponse.json(
-        { error: "구성원 목록을 가져오는데 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "구성원 목록을 가져오는데 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({
+      data,
+      success: true
+    })
   } catch (error) {
     console.error("API route error:", error)
     
-    return NextResponse.json(
-      { error: "구성원 목록을 가져오는데 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "구성원 목록을 가져오는데 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
-} 
+}

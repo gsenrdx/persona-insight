@@ -77,10 +77,10 @@ export async function GET(
     const user_id = searchParams.get('user_id')
 
     if (!user_id) {
-      return NextResponse.json(
-        { error: "user_id가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "user_id가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     const projectId = params.id
@@ -89,20 +89,23 @@ export async function GET(
     const accessCheck = await checkProjectAccess(projectId, user_id)
     
     if (!accessCheck.hasAccess) {
-      return NextResponse.json(
-        { error: accessCheck.error || "프로젝트에 접근할 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: accessCheck.error || "프로젝트에 접근할 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
-    return NextResponse.json({ data: accessCheck.project })
+    return NextResponse.json({
+      data: accessCheck.project,
+      success: true
+    })
   } catch (error) {
     console.error("GET API route error:", error)
     
-    return NextResponse.json(
-      { error: "프로젝트 정보를 가져오는데 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "프로젝트 정보를 가져오는데 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -117,36 +120,36 @@ export async function PUT(
     const projectId = params.id
     
     if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
+      return NextResponse.json({
+        error: "사용자 인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
     // 프로젝트 접근 권한 확인
     const accessCheck = await checkProjectAccess(projectId, user_id)
     
     if (!accessCheck.hasAccess) {
-      return NextResponse.json(
-        { error: "프로젝트를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "프로젝트를 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 수정 권한 확인 (생성자, 마스터, 회사 관리자만)
     if (!accessCheck.isOwner && !accessCheck.isMaster && !accessCheck.isCompanyAdmin) {
-      return NextResponse.json(
-        { error: "프로젝트 수정 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 수정 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
     // 마스터 위임의 경우 현재 마스터만 가능
     if (updateData.master_id && !accessCheck.isMaster) {
-      return NextResponse.json(
-        { error: "마스터 권한 위임은 현재 마스터만 할 수 있습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: "마스터 권한 위임은 현재 마스터만 할 수 있습니다",
+        success: false
+      }, { status: 403 })
     }
 
     const { data, error } = await supabaseAdmin
@@ -166,27 +169,30 @@ export async function PUT(
         details: error.details,
         hint: error.hint
       })
-      return NextResponse.json(
-        { error: `프로젝트 업데이트에 실패했습니다: ${error.message}` }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: `프로젝트 업데이트에 실패했습니다: ${error.message}`,
+        success: false
+      }, { status: 500 })
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "프로젝트 업데이트에 실패했습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 업데이트에 실패했습니다",
+        success: false
+      }, { status: 404 })
     }
 
-    return NextResponse.json({ data: data[0] })
+    return NextResponse.json({
+      data: data[0],
+      success: true
+    })
   } catch (error) {
     console.error("PUT API route error:", error)
     
-    return NextResponse.json(
-      { error: "프로젝트 업데이트에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "프로젝트 업데이트에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -201,28 +207,28 @@ export async function DELETE(
     const projectId = params.id
     
     if (!user_id) {
-      return NextResponse.json(
-        { error: "사용자 인증이 필요합니다" }, 
-        { status: 401 }
-      )
+      return NextResponse.json({
+        error: "사용자 인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
     // 프로젝트 접근 권한 확인
     const accessCheck = await checkProjectAccess(projectId, user_id)
     
     if (!accessCheck.hasAccess) {
-      return NextResponse.json(
-        { error: "프로젝트를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "프로젝트를 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
     // 삭제 권한 확인 (생성자, 회사 관리자만)
     if (!accessCheck.isOwner && !accessCheck.isCompanyAdmin) {
-      return NextResponse.json(
-        { error: "프로젝트 삭제 권한이 없습니다" }, 
-        { status: 403 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 삭제 권한이 없습니다",
+        success: false
+      }, { status: 403 })
     }
 
     // 실제 삭제 대신 비활성화
@@ -237,26 +243,29 @@ export async function DELETE(
 
     if (error) {
       console.error("Supabase 업데이트 오류:", error)
-      return NextResponse.json(
-        { error: "프로젝트 삭제에 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 삭제에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "프로젝트 삭제에 실패했습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "프로젝트 삭제에 실패했습니다",
+        success: false
+      }, { status: 404 })
     }
 
-    return NextResponse.json({ message: "프로젝트가 성공적으로 삭제되었습니다" })
+    return NextResponse.json({
+      message: "프로젝트가 성공적으로 삭제되었습니다",
+      success: true
+    })
   } catch (error) {
     console.error("DELETE API route error:", error)
     
-    return NextResponse.json(
-      { error: "프로젝트 삭제에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "프로젝트 삭제에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
-} 
+}

@@ -106,7 +106,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
     
     try {
       setLoadingProjects(true);
-      const response = await fetch(`/api/supabase/projects?company_id=${profile.company_id}&user_id=${profile.id}`);
+      const response = await fetch(`/api/projects?company_id=${profile.company_id}&user_id=${profile.id}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -114,8 +114,11 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
         throw new Error('프로젝트를 불러올 수 없습니다.');
       }
       
-      const result = await response.json();
-      setProjects(result.data || []);
+      const { data, success, error } = await response.json();
+      if (!success) {
+        throw new Error(error || '프로젝트를 불러올 수 없습니다.');
+      }
+      setProjects(data || []);
     } catch (error) {
       console.error('프로젝트 로드 실패:', error);
       setError('프로젝트 목록을 불러오는데 실패했습니다.');

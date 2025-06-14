@@ -100,14 +100,17 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       }
 
       const currentOffset = loadMore ? offset : 0
-      const response = await fetch(`/api/supabase/interviewee?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`)
+      const response = await fetch(`/api/interviewee?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')
       }
       
-      const result = await response.json()
-      const newInterviews = result.data || []
+      const { data, success, error } = await response.json()
+      if (!success) {
+        throw new Error(error || '데이터를 가져오는데 실패했습니다')
+      }
+      const newInterviews = data || []
       
       if (loadMore) {
         setInterviews(prev => [...prev, ...newInterviews])
@@ -171,12 +174,18 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
 
   const handleDeleteInterview = async (interviewId: string) => {
     try {
-      const response = await fetch(`/api/supabase/interviewee/${interviewId}`, {
+      const response = await fetch(`/api/interviewee/${interviewId}`, {
         method: 'DELETE',
       })
 
       if (!response.ok) {
-        throw new Error('인터뷰 삭제에 실패했습니다')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || '인터뷰 삭제에 실패했습니다')
+      }
+
+      const { success, error } = await response.json()
+      if (!success) {
+        throw new Error(error || '인터뷰 삭제에 실패했습니다')
       }
 
       // 목록에서 삭제된 항목 제거

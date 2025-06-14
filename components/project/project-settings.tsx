@@ -115,15 +115,19 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         return
       }
 
-      const response = await fetch(`/api/supabase/projects/${project.id}/members`, {
+      const response = await fetch(`/api/projects/${project.id}/members`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       })
       
       if (response.ok) {
-        const result = await response.json()
-        setMembers(result.data)
+        const { data, success, error } = await response.json()
+        if (success) {
+          setMembers(data)
+        } else {
+          console.error('Failed to fetch members:', error)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch members:', error)
@@ -152,7 +156,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         user_id: profile?.id
       }
 
-      const response = await fetch(`/api/supabase/projects/${project.id}`, {
+      const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -161,21 +165,18 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         body: JSON.stringify(cleanedData)
       })
 
-      const responseText = await response.text()
-
       if (!response.ok) {
-        let errorData
-        try {
-          errorData = JSON.parse(responseText)
-        } catch {
-          errorData = { error: responseText }
-        }
+        const errorData = await response.json().catch(() => ({}))
         console.error('❌ Save error:', errorData)
         throw new Error(errorData.error || '프로젝트 수정에 실패했습니다')
       }
 
-      const result = JSON.parse(responseText)
-      onProjectUpdate(result.data)
+      const { data, success, error } = await response.json()
+      if (!success) {
+        throw new Error(error || '프로젝트 수정에 실패했습니다')
+      }
+      
+      onProjectUpdate(data)
       setEditMode(false)
       toast.success('프로젝트가 수정되었습니다')
     } catch (error) {
@@ -190,15 +191,20 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     try {
       setLoading(true)
 
-      const response = await fetch(`/api/supabase/projects/${project.id}`, {
+      const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: profile?.id })
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || '프로젝트 삭제에 실패했습니다')
+      }
+
+      const { success, error } = await response.json()
+      if (!success) {
+        throw new Error(error || '프로젝트 삭제에 실패했습니다')
       }
 
       toast.success('프로젝트가 삭제되었습니다')

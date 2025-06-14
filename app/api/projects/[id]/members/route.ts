@@ -9,7 +9,10 @@ export async function GET(
     // Authorization 헤더에서 사용자 토큰 가져오기
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증 토큰이 필요합니다' }, { status: 401 })
+      return NextResponse.json({
+        error: '인증 토큰이 필요합니다',
+        success: false
+      }, { status: 401 })
     }
 
     const token = authHeader.split(' ')[1]
@@ -17,7 +20,10 @@ export async function GET(
     // 토큰으로 사용자 정보 확인
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
-      return NextResponse.json({ error: '인증되지 않은 사용자입니다' }, { status: 401 })
+      return NextResponse.json({
+        error: '인증되지 않은 사용자입니다',
+        success: false
+      }, { status: 401 })
     }
 
     // 프로젝트 존재 여부 및 접근 권한 확인
@@ -28,7 +34,10 @@ export async function GET(
       .single()
 
     if (projectError || !project) {
-      return NextResponse.json({ error: '프로젝트를 찾을 수 없습니다' }, { status: 404 })
+      return NextResponse.json({
+        error: '프로젝트를 찾을 수 없습니다',
+        success: false
+      }, { status: 404 })
     }
 
     // 비공개 프로젝트인 경우 멤버십 확인
@@ -41,7 +50,10 @@ export async function GET(
         .single()
 
       if (!membership) {
-        return NextResponse.json({ error: '접근 권한이 없습니다' }, { status: 403 })
+        return NextResponse.json({
+          error: '접근 권한이 없습니다',
+          success: false
+        }, { status: 403 })
       }
     }
 
@@ -70,9 +82,10 @@ export async function GET(
 
       if (fallbackError) {
         console.error('Fallback query error:', fallbackError)
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: '멤버 목록을 가져오는데 실패했습니다',
-          details: fallbackError.message 
+          details: fallbackError.message,
+          success: false
         }, { status: 500 })
       }
 
@@ -87,8 +100,9 @@ export async function GET(
         }
       }))
 
-      return NextResponse.json({ 
-        data: transformedMembers
+      return NextResponse.json({
+        data: transformedMembers,
+        success: true
       })
     }
 
@@ -109,15 +123,16 @@ export async function GET(
       }
     }))
 
-    return NextResponse.json({ 
-      data: transformedMembers
+    return NextResponse.json({
+      data: transformedMembers,
+      success: true
     })
 
   } catch (error) {
-    console.error('Error in GET /api/supabase/projects/[id]/members:', error)
-    return NextResponse.json(
-      { error: '서버 오류가 발생했습니다' },
-      { status: 500 }
-    )
+    console.error('Error in GET /api/projects/[id]/members:', error)
+    return NextResponse.json({
+      error: '서버 오류가 발생했습니다',
+      success: false
+    }, { status: 500 })
   }
 }

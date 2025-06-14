@@ -11,10 +11,10 @@ export async function GET(request: Request) {
 
     // company_id가 필수로 제공되어야 함
     if (!company_id) {
-      return NextResponse.json(
-        { error: "company_id가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "company_id가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     let query = supabase
@@ -41,10 +41,10 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("Supabase 오류:", error)
-      return NextResponse.json(
-        { error: "인터뷰 데이터를 가져오는데 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "인터뷰 데이터를 가져오는데 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     // 작성자 정보가 있는 인터뷰들의 created_by ID들을 수집
@@ -74,14 +74,17 @@ export async function GET(request: Request) {
         : null
     }))
 
-    return NextResponse.json({ data: dataWithProfiles })
+    return NextResponse.json({
+      data: dataWithProfiles,
+      success: true
+    })
   } catch (error) {
     console.error("API route error:", error)
     
-    return NextResponse.json(
-      { error: "인터뷰 데이터를 가져오는데 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "인터뷰 데이터를 가져오는데 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -97,20 +100,23 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Supabase 삽입 오류:", error)
-      return NextResponse.json(
-        { error: "인터뷰 데이터 저장에 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "인터뷰 데이터 저장에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
-    return NextResponse.json({ data: data[0] }, { status: 201 })
+    return NextResponse.json({
+      data: data[0],
+      success: true
+    }, { status: 201 })
   } catch (error) {
     console.error("POST API route error:", error)
     
-    return NextResponse.json(
-      { error: "인터뷰 데이터 저장에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "인터뷰 데이터 저장에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
 }
 
@@ -121,10 +127,10 @@ export async function PUT(request: Request) {
     const { id, ...updateData } = body
     
     if (!id) {
-      return NextResponse.json(
-        { error: "ID가 필요합니다" }, 
-        { status: 400 }
-      )
+      return NextResponse.json({
+        error: "ID가 필요합니다",
+        success: false
+      }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -138,26 +144,29 @@ export async function PUT(request: Request) {
 
     if (error) {
       console.error("Supabase 업데이트 오류:", error)
-      return NextResponse.json(
-        { error: "인터뷰 데이터 업데이트에 실패했습니다" }, 
-        { status: 500 }
-      )
+      return NextResponse.json({
+        error: "인터뷰 데이터 업데이트에 실패했습니다",
+        success: false
+      }, { status: 500 })
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "해당 ID의 데이터를 찾을 수 없습니다" }, 
-        { status: 404 }
-      )
+      return NextResponse.json({
+        error: "해당 ID의 데이터를 찾을 수 없습니다",
+        success: false
+      }, { status: 404 })
     }
 
-    return NextResponse.json({ data: data[0] })
+    return NextResponse.json({
+      data: data[0],
+      success: true
+    })
   } catch (error) {
     console.error("PUT API route error:", error)
     
-    return NextResponse.json(
-      { error: "인터뷰 데이터 업데이트에 실패했습니다" }, 
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "인터뷰 데이터 업데이트에 실패했습니다",
+      success: false
+    }, { status: 500 })
   }
-} 
+}

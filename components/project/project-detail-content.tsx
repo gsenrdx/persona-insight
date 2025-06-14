@@ -105,7 +105,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
 
-      const response = await fetch(`/api/supabase/projects/${projectId}?user_id=${profile.id}&t=${Date.now()}`, {
+      const response = await fetch(`/api/projects/${projectId}?user_id=${profile.id}&t=${Date.now()}`, {
         signal: controller.signal,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -127,13 +127,17 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         throw new Error(errorData.error || `서버 오류 (${response.status})`)
       }
       
-      const data = await response.json()
+      const { data, success, error } = await response.json()
       
-      if (!data.data) {
+      if (!success) {
+        throw new Error(error || '알 수 없는 오류가 발생했습니다')
+      }
+      
+      if (!data) {
         throw new Error('프로젝트 데이터가 없습니다')
       }
       
-      setProject(data.data)
+      setProject(data)
       setRetryCount(0) // 성공 시 재시도 카운트 리셋
     } catch (err) {
       
