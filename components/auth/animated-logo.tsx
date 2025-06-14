@@ -28,7 +28,7 @@ const LOGO_SHAPES = [
 
 export default function AnimatedLogo() {
   const [shapes, setShapes] = useState<ShapeState[]>([])
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const timeRef = useRef(0)
 
   // 랜덤 초기 위치 생성

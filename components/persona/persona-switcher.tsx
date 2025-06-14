@@ -13,24 +13,7 @@ import { ChevronDown, Check } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
-// lib/data.ts의 fetchPersonas 반환 타입에 맞춘 Persona 타입
-interface Persona {
-  id: string;
-  name: string;
-  image?: string;
-  keywords?: string[];
-  insight?: string;
-  summary?: string;
-  painPoint?: string;
-  hiddenNeeds?: string;
-}
-
-interface PersonaSwitcherProps {
-  currentPersona: Persona
-  allPersonas: Persona[]
-  currentPersonaId: string // 현재 선택된 페르소나 ID를 명시적으로 받음
-  showHeader?: boolean // 헤더 표시 여부
-}
+import { PersonaSwitcherPersona, PersonaSwitcherProps } from "@/types/components"
 
 export default function PersonaSwitcher({ currentPersona, allPersonas, currentPersonaId, showHeader = true }: PersonaSwitcherProps) {
   return (

@@ -1,4 +1,5 @@
-import { PersonaData, PersonaApiResponse, getPersonaTypeInfo } from "@/types/persona"
+import { PersonaData, PersonaApiResponse } from "@/types/persona"
+import { getPersonaTypeInfo } from "@/lib/utils/persona"
 
 // 모든 페르소나 가져오기 (회사 단위)
 export async function fetchPersonas(company_id?: string): Promise<PersonaCardData[]> {

@@ -1,3 +1,12 @@
+// 프로젝트 관리 관련 타입 정의
+
+import { ApiResponse } from './api'
+
+export type ProjectVisibility = 'public' | 'private'
+export type ProjectJoinMethod = 'open' | 'invite_only' | 'password'
+export type ProjectMemberRole = 'owner' | 'admin' | 'member'
+
+// Supabase projects 테이블 구조
 export interface Project {
   id: string
   name: string
@@ -8,8 +17,8 @@ export interface Project {
   updated_at: string
   created_by: string | null
   master_id: string | null
-  visibility: 'public' | 'private'
-  join_method: 'open' | 'invite_only' | 'password'
+  visibility: ProjectVisibility
+  join_method: ProjectJoinMethod
   password?: string | null
   purpose?: string | null
   target_audience?: string | null
@@ -22,8 +31,8 @@ export interface CreateProjectData {
   name: string
   description?: string
   company_id: string
-  visibility: 'public' | 'private'
-  join_method: 'open' | 'invite_only' | 'password'
+  visibility: ProjectVisibility
+  join_method: ProjectJoinMethod
   password?: string
   purpose?: string
   target_audience?: string
@@ -37,8 +46,8 @@ export interface UpdateProjectData {
   description?: string
   is_active?: boolean
   master_id?: string
-  visibility?: 'public' | 'private'
-  join_method?: 'open' | 'invite_only' | 'password'
+  visibility?: ProjectVisibility
+  join_method?: ProjectJoinMethod
   password?: string
   purpose?: string
   target_audience?: string
@@ -47,24 +56,13 @@ export interface UpdateProjectData {
   end_date?: string
 }
 
-export interface ProjectApiResponse {
-  data: ProjectWithMembership[]
-  message?: string
-  error?: string
-}
-
-export interface SingleProjectApiResponse {
-  data: ProjectWithMembership
-  message?: string
-  error?: string
-}
-
 export interface ProjectMember {
   id: string
   project_id: string
   user_id: string
-  role: 'owner' | 'admin' | 'member'
+  role: ProjectMemberRole
   joined_at: string
+  // 조인된 사용자 정보
   user?: {
     id: string
     name: string
@@ -76,16 +74,16 @@ export interface ProjectMember {
 export interface ProjectMembershipData {
   project_id: string
   user_id: string
-  role: 'owner' | 'admin' | 'member'
+  role: ProjectMemberRole
 }
 
+// 멤버십 정보와 통계가 포함된 프로젝트
 export interface ProjectWithMembership extends Project {
   membership?: ProjectMember
   member_count?: number
 }
 
-export interface ProjectMembersApiResponse {
-  data: ProjectMember[]
-  message?: string
-  error?: string
-} 
+// API 응답 타입들
+export interface ProjectApiResponse extends ApiResponse<ProjectWithMembership[]> {}
+export interface SingleProjectApiResponse extends ApiResponse<ProjectWithMembership> {}
+export interface ProjectMembersApiResponse extends ApiResponse<ProjectMember[]> {} 

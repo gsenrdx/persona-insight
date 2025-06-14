@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       ?.map(interview => interview.created_by)
       ?.filter((id, index, arr) => arr.indexOf(id) === index) // 중복 제거
 
-    let profilesData = []
+    let profilesData: { id: string; name: string }[] = []
     if (createdByIds && createdByIds.length > 0) {
       // profiles 테이블에서 작성자 정보 조회
       const { data: profiles, error: profilesError } = await supabase
