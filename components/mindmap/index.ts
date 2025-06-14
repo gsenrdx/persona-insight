@@ -1,1 +1,0 @@
-export { MindmapModal } from './mindmap-modal' 

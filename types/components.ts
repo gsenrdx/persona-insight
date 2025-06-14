@@ -137,8 +137,8 @@ export interface ChatInterfaceProps {
   personaData: any
 }
 
-// === Mindmap 컴포넌트 Props ===
-export interface MindmapData {
+// === Summary 컴포넌트 Props ===
+export interface SummaryData {
   title: string
   summary: string
   root_node: {
@@ -160,10 +160,10 @@ export interface MindmapData {
   }>
 }
 
-export interface MindmapModalProps {
+export interface SummaryModalProps {
   isOpen: boolean
   onClose: () => void
-  mindmapData: MindmapData | null
+  summaryData: SummaryData | null
   personaName?: string
   personaImage?: string
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FileText, CornerDownRight, MessageSquare, Quote } from "lucide-react"
@@ -29,17 +29,17 @@ interface RootNode {
   subtitle: string;
 }
 
-interface MindmapData {
+interface SummaryData {
   title: string;
   summary: string;
   root_node: RootNode;
   main_topics: Topic[];
 }
 
-interface MindmapModalProps {
+interface SummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mindmapData: MindmapData | null;
+  summaryData: SummaryData | null;
   personaName?: string;
   personaImage?: string;
 }
@@ -55,8 +55,8 @@ const Node = ({ children, delay }: { children: React.ReactNode, delay: number })
   </motion.div>
 );
 
-export function MindmapModal({ isOpen, onClose, mindmapData, personaName, personaImage }: MindmapModalProps) {
-  if (!mindmapData) return null;
+export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: SummaryModalProps) {
+  if (!summaryData) return null;
 
   let delay = 0.1;
 
@@ -68,11 +68,11 @@ export function MindmapModal({ isOpen, onClose, mindmapData, personaName, person
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-500" />
             <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-              {mindmapData.title.replace(/마인드맵/g, '대화 요약')}
+              {summaryData.title}
             </DialogTitle>
           </div>
           <DialogDescription className="text-sm text-zinc-600 dark:text-zinc-400 pl-7">
-            {mindmapData.summary.replace(/마인드맵/g, '대화 요약')}
+            {summaryData.summary}
           </DialogDescription>
         </DialogHeader>
 
@@ -87,27 +87,27 @@ export function MindmapModal({ isOpen, onClose, mindmapData, personaName, person
                     {personaImage ? (
                       <img
                         src={personaImage}
-                        alt={mindmapData.root_node.text}
+                        alt={summaryData.root_node.text}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                         <span className="text-white text-xs font-bold">
-                          {mindmapData.root_node.text.substring(0, 2)}
+                          {summaryData.root_node.text.substring(0, 2)}
                         </span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <h2 className="font-bold text-base">{mindmapData.root_node.text}</h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{mindmapData.root_node.subtitle}</p>
+                    <h2 className="font-bold text-base">{summaryData.root_node.text}</h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{summaryData.root_node.subtitle}</p>
                   </div>
                 </div>
               </Node>
               
               {/* 메인 토픽들 */}
               <div className="mt-4 ml-5 space-y-4">
-                {mindmapData.main_topics.map((topic) => {
+                {summaryData.main_topics.map((topic) => {
                   delay += 0.1;
                   return (
                     <Node key={topic.id} delay={delay}>
@@ -177,4 +177,4 @@ export function MindmapModal({ isOpen, onClose, mindmapData, personaName, person
       </DialogContent>
     </Dialog>
   );
-} 
+}

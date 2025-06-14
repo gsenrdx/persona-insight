@@ -172,8 +172,8 @@ export const personasApi = {
     token: string,
     personaId: string,
     conversationId: string
-  ): Promise<ApiResponse<{ summary: string; mindmapData?: any }>> {
-    return apiClient.authenticatedRequest<{ summary: string; mindmapData?: any }>(
+  ): Promise<ApiResponse<{ summary: string; summaryData?: any }>> {
+    return apiClient.authenticatedRequest<{ summary: string; summaryData?: any }>(
       '/api/chat/summary',
       token,
       {

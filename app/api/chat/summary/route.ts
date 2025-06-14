@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       const err = await workflowResponse.text().catch(() => '');
       
       return new Response(JSON.stringify({
-        error: '마인드맵 생성 API 오류',
+        error: '요약 생성 API 오류',
         details: {
           status: workflowResponse.status,
           statusText: workflowResponse.statusText,
@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
     // 실제 API에서 반환될 응답 구조에 따라 파싱
     const output = workflowResult.data?.outputs || workflowResult.outputs || {};
     
-    // 마인드맵 결과 구성
-    let mindmapData: any = null;
+    // 요약 결과 구성
+    let summaryData: any = null;
     
     try {
       // result 필드에서 JSON 데이터 추출
@@ -127,20 +127,20 @@ export async function POST(req: NextRequest) {
             
             // JSON 형태인지 확인 후 파싱
             if (cleanedResult.startsWith('{') && cleanedResult.endsWith('}')) {
-              mindmapData = JSON.parse(cleanedResult);
+              summaryData = JSON.parse(cleanedResult);
               
               // 필수 필드 검증 (계층적 구조에 맞게)
               const requiredFields = ['title', 'root_node', 'main_topics'];
-              const missingFields = requiredFields.filter(field => !mindmapData[field]);
+              const missingFields = requiredFields.filter(field => !summaryData[field]);
               
               if (missingFields.length > 0) {
-                mindmapData.warning = `필수 필드 누락: ${missingFields.join(', ')}`;
+                summaryData.warning = `필수 필드 누락: ${missingFields.join(', ')}`;
               }
               
               // 토픽 개수 및 구조 검증
-              if (mindmapData.main_topics && Array.isArray(mindmapData.main_topics)) {
+              if (summaryData.main_topics && Array.isArray(summaryData.main_topics)) {
                 
-                mindmapData.main_topics.forEach((topic: any, index: number) => {
+                summaryData.main_topics.forEach((topic: any, index: number) => {
                   if (topic.subtopics && Array.isArray(topic.subtopics)) {
                     const totalContentItems = topic.subtopics.reduce((acc: number, subtopic: any) => {
                       return acc + (subtopic.content_items ? subtopic.content_items.length : 0);
@@ -150,13 +150,13 @@ export async function POST(req: NextRequest) {
               }
               
             } else {
-              mindmapData = { error: 'JSON 형태가 올바르지 않음', raw: cleanedResult };
+              summaryData = { error: 'JSON 형태가 올바르지 않음', raw: cleanedResult };
             }
             
           } catch (parseError) {
             
             // 파싱 실패 시에도 raw 데이터를 포함해서 클라이언트에서 재시도할 수 있게 함
-            mindmapData = { 
+            summaryData = { 
               error: 'JSON 파싱 실패', 
               raw: output.result,
               parseError: parseError instanceof Error ? parseError.message : String(parseError)
@@ -164,24 +164,24 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // 이미 객체인 경우 그대로 사용
-          mindmapData = output.result;
+          summaryData = output.result;
         }
       } else {
-        mindmapData = { error: 'result 필드 없음', available_fields: Object.keys(output), output };
+        summaryData = { error: 'result 필드 없음', available_fields: Object.keys(output), output };
       }
     } catch (error) {
-      mindmapData = { error: '결과 처리 오류', message: error instanceof Error ? error.message : String(error) };
+      summaryData = { error: '결과 처리 오류', message: error instanceof Error ? error.message : String(error) };
     }
 
-    // 마인드맵 데이터를 데이터베이스에 저장 (선택사항)
+    // 요약 데이터를 데이터베이스에 저장 (선택사항)
     try {
-      if (userId && conversationId && mindmapData && !mindmapData.error) {
+      if (userId && conversationId && summaryData && !summaryData.error) {
         const { error: insertError } = await supabase
-          .from('mindmaps')
+          .from('summaries')
           .insert([{
             conversation_id: conversationId,
             persona_name: personaName,
-            mindmap_data: mindmapData,
+            summary_data: summaryData,
             created_by: userId,
             created_at: new Date().toISOString()
           }]);
@@ -193,10 +193,10 @@ export async function POST(req: NextRequest) {
     } catch (saveError) {
     }
     
-    // 마인드맵 데이터 반환
+    // 요약 데이터 반환
     return new Response(JSON.stringify({
       success: true,
-      mindmapData,
+      summaryData,
       metadata: {
         personaName,
         conversationId,
@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return new Response(JSON.stringify({
       success: false,
-      error: '마인드맵 생성 중 오류가 발생했습니다.',
+      error: '요약 생성 중 오류가 발생했습니다.',
       message: error instanceof Error ? error.message : String(error)
     }), { 
       status: 500,

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { MindmapModal } from "@/components/mindmap"
+import { SummaryModal } from "@/components/chat/summary"
 
 
 
@@ -23,7 +23,7 @@ interface MisoStreamData {
   [key: string]: any;
 }
 
-// 마인드맵 데이터 타입 정의
+// 요약 데이터 타입 정의
 interface ContentItem {
   content: string;
   quote: string;
@@ -47,7 +47,7 @@ interface RootNode {
   subtitle: string;
 }
 
-interface MindmapData {
+interface SummaryData {
   title: string;
   summary: string;
   root_node: RootNode;
@@ -76,9 +76,9 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [isCopied, setIsCopied] = useState<string | null>(null)
   const [repliedMessages, setRepliedMessages] = useState<Record<string, string>>({}) // 꼬리질문 관계 추적
-  const [isGeneratingMindmap, setIsGeneratingMindmap] = useState<boolean>(false)
-  const [mindmapModalOpen, setMindmapModalOpen] = useState<boolean>(false)
-  const [mindmapData, setMindmapData] = useState<MindmapData | null>(null)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState<boolean>(false)
+  const [summaryModalOpen, setSummaryModalOpen] = useState<boolean>(false)
+  const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
 
   useEffect(() => {
     setIsClient(true)
@@ -368,10 +368,10 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   }, [chatMessages, repliedMessages]);
 
   // 대화 요약 생성 함수
-  const handleGenerateMindmap = useCallback(async () => {
-    if (chatMessages.length <= 1 || isGeneratingMindmap) return; // 초기 메시지만 있으면 생성하지 않음
+  const handleGenerateSummary = useCallback(async () => {
+    if (chatMessages.length <= 1 || isGeneratingSummary) return; // 초기 메시지만 있으면 생성하지 않음
     
-    setIsGeneratingMindmap(true);
+    setIsGeneratingSummary(true);
     
     try {
       // 현재 대화 내용 준비 (초기 인사 메시지 제외)
@@ -412,13 +412,13 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       
       const result = await response.json();
       
-      if (result.success && result.mindmapData) {
-        let finalMindmapData = result.mindmapData;
+      if (result.success && result.summaryData) {
+        let finalSummaryData = result.summaryData;
         
         // 서버에서 파싱에 실패한 경우 클라이언트에서 재시도
-        if (result.mindmapData.error === 'JSON 파싱 실패' && result.mindmapData.raw) {
+        if (result.summaryData.error === 'JSON 파싱 실패' && result.summaryData.raw) {
           try {
-            let cleanedData = result.mindmapData.raw.trim();
+            let cleanedData = result.summaryData.raw.trim();
             
             // 마크다운 코드 블록 제거
             cleanedData = cleanedData.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
@@ -426,7 +426,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             cleanedData = cleanedData.trim();
             
             if (cleanedData.startsWith('{') && cleanedData.endsWith('}')) {
-              finalMindmapData = JSON.parse(cleanedData);
+              finalSummaryData = JSON.parse(cleanedData);
             }
           } catch (clientParseError) {
             console.error('클라이언트 파싱도 실패:', clientParseError);
@@ -435,11 +435,11 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         }
         
         // 최종 데이터 확인
-        if (finalMindmapData && !finalMindmapData.error) {
-          setMindmapData(finalMindmapData);
-          setMindmapModalOpen(true);
+        if (finalSummaryData && !finalSummaryData.error) {
+          setSummaryData(finalSummaryData);
+          setSummaryModalOpen(true);
         } else {
-          console.warn('대화 요약 데이터 처리 실패:', finalMindmapData);
+          console.warn('대화 요약 데이터 처리 실패:', finalSummaryData);
           alert('대화 요약 생성은 완료되었지만 데이터 처리 중 문제가 발생했습니다.');
         }
       } else {
@@ -451,9 +451,9 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       // 오류 토스트나 알림 표시
       alert(`대화 요약 생성 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      setIsGeneratingMindmap(false);
+      setIsGeneratingSummary(false);
     }
-  }, [chatMessages, personaData.name, misoConversationId, isGeneratingMindmap]);
+  }, [chatMessages, personaData.name, misoConversationId, isGeneratingSummary]);
 
   return (
     <div className="flex flex-col h-full relative">
@@ -707,17 +707,17 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             className="absolute bottom-20 right-4 md:bottom-24 md:right-6 z-10"
           >
             <Button
-              onClick={handleGenerateMindmap}
-              disabled={isGeneratingMindmap || chatMessages.length <= 1}
+              onClick={handleGenerateSummary}
+              disabled={isGeneratingSummary || chatMessages.length <= 1}
               className={`
                 px-4 py-2 h-10 rounded-lg bg-blue-600 
                 hover:bg-blue-700 text-white text-sm font-medium shadow-md 
                 border-0 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
                 transition-colors duration-200
-                ${isGeneratingMindmap || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed' : ''}
+                ${isGeneratingSummary || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed' : ''}
               `}
             >
-              {isGeneratingMindmap ? (
+              {isGeneratingSummary ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   생성 중...
@@ -734,13 +734,13 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       </AnimatePresence>
 
       {/* 대화 요약 모달 */}
-      <MindmapModal
-        isOpen={mindmapModalOpen}
+      <SummaryModal
+        isOpen={summaryModalOpen}
         onClose={() => {
-          setMindmapModalOpen(false);
-          setMindmapData(null);
+          setSummaryModalOpen(false);
+          setSummaryData(null);
         }}
-        mindmapData={mindmapData}
+        summaryData={summaryData}
         personaName={personaData.name}
         personaImage={personaData.image}
       />
