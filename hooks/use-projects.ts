@@ -8,7 +8,7 @@ import {
 } from '@/lib/api/projects'
 
 // 타입 재export (컴포넌트에서 import 편의성을 위해)
-export type { Project, CreateProjectData, ProjectMember } from '@/lib/api/projects'
+export type { Project, CreateProjectData, ProjectMember } from '@/types'
 
 // 프로젝트 목록 조회
 export function useProjects(companyId?: string, userId?: string) {

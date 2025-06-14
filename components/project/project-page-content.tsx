@@ -15,7 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { FileText, Users, Plus, FolderOpen, Loader2, MoreHorizontal, Edit, Globe, Lock, Search, Crown, UserCheck, User, Zap, Settings, UserPlus, Eye, PieChart } from "lucide-react"
-import { useProjects, useCreateProject, Project, CreateProjectData } from '@/hooks/use-projects'
+import { useProjects, useCreateProject, CreateProjectData } from '@/hooks/use-projects'
+import { ProjectWithMembership } from '@/types'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
@@ -34,15 +35,15 @@ interface ProjectEditData {
 }
 
 const ProjectCard = ({ project, onEdit, onInvite, onSelect }: { 
-  project: Project, 
-  onEdit: (project: Project) => void,
-  onInvite: (project: Project) => void,
-  onSelect: (project: Project) => void
+  project: ProjectWithMembership, 
+  onEdit: (project: ProjectWithMembership) => void,
+  onInvite: (project: ProjectWithMembership) => void,
+  onSelect: (project: ProjectWithMembership) => void
 }) => {
   const { profile } = useAuth()
   
   // 멤버십 상태 확인
-  const getMembershipStatus = (project: Project) => {
+  const getMembershipStatus = (project: ProjectWithMembership) => {
     if (!profile?.id) return null
     
     if (project.created_by === profile.id) {
@@ -61,7 +62,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onSelect }: {
   }
 
   // 프로젝트 마스터 정보
-  const getProjectMaster = (project: Project) => {
+  const getProjectMaster = (project: ProjectWithMembership) => {
     if (project.master_id) {
       return {
         name: profile?.id === project.master_id ? (profile?.name || '마스터') : '마스터',
@@ -78,12 +79,12 @@ const ProjectCard = ({ project, onEdit, onInvite, onSelect }: {
   }
 
   // 공개 설정 확인
-  const isPrivateProject = (project: Project) => {
+  const isPrivateProject = (project: ProjectWithMembership) => {
     return project.visibility === 'private' || project.is_private === true
   }
 
   // 권한 확인 함수들
-  const canEditProject = (project: Project) => {
+  const canEditProject = (project: ProjectWithMembership) => {
     const membershipStatus = getMembershipStatus(project)
     const masterInfo = getProjectMaster(project)
     
@@ -96,7 +97,7 @@ const ProjectCard = ({ project, onEdit, onInvite, onSelect }: {
     )
   }
 
-  const canInviteMembers = (project: Project) => {
+  const canInviteMembers = (project: ProjectWithMembership) => {
     if (!isPrivateProject(project)) return false
     
     const membershipStatus = getMembershipStatus(project)
@@ -298,7 +299,7 @@ export function ProjectPageContent() {
   
   
   // 초대 관련 (추후 구현)
-  const [inviteProject, setInviteProject] = useState<Project | null>(null)
+  const [inviteProject, setInviteProject] = useState<ProjectWithMembership | null>(null)
 
   // 프로젝트 필터링
   const filteredProjects = projects.filter(project =>
@@ -357,12 +358,12 @@ export function ProjectPageContent() {
   }
 
   // 프로젝트 선택 (프로젝트 상세 페이지로 이동)
-  const handleSelectProject = async (project: Project) => {
+  const handleSelectProject = async (project: ProjectWithMembership) => {
     router.push(`/projects/${project.id}`)
   }
 
   // 프로젝트 편집
-  const handleEditProject = (project: Project) => {
+  const handleEditProject = (project: ProjectWithMembership) => {
     setEditingProject({
       id: project.id,
       name: project.name,

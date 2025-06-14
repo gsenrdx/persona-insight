@@ -2,6 +2,7 @@
 
 import { ApiResponse } from './api'
 
+// 프로젝트 기본 타입
 export type ProjectVisibility = 'public' | 'private'
 export type ProjectJoinMethod = 'open' | 'invite_only' | 'password'
 export type ProjectMemberRole = 'owner' | 'admin' | 'member'
@@ -27,10 +28,12 @@ export interface Project {
   end_date?: string | null
 }
 
+// 프로젝트 생성 데이터
 export interface CreateProjectData {
   name: string
   description?: string
   company_id: string
+  created_by?: string
   visibility: ProjectVisibility
   join_method: ProjectJoinMethod
   password?: string
@@ -41,6 +44,7 @@ export interface CreateProjectData {
   end_date?: string
 }
 
+// 프로젝트 업데이트 데이터
 export interface UpdateProjectData {
   name?: string
   description?: string
@@ -56,13 +60,13 @@ export interface UpdateProjectData {
   end_date?: string
 }
 
+// 프로젝트 멤버 정보
 export interface ProjectMember {
   id: string
   project_id: string
   user_id: string
   role: ProjectMemberRole
   joined_at: string
-  // 조인된 사용자 정보
   user?: {
     id: string
     name: string
@@ -71,19 +75,33 @@ export interface ProjectMember {
   }
 }
 
+// 프로젝트 멤버십 데이터
 export interface ProjectMembershipData {
   project_id: string
   user_id: string
   role: ProjectMemberRole
 }
 
-// 멤버십 정보와 통계가 포함된 프로젝트
+// UI용 확장 프로젝트 정보
 export interface ProjectWithMembership extends Project {
-  membership?: ProjectMember
+  membership?: {
+    is_member: boolean
+    role: ProjectMemberRole
+    joined_at: string
+  }
   member_count?: number
+  interview_count?: number
+  persona_count?: number
+  top_members?: Array<{
+    user_id: string
+    role: ProjectMemberRole
+    name: string
+    avatar_url?: string
+  }>
+  is_private?: boolean
 }
 
-// API 응답 타입들
+// API 응답 타입
 export interface ProjectApiResponse extends ApiResponse<ProjectWithMembership[]> {}
 export interface SingleProjectApiResponse extends ApiResponse<ProjectWithMembership> {}
 export interface ProjectMembersApiResponse extends ApiResponse<ProjectMember[]> {} 

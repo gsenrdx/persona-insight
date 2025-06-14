@@ -1,69 +1,12 @@
-export interface Project {
-  id: string
-  name: string
-  description: string | null
-  is_private?: boolean
-  visibility?: 'public' | 'private'
-  join_method?: 'open' | 'invite_only' | 'password'
-  password?: string | null
-  created_at: string
-  updated_at?: string
-  company_id: string
-  created_by: string
-  is_active?: boolean
-  master_id?: string
-  access_type?: 'free' | 'invite_only' | 'password'
-  password_hash?: string | null
-  member_count?: number
-  interview_count?: number
-  persona_count?: number
-  top_members?: Array<{
-    user_id: string
-    role: string
-    name: string
-    avatar_url?: string
-  }>
-  membership?: {
-    is_member: boolean
-    role: string
-    joined_at: string
-  }
-  project_members?: Array<{
-    id: string
-    user_id: string
-    role: 'owner' | 'admin' | 'member'
-    joined_at: string
-    profiles: {
-      id: string
-      name: string
-    }
-  }>
-}
-
-export interface CreateProjectData {
-  name: string
-  description?: string
-  company_id: string
-  created_by: string
-  visibility: 'public' | 'private'
-  join_method: 'open' | 'invite_only' | 'password'
-  password?: string
-  purpose?: string
-  target_audience?: string
-  research_method?: string
-  start_date?: string
-  end_date?: string
-}
-
-export interface ProjectMember {
-  id: string
-  name: string
-  role: 'owner' | 'admin' | 'member'
-  joined_at: string
-}
+import { 
+  Project, 
+  CreateProjectData, 
+  ProjectMember,
+  ProjectWithMembership
+} from '@/types'
 
 // 프로젝트 목록 조회
-export async function fetchProjects(companyId: string, userId: string): Promise<Project[]> {
+export async function fetchProjects(companyId: string, userId: string): Promise<ProjectWithMembership[]> {
   const url = `/api/supabase/projects?company_id=${companyId}&user_id=${userId}`
   const response = await fetch(url, {
     method: 'GET',

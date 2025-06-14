@@ -4,10 +4,12 @@ import { createClient } from '@supabase/supabase-js'
 import { 
   createSystemPrompt, 
   generateOutputConfig,
+} from "@/lib/api/persona-criteria"
+import {
   DEFAULT_X_AXIS,
   DEFAULT_Y_AXIS,
   DEFAULT_SCORING_GUIDELINES
-} from "@/lib/api/persona-criteria"
+} from "@/types/persona-criteria"
 import { fileStorageService } from "@/lib/file-utils"
 
 // 기본 프롬프트 생성 (설정이 없을 때)

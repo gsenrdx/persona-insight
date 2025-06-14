@@ -48,6 +48,8 @@ import {
   generateOutputConfig,
   generatePersonaMatrixCoordinates,
   createSystemPrompt,
+} from '@/lib/api/persona-criteria'
+import {
   type Axis,
   type Segment,
   type UnclassifiedCell,
@@ -56,7 +58,7 @@ import {
   type ScoringGuidelines,
   type CreatePersonaCriteriaData,
   type UpdatePersonaCriteriaData,
-} from '@/lib/api/persona-criteria'
+} from '@/types/persona-criteria'
 
 interface PersonaCriteriaModalProps {
   open: boolean
