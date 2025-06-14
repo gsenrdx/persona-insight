@@ -209,7 +209,7 @@ export default function PersonaCard({
                 className="w-full h-full"
               >
                 <Image
-                  src={image || `/placeholder.svg?height=250&width=250&query=${encodeURIComponent(name)} persona`}
+                  src={image || `/placeholder.svg?height=250&width=250&text=${encodeURIComponent(name)}`}
                   alt={`${name} 페르소나 이미지`}
                   width={250}
                   height={250}
@@ -258,7 +258,7 @@ export default function PersonaCard({
                         isDark ? "bg-zinc-800" : "bg-zinc-100"
                       )}>
                         <Image
-                          src={image || `/placeholder.svg?height=250&width=250&query=${encodeURIComponent(name)} persona`}
+                          src={image || `/placeholder.svg?height=250&width=250&text=${encodeURIComponent(name)}`}
                           alt={`${name} 페르소나 이미지`}
                           fill
                           className="object-cover object-center"

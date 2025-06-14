@@ -59,7 +59,7 @@ export default function PersonaSelectionModal({
     persona_type: persona.persona_type,
     persona_title: persona.name,
     persona_description: persona.summary,
-    thumbnail: persona.image && persona.image.includes('placeholder.svg') ? null : persona.image
+    thumbnail: persona.image && (persona.image.includes('placeholder.svg')) ? null : persona.image
   }))
 
   // AI 추천 페르소나가 있으면 맨 위로 정렬

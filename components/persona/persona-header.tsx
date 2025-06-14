@@ -12,7 +12,7 @@ export default function PersonaHeader({ name, image, keywords, insight, painPoin
       <div className="flex items-center gap-4">
         <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-primary/15 shadow-md">
           <Image
-            src={image || `/placeholder.svg?height=128&width=128&query=${encodeURIComponent(name)}`}
+            src={image || `/placeholder.svg?height=128&width=128&text=${encodeURIComponent(name)}`}
             alt={name}
             fill
             className="object-cover"

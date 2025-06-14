@@ -56,7 +56,7 @@ export default function PersonaClassificationModal({
     persona_type: persona.persona_type,
     persona_title: persona.name, // name을 persona_title로 매핑
     persona_description: persona.summary, // summary를 persona_description으로 매핑
-    thumbnail: persona.image && persona.image.includes('placeholder.svg') ? null : persona.image,
+    thumbnail: persona.image && (persona.image.includes('placeholder.svg')) ? null : persona.image,
     company_id: profile?.company_id || ''
   }))
 

@@ -45,7 +45,7 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
         return {
           id: persona.id,
           name: persona.persona_title || persona.persona_description, // persona_title 우선, 없으면 persona_description
-          image: persona.thumbnail || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
+          image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
           keywords: [], // 키워드 비우기
           insight: persona.insight_quote,
           summary: persona.persona_description, // persona_description을 summary로 사용
@@ -112,7 +112,7 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
     return {
       id: persona.id,
       name: persona.persona_title || persona.persona_description,
-      image: persona.thumbnail || `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
+      image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
       keywords: [],
       insight: persona.insight_quote,
       summary: persona.persona_description,

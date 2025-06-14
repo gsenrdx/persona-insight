@@ -192,7 +192,7 @@ export default function ChatPage({ params }: ChatPageProps) {
               </div>
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 relative flex-shrink-0">
                 <Image
-                  src={persona.image || `/placeholder.svg?height=256&width=256&query=${encodeURIComponent(persona.name)}`}
+                  src={persona.image || `/placeholder.svg?height=256&width=256&text=${encodeURIComponent(persona.name)}`}
                   alt={persona.name}
                   width={96}
                   height={96}
