@@ -7,8 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Users, CheckCircle, Loader2 } from "lucide-react"
 import { IntervieweeData } from '@/types/interviewee'
 import { useAuth } from '@/hooks/use-auth'
-import { useQuery } from '@tanstack/react-query'
-import { fetchPersonas } from '@/lib/data/persona-data'
+import { usePersonas } from '@/hooks/use-personas'
 
 interface Persona {
   id: string
@@ -37,17 +36,9 @@ export default function PersonaClassificationModal({
   const { profile } = useAuth()
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null)
 
-  // 전체 페르소나 목록 조회 (React Query 사용)
-  const { data: allPersonasRaw = [], isLoading: personasLoading } = useQuery({
-    queryKey: ['personas', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return []
-      
-      // fetchPersonas 함수 사용하여 일관성 유지
-      return await fetchPersonas(profile?.company_id)
-    },
-    enabled: !!profile?.company_id && isOpen,
-    staleTime: 5 * 60 * 1000,
+  // 전체 페르소나 목록 조회 (새로운 usePersonas 훅 사용)
+  const { data: allPersonasRaw = [], isLoading: personasLoading } = usePersonas({
+    companyId: profile?.company_id
   })
 
   // PersonaCardData를 Persona 타입으로 변환

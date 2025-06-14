@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AddInterviewModal, WorkflowProgressModal } from "@/components/modal"
 import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 import { useAuth } from "@/hooks/use-auth"
-import { useQuery } from '@tanstack/react-query'
+import { usePersonas } from '@/hooks/use-personas'
 import FloatingActionButton from "./floating-action-button"
 
 // 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
@@ -25,25 +25,14 @@ export default function PersonaCardGrid() {
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
-  // React Query로 페르소나 데이터 관리
+  // 새로운 usePersonas 훅 사용
   const { 
     data: allPersonas = [], 
     isLoading, 
     error,
     refetch 
-  } = useQuery({
-    queryKey: ['personas', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return []
-            
-      // 회사 단위로 모든 페르소나 로드 (프로젝트 필터링 없음)
-      const data = await fetchPersonas(profile?.company_id)
-      
-      return data
-    },
-    enabled: !authLoading && !!profile?.company_id, // authLoading이 false이고 company_id가 있을 때만 실행
-    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
-    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+  } = usePersonas({
+    companyId: profile?.company_id
   })
 
   // 워크플로우 큐 관리
