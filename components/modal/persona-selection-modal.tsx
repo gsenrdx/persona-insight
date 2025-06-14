@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sparkles, User, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useQuery } from '@tanstack/react-query'
-import { fetchPersonas } from '@/lib/persona-data'
+import { fetchPersonas } from '@/lib/data/persona-data'
 
 interface PersonaOption {
   id: string

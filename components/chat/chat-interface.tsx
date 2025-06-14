@@ -392,7 +392,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         throw new Error('로그인이 필요합니다.');
       }
       
-      const response = await fetch('/api/mindmap/generate', {
+      const response = await fetch('/api/chat/summary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

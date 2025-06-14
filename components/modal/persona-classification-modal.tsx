@@ -8,7 +8,7 @@ import { User, Users, CheckCircle, Loader2 } from "lucide-react"
 import { IntervieweeData } from '@/types/interviewee'
 import { useAuth } from '@/hooks/use-auth'
 import { useQuery } from '@tanstack/react-query'
-import { fetchPersonas } from '@/lib/persona-data'
+import { fetchPersonas } from '@/lib/data/persona-data'
 
 interface Persona {
   id: string

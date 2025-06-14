@@ -37,8 +37,7 @@ import {
 } from "lucide-react";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
 import React, { useState, useCallback, useEffect } from "react";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import { formatDate, formatChatTime } from "@/lib/utils/date";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-auth";
 import {

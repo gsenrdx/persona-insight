@@ -1,2 +1,6 @@
 export { ProjectPageContent } from './project-page-content'
-export { default as ProjectInterviews } from './project-interviews' 
+export { default as ProjectInterviews } from './project-interviews'
+export { default as InterviewDetail } from './interview-detail'
+export { default as ProjectDetailContent } from './project-detail-content'
+export { default as ProjectInsights } from './project-insights'
+export { default as ProjectSettings } from './project-settings' 

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, use } from "react"
 import { ChatInterface } from "@/components/chat"
-import { fetchPersonaById, fetchPersonas } from "@/lib/persona-data"
+import { fetchPersonaById, fetchPersonas } from "@/lib/data/persona-data"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"

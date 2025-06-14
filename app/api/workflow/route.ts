@@ -10,7 +10,7 @@ import {
   DEFAULT_Y_AXIS,
   DEFAULT_SCORING_GUIDELINES
 } from "@/types/persona-criteria"
-import { fileStorageService } from "@/lib/file-utils"
+import { getFileStorageService } from "@/lib/utils/file"
 
 // 기본 프롬프트 생성 (설정이 없을 때)
 function generateDefaultPrompt(): string {
@@ -366,7 +366,8 @@ export async function POST(req: NextRequest) {
   // 1단계: 파일을 Supabase Storage에 저장
   let fileInfo: { path: string } | null = null;
   try {
-    fileInfo = await fileStorageService.uploadFile(file, companyId!, projectId);
+    const fileStorage = getFileStorageService();
+    fileInfo = await fileStorage.uploadFile(file, companyId!, projectId);
   } catch (storageError) {
     console.error('Storage operation failed:', storageError);
     return new Response('파일 저장 시스템 오류가 발생했습니다.', { status: 500 });

@@ -8,8 +8,18 @@ export class FileStorageService {
   private supabase
 
   constructor() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    // 서버 사이드에서만 실행되도록 체크
+    if (typeof window !== 'undefined') {
+      throw new Error('FileStorageService can only be used on the server side')
+    }
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration is missing. Please check your environment variables.')
+    }
+    
     this.supabase = createClient(supabaseUrl, supabaseServiceKey)
   }
 
@@ -112,4 +122,24 @@ export class FileStorageService {
   }
 }
 
-export const fileStorageService = new FileStorageService()
+// 서버 사이드에서만 사용할 수 있는 싱글톤 인스턴스
+let _fileStorageService: FileStorageService | null = null
+
+export function getFileStorageService(): FileStorageService {
+  if (typeof window !== 'undefined') {
+    throw new Error('FileStorageService can only be used on the server side')
+  }
+  
+  if (!_fileStorageService) {
+    _fileStorageService = new FileStorageService()
+  }
+  
+  return _fileStorageService
+}
+
+// Legacy export (deprecated, use getFileStorageService() instead)
+export const fileStorageService = {
+  get instance() {
+    return getFileStorageService()
+  }
+}
