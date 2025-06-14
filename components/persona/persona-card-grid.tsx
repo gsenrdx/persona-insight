@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"
 import PersonaCard from "./persona-card"
 import { PersonaCardProps } from "@/types/components"
 import { useInView } from "react-intersection-observer"
-import { fetchPersonas, PersonaCardData } from "@/lib/data/persona-data"
+import { PersonaCardData } from "@/lib/data/persona-data"
+import { getPersonaTypeInfo } from "@/lib/utils/persona"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,13 +28,34 @@ export default function PersonaCardGrid() {
 
   // 새로운 usePersonas 훅 사용
   const { 
-    data: allPersonas = [], 
+    data: rawPersonas = [], 
     isLoading, 
     error,
     refetch 
   } = usePersonas({
     companyId: profile?.company_id
   })
+
+  // PersonaData를 PersonaCardData로 변환
+  const allPersonas: PersonaCardData[] = useMemo(() => {
+    return rawPersonas.map((persona) => {
+      const typeInfo = getPersonaTypeInfo(persona.persona_type)
+      
+      return {
+        id: persona.id,
+        name: persona.persona_title || persona.persona_description,
+        image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
+        keywords: [], // 키워드는 비워둠
+        insight: persona.insight_quote,
+        summary: persona.persona_description,
+        painPoint: persona.painpoints,
+        hiddenNeeds: persona.needs,
+        persona_character: persona.persona_style,
+        persona_type: persona.persona_type,
+        persona_description: persona.persona_description
+      }
+    }).sort((a, b) => a.persona_type.localeCompare(b.persona_type))
+  }, [rawPersonas])
 
   // 워크플로우 큐 관리
   const {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -48,6 +48,7 @@ export default function LoginPageContent() {
   const [companies, setCompanies] = useState<Array<{id: string, name: string, domains: string[]}>>([])
   const [loadingCompanies, setLoadingCompanies] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   // 로고 조합 상태 관리
   const [logoCompletion, setLogoCompletion] = useState({
@@ -68,6 +69,26 @@ export default function LoginPageContent() {
     resolver: zodResolver(signupSchema),
     defaultValues: { email: '', password: '', confirmPassword: '', name: '', companyId: '' },
   })
+
+  // URL 파라미터에서 로그인 정보 확인 및 정리
+  useEffect(() => {
+    const email = searchParams.get('email')
+    const password = searchParams.get('password')
+    
+    // URL에 민감한 정보가 있으면 즉시 정리하고 폼에 설정
+    if (email || password) {
+      // URL 정리 (보안상 중요)
+      router.replace('/login', { scroll: false })
+      
+      // 폼에 값 설정 (디코딩 필요)
+      if (email) {
+        loginForm.setValue('email', decodeURIComponent(email))
+      }
+      if (password) {
+        loginForm.setValue('password', decodeURIComponent(password))
+      }
+    }
+  }, [searchParams, router, loginForm])
 
   // 로그인된 사용자 체크
   useEffect(() => {

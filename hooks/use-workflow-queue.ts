@@ -245,7 +245,7 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
       
 
       // 페르소나 합성 API 호출
-      const response = await fetch('/api/persona-synthesis', {
+      const response = await fetch('/api/personas/synthesis', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

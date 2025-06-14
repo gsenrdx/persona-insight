@@ -268,10 +268,10 @@ const ProjectCard = ({ project, onEdit, onInvite, onSelect }: {
 export function ProjectPageContent() {
   const router = useRouter()
   const { profile } = useAuth()
-  const { data: projects = [], isLoading: loading, error, refetch } = useProjects(
-    profile?.company_id || undefined, 
-    profile?.id || undefined
-  )
+  const { data: projects = [], isLoading: loading, error, refetch } = useProjects({
+    companyId: profile?.company_id,
+    userId: profile?.id
+  })
   const createProjectMutation = useCreateProject()
   
   // 상태 관리

@@ -4,6 +4,9 @@ import React from 'react'
 import { Project } from './project'
 import { ExtractionCriteria } from './api'
 
+// Re-export ExtractionCriteria for components
+export type { ExtractionCriteria }
+
 // === 기본 Props 타입들 ===
 export interface BaseComponentProps {
   className?: string

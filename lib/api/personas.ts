@@ -25,12 +25,12 @@ export const personasApi = {
   ): Promise<PaginatedApiResponse<PersonaData>> {
     const searchParams = new URLSearchParams()
     
-    if (query.projectId) searchParams.set('projectId', query.projectId)
-    if (query.companyId) searchParams.set('companyId', query.companyId)
+    if (query.projectId) searchParams.set('project_id', query.projectId)
+    if (query.companyId) searchParams.set('company_id', query.companyId)
     if (query.page) searchParams.set('page', query.page.toString())
     if (query.limit) searchParams.set('limit', query.limit.toString())
     if (query.search) searchParams.set('search', query.search)
-    if (query.personaType) searchParams.set('personaType', query.personaType)
+    if (query.personaType) searchParams.set('type', query.personaType)
     if (query.keywords) {
       query.keywords.forEach(keyword => searchParams.append('keywords', keyword))
     }
@@ -109,7 +109,7 @@ export const personasApi = {
     synthesisData: PersonaSynthesisRequest
   ): Promise<ApiResponse<PersonaSynthesisResult>> {
     return apiClient.authenticatedRequest<PersonaSynthesisResult>(
-      '/api/persona-synthesis',
+      '/api/personas/synthesis',
       token,
       {
         method: 'POST',
@@ -126,7 +126,7 @@ export const personasApi = {
     jobId: string
   ): Promise<ApiResponse<PersonaSynthesisResult>> {
     return apiClient.authenticatedRequest<PersonaSynthesisResult>(
-      `/api/persona-synthesis/${jobId}`,
+      `/api/personas/synthesis/${jobId}`,
       token
     )
   },
@@ -230,7 +230,7 @@ export const personasApi = {
     projectId: string
   ): Promise<ApiResponse<{ keywords: string[]; frequency: Record<string, number> }>> {
     return apiClient.authenticatedRequest<{ keywords: string[]; frequency: Record<string, number> }>(
-      `/api/personas/keywords/analyze?projectId=${projectId}`,
+      `/api/personas/search?projectId=${projectId}`,
       token
     )
   },

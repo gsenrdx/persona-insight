@@ -19,7 +19,7 @@ export async function fetchPersonaCriteria(
     params.append('project_id', projectId)
   }
 
-  const response = await fetch(`/api/persona-criteria?${params}`, {
+  const response = await fetch(`/api/personas/criteria?${params}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export async function fetchPersonaCriteria(
 export async function createPersonaCriteria(
   criteriaData: CreatePersonaCriteriaData
 ): Promise<PersonaCriteriaConfiguration> {
-  const response = await fetch('/api/persona-criteria', {
+  const response = await fetch('/api/personas/criteria', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export async function createPersonaCriteria(
 export async function updatePersonaCriteria(
   criteriaData: UpdatePersonaCriteriaData
 ): Promise<PersonaCriteriaConfiguration> {
-  const response = await fetch('/api/persona-criteria', {
+  const response = await fetch('/api/personas/criteria', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export async function updatePersonaCriteria(
 
 // 페르소나 분류 기준 설정 삭제
 export async function deletePersonaCriteria(configId: string): Promise<void> {
-  const response = await fetch(`/api/persona-criteria?id=${configId}`, {
+  const response = await fetch(`/api/personas/criteria?id=${configId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',

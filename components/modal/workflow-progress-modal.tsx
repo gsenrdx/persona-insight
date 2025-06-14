@@ -335,7 +335,7 @@ const JobDetailPanel = React.memo(({
       const fetchInterviewDetail = async () => {
         try {
           // API를 통해 인터뷰 데이터 조회 (project-interviews.tsx와 동일한 방식)
-          const apiUrl = `/api/interviewee?company_id=${profile?.company_id}&project_id=${job.projectId}&limit=100&offset=0`;
+          const apiUrl = `/api/interviews?company_id=${profile?.company_id}&project_id=${job.projectId}&limit=100&offset=0`;
           
           const response = await fetch(apiUrl);
           

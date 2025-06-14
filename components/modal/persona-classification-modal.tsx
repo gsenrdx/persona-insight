@@ -8,6 +8,7 @@ import { User, Users, CheckCircle, Loader2 } from "lucide-react"
 import { IntervieweeData } from '@/types/interviewee'
 import { useAuth } from '@/hooks/use-auth'
 import { usePersonas } from '@/hooks/use-personas'
+import { getPersonaTypeInfo } from '@/lib/utils/persona'
 
 interface Persona {
   id: string
@@ -41,13 +42,13 @@ export default function PersonaClassificationModal({
     companyId: profile?.company_id
   })
 
-  // PersonaCardData를 Persona 타입으로 변환
+  // PersonaData를 Persona 타입으로 변환
   const allPersonas: Persona[] = allPersonasRaw.map(persona => ({
     id: persona.id,
     persona_type: persona.persona_type,
-    persona_title: persona.name, // name을 persona_title로 매핑
-    persona_description: persona.summary, // summary를 persona_description으로 매핑
-    thumbnail: persona.image && (persona.image.includes('placeholder.svg')) ? null : persona.image,
+    persona_title: persona.persona_title, // 실제 persona_title 필드 사용
+    persona_description: persona.persona_description, // 실제 persona_description 필드 사용
+    thumbnail: persona.thumbnail && (persona.thumbnail.includes('placeholder.svg')) ? null : persona.thumbnail,
     company_id: profile?.company_id || ''
   }))
 

@@ -28,12 +28,13 @@ export function usePersonas(query: PersonaListQuery = {}) {
         : queryKeys.personas.list(JSON.stringify(query)),
     queryFn: async () => {
       if (!user) throw new Error('로그인이 필요합니다')
+      if (!query.companyId && !query.projectId) throw new Error('company_id 또는 project_id가 필요합니다')
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
       const response = await personasApi.getPersonas(session.access_token, query)
       return extractApiData(response)
     },
-    enabled: !!user,
+    enabled: !!user && (!!query.companyId || !!query.projectId),
     staleTime: 2 * 60 * 1000, // 2분간 fresh 상태 유지
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   })

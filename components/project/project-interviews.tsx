@@ -100,7 +100,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       }
 
       const currentOffset = loadMore ? offset : 0
-      const response = await fetch(`/api/interviewee?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`)
+      const response = await fetch(`/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`)
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')
@@ -174,7 +174,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
 
   const handleDeleteInterview = async (interviewId: string) => {
     try {
-      const response = await fetch(`/api/interviewee/${interviewId}`, {
+      const response = await fetch(`/api/interviews/${interviewId}`, {
         method: 'DELETE',
       })
 
@@ -236,7 +236,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
         ? selectedInterviewForPersona 
         : JSON.stringify(selectedInterviewForPersona)
 
-      const response = await fetch('/api/persona-synthesis', {
+      const response = await fetch('/api/personas/synthesis', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

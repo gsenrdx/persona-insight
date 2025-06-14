@@ -27,10 +27,4 @@ export interface PersonaClassification {
   confidence?: number // 0-1
 }
 
-// AI 페르소나 합성 요청
-export interface PersonaSynthesisRequest {
-  projectId: string
-  companyId: string
-  intervieweeIds: string[]
-  criteriaId?: string
-} 
+// PersonaSynthesisRequest는 api.ts에서 정의됨 - 중복 제거 
