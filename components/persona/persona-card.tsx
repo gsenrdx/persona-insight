@@ -9,20 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
-
-export interface PersonaCardProps {
-  id: string
-  name: string
-  image: string
-  keywords: string[]
-  insight: string
-  summary?: string
-  painPoint: string
-  hiddenNeeds: string
-  persona_character?: string
-  persona_type?: string
-  persona_description?: string
-}
+import { PersonaCardProps } from "@/types/components"
 
 // 디자인 씽킹 및 고객 경험 명언들
 const designThinkingQuotes = [

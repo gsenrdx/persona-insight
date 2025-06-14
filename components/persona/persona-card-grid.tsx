@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
-import PersonaCard, { PersonaCardProps } from "./persona-card"
+import PersonaCard from "./persona-card"
+import { PersonaCardProps } from "@/types/components"
 import { useInView } from "react-intersection-observer"
 import { fetchPersonas, PersonaCardData } from "@/lib/persona-data"
 import { useSearchParams } from "next/navigation"

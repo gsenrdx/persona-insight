@@ -350,4 +350,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       </div>
     </div>
   )
-} 
+}
+
+export default ProjectDetailContent 

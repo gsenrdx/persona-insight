@@ -6,16 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Loader2, Plus } from "lucide-react"
-
-interface FloatingActionButtonProps {
-  isProcessing: boolean
-  activeJobsLength: number
-  jobsLength: number
-  completedJobsLength: number
-  failedJobsLength: number
-  overallProgress: number
-  onButtonClick: () => void
-}
+import { FloatingActionButtonProps } from "@/types/components"
 
 const FloatingActionButton = React.memo(({ 
   isProcessing, 

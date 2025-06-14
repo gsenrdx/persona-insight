@@ -17,22 +17,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-
-export interface ExtractionCriteria {
-  id: string;
-  name: string;
-  description: string;
-  isDefault: boolean;
-}
-
-export interface AddInterviewModalProps {
-  open: boolean;
-  onClose?: () => void;
-  onComplete?: () => void;
-  onOpenChange?: (open: boolean) => void;
-  onFilesSubmit?: (files: File[], criteria: ExtractionCriteria[], projectId?: string) => void;
-  projectId?: string;
-}
+import { ExtractionCriteria, AddInterviewModalProps } from "@/types/components";
 
 // 10MB 크기 제한 (바이트 단위)
 const MAX_FILE_SIZE = 10 * 1024 * 1024; 

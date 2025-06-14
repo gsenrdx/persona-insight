@@ -6,10 +6,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-
-interface AuthGuardProps {
-  children: React.ReactNode
-}
+import { AuthGuardProps } from '@/types/components'
 
 function AuthLoadingScreen() {
   return (

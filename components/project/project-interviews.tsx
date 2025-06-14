@@ -667,6 +667,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       {/* 인터뷰 추가 모달 */}
       <AddInterviewModal
         open={showAddInterviewModal}
+        onOpenChange={setShowAddInterviewModal}
         onClose={() => setShowAddInterviewModal(false)}
         onComplete={handleAddInterviewComplete}
         projectId={project?.id}

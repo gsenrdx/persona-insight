@@ -47,19 +47,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-export interface WorkflowProgressModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  jobs: WorkflowJob[];
-  onRetryJob: (jobId: string) => void;
-  onRemoveJob: (jobId: string) => void;
-  onClearCompleted: () => void;
-  onClearAll: () => void;
-  onAddMore: () => void;
-  onJobClick?: (job: WorkflowJob) => void;
-  onStartPersonaSynthesis?: (jobId: string) => void;
-}
+import { WorkflowProgressModalProps } from "@/types/components";
 
 const statusConfig = {
   [WorkflowStatus.PENDING]: {

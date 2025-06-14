@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
+import { ProfileModalProps } from '@/types/components'
 
 const profileSchema = z.object({
   name: z.string().min(2, '이름은 2자 이상 입력해주세요'),
@@ -29,11 +30,6 @@ const passwordSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
-
-interface ProfileModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
 
 export default function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const { user, profile, refreshProfile } = useAuth()

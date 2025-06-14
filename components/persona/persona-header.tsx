@@ -3,15 +3,7 @@
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-
-interface PersonaHeaderProps {
-  name: string
-  image?: string
-  keywords: string[]
-  insight: string
-  painPoint: string
-  hiddenNeeds: string
-}
+import { PersonaHeaderProps } from "@/types/components"
 
 export default function PersonaHeader({ name, image, keywords, insight, painPoint, hiddenNeeds }: PersonaHeaderProps) {
   return (
