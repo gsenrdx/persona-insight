@@ -1,7 +1,6 @@
 import { apiClient } from './base'
 import { 
   ApiResponse, 
-  PaginatedApiResponse,
   ProjectListQuery,
   ProjectUpdateRequest,
   ProjectJoinRequest,
@@ -25,7 +24,7 @@ export const projectsApi = {
   async getProjects(
     token: string,
     query: ProjectListQuery = {}
-  ): Promise<PaginatedApiResponse<ProjectWithMembership>> {
+  ): Promise<ApiResponse<ProjectWithMembership[]>> {
     const searchParams = new URLSearchParams()
     
     if (query.companyId) searchParams.set('company_id', query.companyId)

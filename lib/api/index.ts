@@ -6,11 +6,13 @@
 // Base API client and utilities
 export { 
   apiClient, 
-  ApiError,
   extractApiData,
   isApiSuccess,
   isApiError
 } from './base'
+
+// Error classes from central error management
+export { ApiError } from '@/lib/errors'
 
 // Domain-specific API modules
 export { authApi } from './auth'

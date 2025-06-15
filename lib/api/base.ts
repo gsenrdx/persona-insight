@@ -1,4 +1,15 @@
 import { ApiResponse, ErrorResponse } from '@/types/api'
+import { 
+  ApiError,
+  NetworkError,
+  TimeoutError,
+  ServerError,
+  ClientError,
+  NotFoundError,
+  ForbiddenError,
+  BadRequestError,
+  UnauthenticatedError
+} from '@/lib/errors'
 
 /**
  * 공통 API 클라이언트
@@ -34,7 +45,37 @@ class ApiClient {
             statusCode: response.status
           }
         }
-        throw new ApiError(errorData.error, response.status, errorData)
+
+        // 상태 코드별 특화된 에러 클래스 사용
+        const errorMessage = errorData.error
+        const statusCode = response.status
+        const context = { endpoint, statusCode, response: errorData }
+
+        switch (statusCode) {
+          case 400:
+            throw new BadRequestError(errorMessage, context)
+          case 401:
+            throw new UnauthenticatedError(errorMessage, context)
+          case 403:
+            throw new ForbiddenError(errorMessage, context)
+          case 404:
+            throw new NotFoundError(errorMessage, context)
+          case 408:
+            throw new TimeoutError(errorMessage, context)
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            throw new ServerError(errorMessage, statusCode, errorData, context)
+          default:
+            if (statusCode >= 400 && statusCode < 500) {
+              throw new ClientError(errorMessage, statusCode, errorData, context)
+            } else if (statusCode >= 500) {
+              throw new ServerError(errorMessage, statusCode, errorData, context)
+            } else {
+              throw new ApiError(errorMessage, statusCode, errorData, context)
+            }
+        }
       }
 
       const data = await response.json()
@@ -54,11 +95,17 @@ class ApiClient {
         throw error
       }
       
-      // 네트워크 에러 등 기타 에러
+      // 네트워크 에러 처리
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new NetworkError('네트워크 연결에 실패했습니다', { endpoint, originalError: error })
+      }
+      
+      // 기타 예상치 못한 에러
       throw new ApiError(
-        error instanceof Error ? error.message : 'Unknown error occurred',
+        error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다',
         0,
-        { error: 'Network or unexpected error' }
+        undefined,
+        { endpoint, originalError: error }
       )
     }
   }
@@ -152,47 +199,7 @@ class ApiClient {
   }
 }
 
-/**
- * API 에러 클래스
- */
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number,
-    public response?: ErrorResponse
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
-
-  /**
-   * 에러가 특정 상태 코드인지 확인
-   */
-  is(statusCode: number): boolean {
-    return this.statusCode === statusCode
-  }
-
-  /**
-   * 클라이언트 에러인지 확인 (4xx)
-   */
-  isClientError(): boolean {
-    return this.statusCode >= 400 && this.statusCode < 500
-  }
-
-  /**
-   * 서버 에러인지 확인 (5xx)
-   */
-  isServerError(): boolean {
-    return this.statusCode >= 500 && this.statusCode < 600
-  }
-
-  /**
-   * 인증 에러인지 확인
-   */
-  isAuthError(): boolean {
-    return this.statusCode === 401 || this.statusCode === 403
-  }
-}
+// ApiError는 이제 lib/errors에서 import하여 사용
 
 /**
  * 싱글톤 API 클라이언트 인스턴스
@@ -200,11 +207,26 @@ export class ApiError extends Error {
 export const apiClient = new ApiClient()
 
 /**
- * 타입 헬퍼: API 응답에서 데이터 추출
+ * 타입 헬퍼: API 응답에서 데이터 추출 (레거시 지원)
  */
 export function extractApiData<T>(response: ApiResponse<T>): T {
   if (!response.success && response.error) {
-    throw new Error(response.error)
+    throw new ApiError(response.error, 400)
+  }
+  return response.data
+}
+
+/**
+ * 표준 API 응답에서 데이터 추출
+ */
+export function extractStandardApiData<T>(response: import('@/types/api').StandardApiResponse<T>): T {
+  if (!response.success) {
+    const errorMessage = response.error?.message || '알 수 없는 오류가 발생했습니다'
+    const errorCode = response.error?.code || 500
+    throw new ApiError(errorMessage, typeof errorCode === 'number' ? errorCode : 500)
+  }
+  if (!response.data) {
+    throw new ApiError('응답 데이터가 없습니다', 500)
   }
   return response.data
 }

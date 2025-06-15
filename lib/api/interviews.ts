@@ -20,7 +20,7 @@ export const interviewsApi = {
   async getInterviews(
     token: string,
     query: InterviewListQuery = {}
-  ): Promise<PaginatedApiResponse<Interview>> {
+  ): Promise<ApiResponse<Interview[]>> {
     const searchParams = new URLSearchParams()
     
     if (query.projectId) searchParams.set('projectId', query.projectId)

@@ -7,3 +7,6 @@
 
 // 모든 유틸리티 함수 re-export
 export * from './utils'
+
+// cn 함수를 명시적으로 re-export (많은 컴포넌트에서 필요)
+export { cn } from './utils/cn'

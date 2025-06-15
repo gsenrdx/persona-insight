@@ -1,7 +1,6 @@
 import { apiClient } from './base'
 import { 
   ApiResponse, 
-  PaginatedApiResponse,
   PersonaListQuery,
   PersonaSynthesisRequest,
   PersonaSynthesisResult,
@@ -22,7 +21,7 @@ export const personasApi = {
   async getPersonas(
     token: string,
     query: PersonaListQuery = {}
-  ): Promise<PaginatedApiResponse<PersonaData>> {
+  ): Promise<ApiResponse<PersonaData[]>> {
     const searchParams = new URLSearchParams()
     
     if (query.projectId) searchParams.set('project_id', query.projectId)
