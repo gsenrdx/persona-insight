@@ -253,7 +253,7 @@ export default function SearchResult() {
                   initial="initial"
                   animate="animate"
                 >
-                  <Card className="h-full overflow-hidden transition-all hover:shadow-lg flex flex-col border-none bg-gradient-to-br from-background to-muted/50 shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                  <Card className="h-full overflow-hidden transition-all flex flex-col border-none bg-gradient-to-br from-background to-muted/50 shadow-xl hover:shadow-2xl hover:-translate-y-1">
                     <CardContent className="p-0">
                       <div className="relative">
                         <div className="absolute top-4 right-4 z-10">

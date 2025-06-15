@@ -92,7 +92,7 @@ pnpm dev
 
 ```env
 # Miso API 설정
-MISO_API_URL=https://api.holdings.miso.gs
+MISO_API_URL=your-miso-endpoint-here
 MISO_API_KEY=your-miso-api-key-here
 
 # Supabase 설정

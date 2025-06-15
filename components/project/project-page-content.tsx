@@ -269,8 +269,8 @@ export function ProjectPageContent() {
   const router = useRouter()
   const { profile } = useAuth()
   const { data: projects = [], isLoading: loading, error, refetch } = useProjects({
-    companyId: profile?.company_id,
-    userId: profile?.id
+    companyId: profile?.company_id ?? undefined,
+    userId: profile?.id ?? undefined
   })
   const createProjectMutation = useCreateProject()
   

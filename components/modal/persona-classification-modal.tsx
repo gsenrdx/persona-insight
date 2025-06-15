@@ -39,7 +39,7 @@ export default function PersonaClassificationModal({
 
   // 전체 페르소나 목록 조회 (새로운 usePersonas 훅 사용)
   const { data: allPersonasRaw = [], isLoading: personasLoading } = usePersonas({
-    companyId: profile?.company_id
+    companyId: profile?.company_id || undefined
   })
 
   // PersonaData를 Persona 타입으로 변환

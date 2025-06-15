@@ -33,7 +33,7 @@ export default function PersonaCardGrid() {
     error,
     refetch 
   } = usePersonas({
-    companyId: profile?.company_id
+    companyId: profile?.company_id || undefined
   })
 
   // PersonaData를 PersonaCardData로 변환
