@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from "next/link"
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Settings, FileText, BarChart3, Loader2 } from "lucide-react"
@@ -61,11 +61,20 @@ const NavLink = ({ active, onClick, icon: Icon, children }: any) => (
 export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { profile } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState('interviews')
   const [retryCount, setRetryCount] = useState(0)
+
+  // URL 쿼리 파라미터로부터 activeView 설정
+  useEffect(() => {
+    const interviewParam = searchParams.get('interview')
+    if (interviewParam) {
+      setActiveView('interviews')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!projectId) {
@@ -161,20 +170,26 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
   const handleViewChange = (view: string) => {
     setActiveView(view)
+    // URL 업데이트 (interview 쿼리 파라미터 제거)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('interview')
+    router.replace(url.pathname + url.search, { scroll: false })
   }
 
   const renderContent = () => {
     if (!project) return null
 
+    const interviewParam = searchParams.get('interview')
+
     switch (activeView) {
       case 'interviews':
-        return <ProjectInterviews project={project} />
+        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
       case 'insights':
         return <ProjectInsights project={project} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={setProject} />
       default:
-        return <ProjectInterviews project={project} />
+        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
     }
   }
 

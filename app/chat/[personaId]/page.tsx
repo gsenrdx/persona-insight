@@ -6,7 +6,6 @@ import { fetchPersonaById, fetchPersonas } from "@/lib/data/persona-data"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { ModeToggle } from "@/components/shared"
 import { PersonaSwitcher } from "@/components/persona"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Home, UserPlus, Menu, X } from "lucide-react"
@@ -145,17 +144,14 @@ export default function ChatPage({ params }: ChatPageProps) {
             <span className="text-sm">메인</span>
           </Button>
         </Link>
-        <div className="flex items-center gap-2">
-          <ModeToggle />
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleSidebar}
-            className="h-8 w-8 md:hidden"
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleSidebar}
+          className="h-8 w-8 md:hidden"
+        >
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
       </div>
       
       {/* 콘텐츠 영역 - 최적화된 레이아웃 구조 */}
@@ -170,7 +166,7 @@ export default function ChatPage({ params }: ChatPageProps) {
           overflow-hidden transition-transform duration-300
         `}>
           {/* 상단 헤더 - 깔끔한 네비게이션 (데스크톱 전용) */}
-          <div className="hidden md:flex shrink-0 items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800 h-16">
+          <div className="hidden md:flex shrink-0 items-center p-4 border-b border-zinc-100 dark:border-zinc-800 h-16">
             <Link href="/" className="inline-flex">
               <Button 
                 variant="ghost" 
@@ -181,7 +177,6 @@ export default function ChatPage({ params }: ChatPageProps) {
                 <span className="text-sm">돌아가기</span>
               </Button>
             </Link>
-            <ModeToggle />
           </div>
           
           {/* 페르소나 프로필 섹션 - 페르소나 정보만 표시 */}

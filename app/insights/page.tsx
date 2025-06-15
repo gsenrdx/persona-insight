@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/shared"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
@@ -9,7 +10,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts"
-import { User, ChevronRight, MessageCircle, Check, ChevronDown } from "lucide-react"
+import { User, ChevronRight, FileText, Check, ChevronDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
+import { toast } from "sonner"
 
 type Keyword = {
   name: string;
@@ -53,6 +55,7 @@ type InsightData = {
 
 export default function InsightsPage() {
   const { profile } = useAuth()
+  const router = useRouter()
   const [currentInsight, setCurrentInsight] = useState(0)
   const [showDetailAnalysis, setShowDetailAnalysis] = useState(true)
   const [showRelatedKeywords, setShowRelatedKeywords] = useState(true)
@@ -243,6 +246,53 @@ export default function InsightsPage() {
         </div>
       </div>
     )
+  }
+
+  // persona 이름으로 인터뷰 찾기 및 상세보기로 이동 (회사 전체 검색)
+  const handleViewInterview = async (personaName: string) => {
+    try {
+      // 회사 전체 인터뷰에서 persona 이름으로 검색
+      const response = await fetch(`/api/interviews?company_id=${profile?.company_id}`)
+      if (response.ok) {
+        const { data } = await response.json()
+        // interviewee_fake_name 또는 personas.persona_title과 매칭
+        const interview = data?.find((item: any) => 
+          item.interviewee_fake_name === personaName || 
+          item.personas?.persona_title === personaName ||
+          item.personas?.persona_type === personaName
+        )
+        
+        if (interview) {
+          // 해당 인터뷰의 프로젝트에 대한 접근 권한 확인
+          if (interview.project_id) {
+            try {
+              const projectResponse = await fetch(`/api/projects/${interview.project_id}?user_id=${profile?.id}`)
+              if (projectResponse.ok) {
+                // 권한이 있으면 프로젝트 페이지로 이동
+                router.push(`/projects/${interview.project_id}?interview=${interview.id}`)
+              } else {
+                // 권한이 없으면 토스트 메시지
+                toast.error("해당 프로젝트에 접근할 권한이 없습니다.")
+              }
+            } catch (error) {
+              console.error('프로젝트 권한 확인 중 오류:', error)
+              toast.error("프로젝트 권한 확인 중 오류가 발생했습니다.")
+            }
+          } else {
+            // 프로젝트가 없는 경우 (회사 레벨 인터뷰)
+            toast.info("해당 인터뷰는 특정 프로젝트에 속하지 않습니다.")
+          }
+        } else {
+          // 인터뷰를 찾지 못한 경우
+          toast.error("해당 인터뷰를 찾을 수 없습니다.")
+        }
+      } else {
+        toast.error("인터뷰 데이터를 불러오는데 실패했습니다.")
+      }
+    } catch (error) {
+      console.error('인터뷰 검색 중 오류:', error)
+      toast.error("인터뷰 검색 중 오류가 발생했습니다.")
+    }
   }
 
   // 로딩 중일 때 표시
@@ -717,11 +767,14 @@ export default function InsightsPage() {
                                   </div>
                                   <p className="text-sm text-muted-foreground">{safeQuote.persona}</p>
                                 </div>
-                                <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-                                  <Link href="/chat">
-                                    <MessageCircle className="h-3 w-3" />
-                                    <span>대화하기</span>
-                                  </Link>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950"
+                                  onClick={() => handleViewInterview(safeQuote.persona)}
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  <span>인터뷰 상세보기</span>
                                 </Button>
                               </div>
                             </div>

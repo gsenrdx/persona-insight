@@ -11,19 +11,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertOctagon, RefreshCw, SearchX } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { AddInterviewModal, WorkflowProgressModal } from "@/components/modal"
-import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from "@/hooks/use-workflow-queue"
 import { useAuth } from "@/hooks/use-auth"
 import { usePersonas } from '@/hooks/use-personas'
-import FloatingActionButton from "./floating-action-button"
 
 // 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
 
 export default function PersonaCardGrid() {
   const { profile, loading: authLoading } = useAuth() // 사용자 프로필에서 company_id 가져오기
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
-  const [isAddInterviewModalOpen, setIsAddInterviewModalOpen] = useState(false)
-  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   // 새로운 usePersonas 훅 사용
@@ -64,20 +59,6 @@ export default function PersonaCardGrid() {
     }).sort((a, b) => a.persona_type.localeCompare(b.persona_type))
   }, [rawPersonas])
 
-  // 워크플로우 큐 관리
-  const {
-    jobs,
-    activeJobs,
-    completedJobs,
-    failedJobs,
-    isProcessing,
-    addJobs,
-    removeJob,
-    clearCompleted,
-    clearAll,
-    retryJob,
-    startPersonaSynthesis
-  } = useWorkflowQueue();
 
   // searchParams를 문자열로 변환하여 의존성 배열에 안전하게 사용
   const searchParamsString = useMemo(() => {
@@ -92,55 +73,6 @@ export default function PersonaCardGrid() {
     [searchParamsString]
   );
 
-  // Handle job click - 통합된 모달에서 처리됨
-  const handleJobClick = (job: WorkflowJob) => {
-    // 통합된 모달에서 내부적으로 처리
-  };
-
-  // Handle button click - useCallback으로 메모이제이션
-  const handleButtonClick = useCallback(() => {
-    if (isProcessing) {
-      setIsProgressModalOpen(true);
-    } else {
-      if (jobs.length > 0) {
-        setIsProgressModalOpen(true);
-      } else {
-        setIsAddInterviewModalOpen(true);
-      }
-    }
-  }, [isProcessing, jobs.length]);
-
-  // Handle add more action - useCallback으로 메모이제이션
-  const handleAddMore = useCallback(() => {
-    setIsProgressModalOpen(false);
-    setIsAddInterviewModalOpen(true);
-  }, []);
-
-  // 전체 진행률 계산 (활성 작업들의 평균) - 메모이제이션 개선
-  const overallProgress = useMemo(() => {
-    if (activeJobs.length === 0) return 0;
-    const totalProgress = activeJobs.reduce((sum, job) => sum + job.progress, 0);
-    return Math.round(totalProgress / activeJobs.length);
-  }, [activeJobs.length, activeJobs.map(job => job.progress).join(',')]);
-
-  // FloatingActionButton 메모이제이션을 위한 props 계산
-  const buttonProps = useMemo(() => ({
-    isProcessing,
-    activeJobsLength: activeJobs.length,
-    jobsLength: jobs.length,
-    completedJobsLength: completedJobs.length,
-    failedJobsLength: failedJobs.length,
-    overallProgress,
-    onButtonClick: handleButtonClick
-  }), [
-    isProcessing, 
-    activeJobs.length, 
-    jobs.length, 
-    completedJobs.length, 
-    failedJobs.length, 
-    overallProgress,
-    handleButtonClick
-  ]);
 
   // React Query가 데이터 로딩을 담당하므로 useEffect 제거
 
@@ -187,164 +119,96 @@ export default function PersonaCardGrid() {
   // 인증 로딩 중일 때
   if (authLoading) {
     return (
-      <>
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
-          <p className="text-muted-foreground">인증 정보 확인 중...</p>
-        </div>
-        <FloatingActionButton {...buttonProps} />
-      </>
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
+        <p className="text-muted-foreground">인증 정보 확인 중...</p>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <>
-        <div className="flex flex-col items-center justify-center py-24 px-4">
-          <div className="bg-destructive/10 p-6 rounded-xl text-center max-w-md mx-auto mb-6">
-            <AlertOctagon className="h-10 w-10 text-destructive mx-auto mb-4" />
-            <p className="text-xl font-semibold text-destructive mb-2">데이터 로드 실패</p>
-            <p className="text-muted-foreground mb-6">{error instanceof Error ? error.message : '데이터를 불러오는 중 오류가 발생했습니다.'}</p>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              className="inline-flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              다시 시도
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-center py-24 px-4">
+        <div className="bg-destructive/10 p-6 rounded-xl text-center max-w-md mx-auto mb-6">
+          <AlertOctagon className="h-10 w-10 text-destructive mx-auto mb-4" />
+          <p className="text-xl font-semibold text-destructive mb-2">데이터 로드 실패</p>
+          <p className="text-muted-foreground mb-6">{error instanceof Error ? error.message : '데이터를 불러오는 중 오류가 발생했습니다.'}</p>
+          <Button
+            onClick={() => refetch()}
+            variant="outline"
+            className="inline-flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            다시 시도
+          </Button>
         </div>
-        <FloatingActionButton {...buttonProps} />
-      </>
+      </div>
     )
   }
 
   if (isLoading) {
     return (
-      <>
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
-          <p className="text-muted-foreground">페르소나 데이터 로드 중...</p>
-        </div>
-        <FloatingActionButton {...buttonProps} />
-      </>
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
+        <p className="text-muted-foreground">페르소나 데이터 로드 중...</p>
+      </div>
     )
   }
 
   if (filteredPersonas.length === 0 && !isLoading) {
     return (
-      <>
-        <div className="flex flex-col items-center justify-center py-24 px-4">
-          <div className="text-center max-w-lg mx-auto">
-            {allPersonas.length === 0 ? (
-              <>
-                <SearchX className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-xl font-semibold mb-2">아직 생성된 페르소나가 없습니다</p>
-                <p className="text-muted-foreground mb-6">첫 번째 페르소나를 만들어보세요!</p>
-              </>
-            ) : (
-              <>
-                <SearchX className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-xl font-semibold mb-2">검색 결과가 없습니다</p>
-                <p className="text-muted-foreground mb-2">다른 검색어나 필터를 사용해 보세요.</p>
-                <Button 
-                  variant="secondary" 
-                  onClick={() => window.location.href = '/'}
-                  className="mt-4"
-                >
-                  모든 페르소나 보기
-                </Button>
-              </>
-            )}
-          </div>
+      <div className="flex flex-col items-center justify-center py-24 px-4">
+        <div className="text-center max-w-lg mx-auto">
+          {allPersonas.length === 0 ? (
+            <>
+              <SearchX className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-xl font-semibold mb-2">아직 생성된 페르소나가 없습니다</p>
+              <p className="text-muted-foreground mb-6">프로젝트에서 인터뷰를 추가해 첫 번째 페르소나를 만들어보세요!</p>
+            </>
+          ) : (
+            <>
+              <SearchX className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-xl font-semibold mb-2">검색 결과가 없습니다</p>
+              <p className="text-muted-foreground mb-2">다른 검색어나 필터를 사용해 보세요.</p>
+              <Button 
+                variant="secondary" 
+                onClick={() => window.location.href = '/'}
+                className="mt-4"
+              >
+                모든 페르소나 보기
+              </Button>
+            </>
+          )}
         </div>
-        <FloatingActionButton {...buttonProps} />
-
-        {/* Modals */}
-        <WorkflowProgressModal
-          open={isProgressModalOpen}
-          onOpenChange={setIsProgressModalOpen}
-          jobs={jobs}
-          onRetryJob={retryJob}
-          onRemoveJob={removeJob}
-          onClearCompleted={clearCompleted}
-          onClearAll={clearAll}
-          onAddMore={handleAddMore}
-          onJobClick={handleJobClick}
-          onStartPersonaSynthesis={startPersonaSynthesis}
-        />
-
-        <AddInterviewModal 
-          open={isAddInterviewModalOpen}
-          onOpenChange={setIsAddInterviewModalOpen}
-          onFilesSubmit={(files, criteria, projectId) => {
-            // projectId는 모달 로직에 의해 보장됩니다.
-            addJobs(files, projectId!, criteria);
-            if (files.length > 0) {
-              setIsProgressModalOpen(true);
-            }
-          }}
-        />
-      </>
+      </div>
     )
   }
 
   return (
-    <>
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4 pb-24"
-        key={`${profile?.company_id}-${selectedKeywords.join(',')}`} // 회사 ID와 선택된 키워드 변경 시 애니메이션 재생
-      >
-        {filteredPersonas.map((persona) => (
-          <motion.div key={persona.id} variants={item} className="h-full">
-            <PersonaCard
-              id={persona.id}
-              name={persona.name}
-              image={persona.image}
-              keywords={persona.keywords}
-              insight={persona.insight}
-              summary={persona.summary}
-              painPoint={persona.painPoint}
-              hiddenNeeds={persona.hiddenNeeds}
-              persona_character={persona.persona_character}
-              persona_type={persona.persona_type}
-              persona_description={persona.persona_description}
-            />
-          </motion.div>
-        ))}
-      </motion.div>
-
-      <FloatingActionButton {...buttonProps} />
-
-      {/* Modals */}
-      <WorkflowProgressModal
-        open={isProgressModalOpen}
-        onOpenChange={setIsProgressModalOpen}
-        jobs={jobs}
-        onRetryJob={retryJob}
-        onRemoveJob={removeJob}
-        onClearCompleted={clearCompleted}
-        onClearAll={clearAll}
-        onAddMore={handleAddMore}
-        onJobClick={handleJobClick}
-        onStartPersonaSynthesis={startPersonaSynthesis}
-      />
-
-      <AddInterviewModal 
-        open={isAddInterviewModalOpen}
-        onOpenChange={setIsAddInterviewModalOpen}
-        onFilesSubmit={(files, criteria, projectId) => {
-          // projectId는 모달 로직에 의해 보장됩니다.
-          addJobs(files, projectId!, criteria);
-          if (files.length > 0) {
-            setIsProgressModalOpen(true);
-          }
-        }}
-      />
-    </>
+    <motion.div 
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 py-4"
+      key={`${profile?.company_id}-${selectedKeywords.join(',')}`} // 회사 ID와 선택된 키워드 변경 시 애니메이션 재생
+    >
+      {filteredPersonas.map((persona) => (
+        <motion.div key={persona.id} variants={item} className="h-full">
+          <PersonaCard
+            id={persona.id}
+            name={persona.name}
+            image={persona.image}
+            keywords={persona.keywords}
+            insight={persona.insight}
+            summary={persona.summary}
+            painPoint={persona.painPoint}
+            hiddenNeeds={persona.hiddenNeeds}
+            persona_character={persona.persona_character}
+            persona_type={persona.persona_type}
+            persona_description={persona.persona_description}
+          />
+        </motion.div>
+      ))}
+    </motion.div>
   )
 }

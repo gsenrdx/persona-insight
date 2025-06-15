@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,7 +15,8 @@ import { IntervieweeData } from '@/types/interviewee'
 import InterviewDetail from './interview-detail'
 import { supabase } from '@/lib/supabase'
 import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
-import { PersonaClassificationModal, AddInterviewModal } from '@/components/modal'
+import { PersonaClassificationModal, AddInterviewModal, WorkflowProgressModal } from '@/components/modal'
+import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from '@/hooks/use-workflow-queue'
 import { toast } from 'sonner'
 
 interface Project {
@@ -34,9 +35,10 @@ interface Project {
 
 interface ProjectInterviewsProps {
   project: Project
+  selectedInterviewId?: string | null
 }
 
-export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
+export default function ProjectInterviews({ project, selectedInterviewId }: ProjectInterviewsProps) {
   const { profile } = useAuth()
   const [interviews, setInterviews] = useState<IntervieweeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,7 +54,24 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
   const [selectedInterviewForPersona, setSelectedInterviewForPersona] = useState<IntervieweeData | null>(null)
   const [showPersonaClassificationModal, setShowPersonaClassificationModal] = useState(false)
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // 워크플로우 큐 관리
+  const {
+    jobs,
+    activeJobs,
+    completedJobs,
+    failedJobs,
+    isProcessing,
+    addJobs,
+    removeJob,
+    clearCompleted,
+    clearAll,
+    retryJob,
+    startPersonaSynthesis
+  } = useWorkflowQueue()
 
   useEffect(() => {
     if (profile?.company_id && project?.id) {
@@ -82,6 +101,25 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
       fetchCriteriaConfig()
     }
   }, [profile?.company_id])
+
+  // 워크플로우 완료 시 인터뷰 목록 새로고침
+  useEffect(() => {
+    if (completedJobs.length > 0) {
+      fetchInterviews()
+    }
+  }, [completedJobs.length])
+
+  // URL 쿼리스트링에서 인터뷰 ID 확인하여 상세보기 설정
+  useEffect(() => {
+    if (selectedInterviewId && interviews.length > 0) {
+      const interview = interviews.find(i => i.id === selectedInterviewId)
+      if (interview) {
+        setSelectedInterview(interview)
+      }
+    } else if (!selectedInterviewId) {
+      setSelectedInterview(null)
+    }
+  }, [selectedInterviewId, interviews])
 
   const fetchInterviews = async (loadMore = false) => {
     try {
@@ -134,7 +172,7 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     try {
       if (!profile?.company_id) return
       
-      const response = await fetch(`/api/persona-criteria?company_id=${profile.company_id}`)
+      const response = await fetch(`/api/personas/criteria?company_id=${profile.company_id}`)
       
       if (response.ok) {
         const { configuration, success } = await response.json()
@@ -155,7 +193,15 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
 
 
   const handleAddInterview = () => {
-    setShowAddInterviewModal(true)
+    if (isProcessing) {
+      setIsProgressModalOpen(true);
+    } else {
+      if (jobs.length > 0) {
+        setIsProgressModalOpen(true);
+      } else {
+        setShowAddInterviewModal(true);
+      }
+    }
   }
 
   const handleAddInterviewComplete = () => {
@@ -164,12 +210,25 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
     fetchInterviews()
   }
 
+  const handleAddMore = () => {
+    setIsProgressModalOpen(false);
+    setShowAddInterviewModal(true);
+  }
+
+  const handleJobClick = (job: WorkflowJob) => {
+    // 통합된 모달에서 내부적으로 처리
+  }
+
   const handleViewDetail = (interview: IntervieweeData) => {
-    setSelectedInterview(interview)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('interview', interview.id)
+    router.push(`?${params.toString()}`)
   }
 
   const handleBackToList = () => {
-    setSelectedInterview(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('interview')
+    router.push(`?${params.toString()}`)
   }
 
   const handleDeleteInterview = async (interviewId: string) => {
@@ -190,7 +249,11 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
 
       // 목록에서 삭제된 항목 제거
       setInterviews(prev => prev.filter(item => item.id !== interviewId))
-      setSelectedInterview(null) // 상세보기도 닫기
+      
+      // 현재 보고 있는 인터뷰가 삭제된 경우 목록으로 돌아가기
+      if (selectedInterview?.id === interviewId) {
+        handleBackToList()
+      }
       
       toast.success('인터뷰가 삭제되었습니다')
     } catch (err) {
@@ -664,12 +727,34 @@ export default function ProjectInterviews({ project }: ProjectInterviewsProps) {
         interviews={interviews}
       />
 
+      {/* 워크플로우 진행상황 모달 */}
+      <WorkflowProgressModal
+        open={isProgressModalOpen}
+        onOpenChange={setIsProgressModalOpen}
+        jobs={jobs}
+        onRetryJob={retryJob}
+        onRemoveJob={removeJob}
+        onClearCompleted={clearCompleted}
+        onClearAll={clearAll}
+        onAddMore={handleAddMore}
+        onJobClick={handleJobClick}
+        onStartPersonaSynthesis={startPersonaSynthesis}
+      />
+
       {/* 인터뷰 추가 모달 */}
       <AddInterviewModal
         open={showAddInterviewModal}
         onOpenChange={setShowAddInterviewModal}
         onClose={() => setShowAddInterviewModal(false)}
         onComplete={handleAddInterviewComplete}
+        onFilesSubmit={(files, criteria, projectId) => {
+          // 현재 프로젝트 ID로 설정
+          const targetProjectId = project?.id || projectId;
+          addJobs(files, targetProjectId!, criteria);
+          if (files.length > 0) {
+            setIsProgressModalOpen(true);
+          }
+        }}
         projectId={project?.id}
       />
     </div>

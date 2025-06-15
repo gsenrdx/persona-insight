@@ -70,7 +70,7 @@ async function checkProjectAccess(projectId: string, userId: string) {
 // 단일 프로젝트 조회
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -83,7 +83,8 @@ export async function GET(
       }, { status: 400 })
     }
 
-    const projectId = params.id
+    const resolvedParams = await params
+    const projectId = resolvedParams.id
 
     // 프로젝트 접근 권한 확인
     const accessCheck = await checkProjectAccess(projectId, user_id)
@@ -112,12 +113,13 @@ export async function GET(
 // 프로젝트 수정
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const { user_id, ...updateData } = body
-    const projectId = params.id
+    const resolvedParams = await params
+    const projectId = resolvedParams.id
     
     if (!user_id) {
       return NextResponse.json({
@@ -199,12 +201,13 @@ export async function PUT(
 // 프로젝트 삭제 (비활성화)
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const { user_id } = body
-    const projectId = params.id
+    const resolvedParams = await params
+    const projectId = resolvedParams.id
     
     if (!user_id) {
       return NextResponse.json({

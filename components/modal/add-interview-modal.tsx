@@ -304,7 +304,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (files.length === 0) {
       setError("분석할 파일을 먼저 선택해주세요");
       return;
@@ -315,17 +315,23 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
       return;
     }
     
-    if (onFilesSubmit) {
-      onFilesSubmit(files, extractionCriteria, selectedProjectId);
+    try {
+      if (onFilesSubmit) {
+        await onFilesSubmit(files, extractionCriteria, selectedProjectId);
+      }
+      
+      // 성공적으로 완료되면 onComplete 호출
+      if (onComplete) {
+        onComplete();
+      }
+      
+      // 모달 닫기
+      handleModalClose(false);
+    } catch (error) {
+      // 에러가 발생하면 모달을 닫지 않고 에러 메시지 표시
+      const errorMessage = error instanceof Error ? error.message : "파일 업로드 중 오류가 발생했습니다. 다시 시도해주세요.";
+      setError(errorMessage);
     }
-    
-    // 성공적으로 완료되면 onComplete 호출
-    if (onComplete) {
-      onComplete();
-    }
-    
-    // 모달 닫기
-    handleModalClose(false);
   };
 
   const handleModalClose = (newOpen: boolean) => {

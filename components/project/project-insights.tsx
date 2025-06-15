@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ChevronDown, MessageCircle, User, BarChart3, TrendingUp, Users, Download, Search, Filter } from "lucide-react"
+import { ChevronDown, FileText, User, BarChart3, TrendingUp, Users, Download, Search, Filter } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
@@ -77,6 +78,7 @@ const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#6366f1'
 
 export default function ProjectInsights({ project }: ProjectInsightsProps) {
   const { profile } = useAuth()
+  const router = useRouter()
   const [currentInsight, setCurrentInsight] = useState(0)
   const [showDetailAnalysis, setShowDetailAnalysis] = useState(true)
   const [showRelatedKeywords, setShowRelatedKeywords] = useState(true)
@@ -247,6 +249,35 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       }
     })
   }
+
+  // persona 이름으로 인터뷰 찾기 및 상세보기로 이동
+  const handleViewInterview = async (personaName: string) => {
+    try {
+      // 해당 프로젝트의 인터뷰 목록에서 persona 이름으로 검색
+      const response = await fetch(`/api/interviews?company_id=${profile?.company_id}&project_id=${project.id}`)
+      if (response.ok) {
+        const { data } = await response.json()
+        // interviewee_fake_name 또는 personas.persona_title과 매칭
+        const interview = data?.find((item: any) => 
+          item.interviewee_fake_name === personaName || 
+          item.personas?.persona_title === personaName ||
+          item.personas?.persona_type === personaName
+        )
+        
+        if (interview) {
+          // 프로젝트 페이지로 이동하면서 쿼리스트링으로 인터뷰 ID 전달
+          router.push(`/projects/${project.id}?interview=${interview.id}`)
+        } else {
+          // 인터뷰를 찾지 못한 경우 프로젝트 페이지로만 이동
+          router.push(`/projects/${project.id}`)
+        }
+      }
+    } catch (error) {
+      console.error('인터뷰 검색 중 오류:', error)
+      // 오류 발생 시에도 프로젝트 페이지로 이동
+      router.push(`/projects/${project.id}`)
+    }
+  }
   
 
   if (loading) {
@@ -278,17 +309,11 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       {/* 연도별 선택과 인터뷰 고객 수를 묶어서 표시 */}
       <Card className="shadow-sm border-gray-200 dark:border-gray-800">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold">프로젝트 인터뷰 현황</CardTitle>
-              <CardDescription>
-                {project.name} 프로젝트의 연도별 인터뷰 데이터를 확인하세요 (복수 선택 가능)
-              </CardDescription>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">프로젝트</div>
-              <div className="font-medium text-primary">{project.name}</div>
-            </div>
+          <div>
+            <CardTitle className="text-2xl font-bold">프로젝트 인터뷰 현황</CardTitle>
+            <CardDescription>
+              {project.name} 프로젝트의 연도별 인터뷰 데이터를 확인하세요 (복수 선택 가능)
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -714,11 +739,14 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                                   </div>
                                   <p className="text-sm text-muted-foreground">{safeQuote.persona}</p>
                                 </div>
-                                <Button size="sm" variant="outline" className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950" asChild>
-                                  <Link href="/chat">
-                                    <MessageCircle className="h-3 w-3" />
-                                    <span>대화하기</span>
-                                  </Link>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950"
+                                  onClick={() => handleViewInterview(safeQuote.persona)}
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  <span>인터뷰 상세보기</span>
                                 </Button>
                               </div>
                             </div>
