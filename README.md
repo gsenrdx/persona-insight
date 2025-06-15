@@ -92,12 +92,17 @@ pnpm dev
 
 ```env
 # Miso API 설정
+# MISO 서비스와 연동하기 위한 API URL입니다. 일반적으로 https://api.holdings.miso.gs 입니다.
 MISO_API_URL=your-miso-endpoint-here
+# MISO 서비스와 연동하기 위한 API 키입니다. MISO 플랫폼의 API 설정에서 발급받아 여기에 입력하세요. 이 키가 없으면 AI 기능이 작동하지 않습니다.
 MISO_API_KEY=your-miso-api-key-here
 
 # Supabase 설정
+# Supabase 프로젝트 URL입니다. Supabase 대시보드의 프로젝트 설정에서 확인할 수 있습니다.
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+# Supabase 프로젝트의 익명 키(anon key)입니다. Supabase 대시보드의 API 설정에서 확인할 수 있습니다.
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+# Supabase 프로젝트의 서비스 역할 키(service role key)입니다. Supabase 대시보드의 API 설정에서 확인할 수 있습니다. **이 키는 클라이언트에 노출되어서는 안 됩니다.**
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
