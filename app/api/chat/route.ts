@@ -4,6 +4,11 @@ export const runtime = 'edge'
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
+  const MISO_API_KEY = process.env.MISO_API_KEY;
+
+  if (!MISO_API_KEY) {
+    return new Response('MISO_API_KEY is not configured.', { status: 500 });
+  }
   const { messages, personaData, conversationId: clientConversationId } = await req.json()
 
   if (!personaData) {
@@ -19,7 +24,7 @@ export async function POST(req: NextRequest) {
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,
+        Authorization: `Bearer ${MISO_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
