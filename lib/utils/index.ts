@@ -45,6 +45,11 @@ export {
   joinWithAnd
 } from './format'
 
+// Persona utilities
+export {
+  getPersonaTypeInfo
+} from './persona'
+
 // File utilities (server-side only, don't re-export to avoid client-side errors)
 // import from './file' directly when needed on server-side
 

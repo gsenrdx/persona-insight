@@ -1,8 +1,9 @@
-// Legacy utils.ts file - maintained for backward compatibility
-// New utils are organized in the /lib/utils/ directory
+/**
+ * 유틸리티 함수 중앙 진입점
+ * 
+ * 모든 유틸리티는 lib/utils/ 디렉토리에서 기능별로 구성되며
+ * 이 파일을 통해 통합 접근이 가능합니다.
+ */
 
-// Re-export all utilities from the new structure
-export * from './utils/index'
-
-// Keep the direct cn export for legacy compatibility
-export { cn } from './utils/cn'
+// 모든 유틸리티 함수 re-export
+export * from './utils'
