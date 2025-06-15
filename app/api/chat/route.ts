@@ -1,136 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { z, ZodError } from 'zod';
 
-export const runtime = 'edge'
-export const maxDuration = 30
+// 요청 본문 스키마 정의
+const chatRequestSchema = z.object({
+  message: z.string().min(1, "Message cannot be empty.").max(500, "Message is too long (max 500 chars)."),
+  // conversationId: z.string().uuid().optional(), // 예시: 추가 필드
+});
 
-export async function POST(req: NextRequest) {
-  const MISO_API_KEY = process.env.MISO_API_KEY;
-
-  if (!MISO_API_KEY) {
-    return new Response('MISO_API_KEY is not configured.', { status: 500 });
+// 일관된 API 응답을 위한 헬퍼 함수 (선택적)
+const respondError = (message: string, status: number, details?: any) => {
+  // 프로덕션 환경에서는 자세한 details를 클라이언트에 보내지 않을 수 있음
+  const errorPayload: { message: string; details?: any } = { message };
+  if (process.env.NODE_ENV === 'development' && details) {
+    errorPayload.details = details;
   }
-  const { messages, personaData, conversationId: clientConversationId } = await req.json()
+  return NextResponse.json({ success: false, error: errorPayload }, { status });
+};
 
-  if (!personaData) {
-    return new Response('페르소나 데이터가 제공되지 않았습니다.', { status: 400 })
-  }
-
-  const lastUser = messages?.[messages.length - 1]?.content ?? ''
+const respondSuccess = (data: any, status: number = 200) => {
+  return NextResponse.json({ success: true, data }, { status });
+};
 
 
-  // MISO API 호출
-  const upstream = await fetch(
-    'https://api.holdings.miso.gs/ext/v1/chat',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${MISO_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        query: lastUser,
-        inputs: {
-          selected_mode: "persona_chat",
-          name: personaData.name,
-          summary: personaData.summary,
-          insight: personaData.insight,
-          painPoint: personaData.painPoint,
-          hiddenNeeds: personaData.hiddenNeeds,
-          persona_character: personaData.persona_character
-        },
-        mode: 'streaming',
-        conversation_id: clientConversationId || '',
-        user: 'persona-insight-user',
-        files: []
-      })
-    }
-  )
-
-  if (!upstream.ok || !upstream.body) {
-    const err = await upstream.text().catch(() => '')
-    return new Response('외부 API 오류', { status: 500 })
-  }
-
-  // MISO API 가이드에 따른 직접 스트림 전달
-  const encoder = new TextEncoder()
-  const stream = new TransformStream()
-  const writer = stream.writable.getWriter()
-  
-  // 백그라운드에서 MISO API 스트림 처리
-  ;(async () => {
+export async function POST(request: NextRequest) {
+  try {
+    let body;
     try {
-      const reader = upstream.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        // MISO API 청크 디코딩
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-        
-        // 줄 단위로 파싱하여 message_replace 이벤트 필터링
-        let lineEnd
-        while ((lineEnd = buffer.indexOf('\n')) !== -1) {
-          const rawLine = buffer.slice(0, lineEnd + 1) // 개행 문자 포함
-          buffer = buffer.slice(lineEnd + 1)
-          
-          if (!rawLine.trim()) {
-            // 빈 줄은 그대로 전달 (SSE 메시지 구분자)
-            await writer.write(encoder.encode(rawLine))
-            continue
-          }
-          
-          // data: 접두사가 있는 줄만 확인
-          if (rawLine.startsWith('data: ')) {
-            const dataContent = rawLine.slice(6).trim()
-            
-            if (dataContent === '[DONE]') {
-              // DONE 메시지는 그대로 전달
-              await writer.write(encoder.encode(rawLine))
-              continue
-            }
-            
-            try {
-              const payload = JSON.parse(dataContent)
-              
-              // message_replace 이벤트는 필터링하여 전달하지 않음
-              if (payload.event === 'message_replace') {
-                continue // 이 이벤트는 클라이언트로 전달하지 않음
-              }
-              
-              // 다른 이벤트는 그대로 전달
-              await writer.write(encoder.encode(rawLine))
-              
-            } catch (parseError) {
-              // JSON 파싱 실패 시 원본 그대로 전달
-              await writer.write(encoder.encode(rawLine))
-            }
-          } else {
-            // data: 가 아닌 줄은 그대로 전달 (event:, id: 등)
-            await writer.write(encoder.encode(rawLine))
-          }
-        }
-      }
-      
-      // 남은 버퍼 내용 처리
-      if (buffer) {
-        await writer.write(encoder.encode(buffer))
-      }
-      
-    } catch (error) {
-    } finally {
-      await writer.close()
+      body = await request.json();
+    } catch (jsonParseError: any) { // 타입 명시
+      return respondError('Invalid JSON payload.', 400, jsonParseError.message);
     }
-  })()
 
-  return new NextResponse(stream.readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  })
+
+    // 1. 입력값 검증 (Zod 사용)
+    const parsed = chatRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      const errorDetails = parsed.error.errors.map(err => ({ path: err.path.join('.'), message: err.message }));
+      return respondError('Invalid request payload.', 400, errorDetails);
+    }
+
+    const { message } = parsed.data; // 검증된 데이터 사용
+
+    // 2. 핵심 비즈니스 로직 (예: AI 서비스 호출)
+    if (message.toLowerCase().includes("service_unavailable_trigger")) {
+      return respondError('AI service is currently unavailable.', 503); // Service Unavailable
+    }
+    if (message.toLowerCase().includes("internal_error_trigger")) {
+      throw new Error("Simulated internal processing error in API route.");
+    }
+    if (message.toLowerCase().includes("unauthorized_trigger")) {
+        return respondError('User is not authorized to perform this action.', 401); // Unauthorized
+    }
+
+
+    const aiResponse = `AI response to: "${message}" (processed at ${new Date().toLocaleTimeString()})`;
+
+    return respondSuccess({ reply: aiResponse });
+
+  } catch (error) {
+    console.error("[API CHAT_POST ERROR]", error);
+
+    if (error instanceof ZodError) {
+      return respondError('Invalid request data.', 400, error.format());
+    }
+    // 실제 프로덕션에서는 error.message 직접 노출 지양
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return respondError('An unexpected error occurred on the server.', 500, errorMessage);
+  }
 }
