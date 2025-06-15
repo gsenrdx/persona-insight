@@ -1,6 +1,6 @@
 <div align="center">
 
-![Persona Insight Banner](https://github.com/user-attachments/assets/persona-insight-banner.png)
+![Persona Insight Banner](./public/GitHub_README.png)
 
 # 🎭 Persona Insight
 
