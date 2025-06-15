@@ -10,6 +10,10 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  .perspective {
+    perspective: 1000px;
+  }
   
   /* 토스트 슬라이드 애니메이션 */
   .toast-slide-in {
