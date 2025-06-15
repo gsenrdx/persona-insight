@@ -37,61 +37,23 @@
 
 ## ✨ **주요 기능**
 
-<table>
-<tr>
-<td width="50%">
-
-### 🎤 **인터뷰 분석**
-- 음성/영상/텍스트 파일 자동 처리
-- MISO API 기반 AI 분석
-- 실시간 처리 상태 추적
-- 병렬 처리로 빠른 분석
-
-</td>
-<td width="50%">
-
-### 🎭 **페르소나 생성**
-- 인터뷰 데이터 기반 자동 생성
-- 2D 매트릭스 분류 시스템
-- 페인포인트 및 니즈 추출
-- AI 생성 썸네일 이미지
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 💬 **실시간 대화**
-- 페르소나와 자연스러운 대화
-- 스트리밍 응답 지원
-- 대화 히스토리 관리
-- 컨텍스트 유지 기능
-
-</td>
-<td width="50%">
-
-### 📊 **인사이트 대시보드**
-- 시간별 트렌드 분석
-- 토픽 자동 분류
-- 팀 협업 지원
-- 회사별 데이터 격리
-
-</td>
-</tr>
-</table>
+| 기능 | 설명 |
+|------|------|
+| 🎤 **인터뷰 분석** | 음성/영상/텍스트 파일 자동 처리, MISO API 기반 AI 분석 |
+| 🎭 **페르소나 생성** | 인터뷰 데이터 기반 자동 생성, 2D 매트릭스 분류 시스템 |
+| 💬 **실시간 대화** | 페르소나와 자연스러운 대화, 스트리밍 응답 지원 |
+| 📊 **인사이트 대시보드** | 시간별 트렌드 분석, 토픽 자동 분류, 팀 협업 지원 |
 
 ---
 
 ## 🏗️ **기술 스택**
 
-| 분야 | 기술 | 선택 이유 |
-|------|------|-----------|
-| **Frontend** | Next.js 15, React 19, TypeScript | 최신 기능과 타입 안전성 |
-| **UI/UX** | shadcn/ui, Radix UI, Framer Motion | 접근성과 애니메이션 |
-| **Backend** | Next.js API Routes, Supabase | 서버리스 확장성 |
-| **Database** | PostgreSQL (Supabase) | 관계형 DB 안정성 |
-| **AI** | MISO API, OpenAI API | 전문 AI 서비스 |
-| **State** | TanStack Query, Zustand | 효율적인 상태 관리 |
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **UI/UX**: shadcn/ui, Radix UI, Framer Motion  
+- **Backend**: Next.js API Routes, Supabase
+- **Database**: PostgreSQL (Supabase)
+- **AI**: MISO API
+- **State**: TanStack Query
 
 ---
 
@@ -101,7 +63,7 @@
 - Node.js 18+
 - pnpm
 - Supabase 계정
-- MISO API 액세스
+- MISO API 키
 
 ### **설치 및 실행**
 
@@ -124,16 +86,14 @@ pnpm dev
 ### **환경 변수 설정**
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# MISO API
+# Miso API 설정
 MISO_API_URL=https://api.holdings.miso.gs
-MISO_API_KEY=your-miso-api-key
+MISO_API_KEY=your-miso-api-key-here
 
-# OpenAI (선택사항)
-OPENAI_API_KEY=sk-proj-...
+# Supabase 설정
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
 **접속 확인**: `http://localhost:3000`에서 로그인 화면이 나타나면 성공!
