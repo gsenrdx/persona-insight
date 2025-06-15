@@ -21,7 +21,7 @@ export default function PersonaHeader({ name, image, keywords, insight, painPoin
         </div>
 
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-foreground truncate bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">{name}</h2>
+          <h2 className="text-lg font-semibold truncate bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">{name}</h2>
           <p className="text-sm text-muted-foreground line-clamp-1">{insight}</p>
         </div>
       </div>
