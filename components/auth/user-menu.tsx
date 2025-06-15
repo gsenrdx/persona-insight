@@ -28,14 +28,19 @@ export default function UserMenu() {
       setLoading(false)
     }
   }
-  
+
   // 버전 정보
-  const version = 'v1.0.3'
-  const updateDate = '2025.06.13'
-  const updateLink = 'https://example.com/changelog'
-  
+  const version = 'v1.0.4'
+  const updateDate = '2025.06.15'
+  const updateLink = 'https://miso.oopy.io/persona-insight'
+  const guideLink = 'https://www.example.com/'
+
   const handleUpdateClick = () => {
     window.open(updateLink, '_blank')
+  }
+
+  const handleGuideClick = () => {
+    window.open(guideLink, '_blank')
   }
 
   if (!user) return null
@@ -51,7 +56,7 @@ export default function UserMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-48 p-0 shadow-md" align="end" alignOffset={-5} sideOffset={8}>
-        <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={() => setProfileModalOpen(true)}
             className="flex justify-between items-center px-3 py-2 text-xs"
           >
@@ -63,27 +68,35 @@ export default function UserMenu() {
             </div>
             <span className="text-gray-500">{updateDate}</span>
           </DropdownMenuItem>
-        
-          <DropdownMenuItem 
+
+          <DropdownMenuItem
             onClick={handleUpdateClick}
             className="flex justify-between items-center px-3 py-2 text-xs"
           >
             <span>업데이트 소식</span>
             <ArrowUpRight className="h-3 w-3" />
           </DropdownMenuItem>
-          
+
+          <DropdownMenuItem
+            onClick={handleGuideClick}
+            className="flex justify-between items-center px-3 py-2 text-xs"
+          >
+            <span>시스템 가이드</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </DropdownMenuItem>
+
           <DropdownMenuSeparator className="m-0" />
-          
+
           <DropdownMenuSeparator className="m-0" />
-          
+
           <DropdownMenuItem className="flex justify-between items-center px-3 py-2 text-xs">
             <span>관리 메뉴</span>
             <ChevronRight className="h-3 w-3" />
           </DropdownMenuItem>
-          
+
           <DropdownMenuSeparator className="m-0" />
-          
-          <DropdownMenuItem 
+
+          <DropdownMenuItem
             onClick={handleSignOut}
             disabled={loading}
             className="text-red-600 focus:text-red-600 px-3 py-2 text-xs"
@@ -94,9 +107,9 @@ export default function UserMenu() {
       </DropdownMenu>
 
       {/* 프로필 모달 */}
-      <ProfileModal 
-        open={profileModalOpen} 
-        onOpenChange={setProfileModalOpen} 
+      <ProfileModal
+        open={profileModalOpen}
+        onOpenChange={setProfileModalOpen}
       />
     </>
   )
