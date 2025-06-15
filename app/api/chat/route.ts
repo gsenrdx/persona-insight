@@ -14,12 +14,18 @@ export async function POST(req: NextRequest) {
 
 
   // MISO API 호출
+  const MISO_API_KEY = process.env.MISO_API_KEY
+
+  if (!MISO_API_KEY) {
+    return new Response('API 키가 설정되지 않았습니다.', { status: 500 })
+  }
+
   const upstream = await fetch(
     'https://api.holdings.miso.gs/ext/v1/chat',
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer app-2U7Nbl7pPsi3IEgET0HfomvT`,
+        Authorization: `Bearer ${MISO_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

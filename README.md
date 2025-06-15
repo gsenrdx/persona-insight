@@ -93,6 +93,7 @@ pnpm dev
 ```env
 # Miso API 설정
 MISO_API_URL=your-miso-endpoint-here
+# MISO_API_KEY는 MISO 대시보드에서 발급받은 개인 키를 입력합니다
 MISO_API_KEY=your-miso-api-key-here
 
 # Supabase 설정
