@@ -1,0 +1,1352 @@
+app:
+  description: persona_insight_project
+  icon: ''
+  icon_background: ''
+  mode: workflow
+  name: persona_insight_module (작업중)
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: ''
+    id: fd972584-7707-4bde-a781-71c5043f720f
+    name: SUPABASE_ANON_KEY
+    selector:
+    - env
+    - SUPABASE_ANON_KEY
+    value: ''
+    value_type: secret
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      image:
+        enabled: false
+      number_limits: 1
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        sourceType: document-extractor
+        targetType: code
+      id: 1747638004819-source-1747638020260-target
+      selected: false
+      source: '1747638004819'
+      sourceHandle: source
+      target: '1747638020260'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: start
+        targetType: if-else
+      id: 1747637654027-source-1747637859699-target
+      selected: false
+      source: '1747637654027'
+      sourceHandle: source
+      target: '1747637859699'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: if-else
+        targetType: document-extractor
+      id: 1747637859699-true-1747638004819-target
+      selected: false
+      source: '1747637859699'
+      sourceHandle: 'true'
+      target: '1747638004819'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: llm
+      id: 1747638020260-source-1747730741897-target
+      selected: false
+      source: '1747638020260'
+      sourceHandle: source
+      target: '1747730741897'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: parameter-extractor
+      id: 1747638020260-source-1747731506588-target
+      selected: false
+      source: '1747638020260'
+      sourceHandle: source
+      target: '1747731506588'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: parameter-extractor
+      id: 1747638020260-source-1747638217997-target
+      selected: false
+      source: '1747638020260'
+      sourceHandle: source
+      target: '1747638217997'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: if-else
+        targetType: parameter-extractor
+      id: 1747637859699-fac5a64e-1253-40a9-bc42-e5f59d13372f-1748241389153-target
+      selected: false
+      source: '1747637859699'
+      sourceHandle: fac5a64e-1253-40a9-bc42-e5f59d13372f
+      target: '1748241389153'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: if-else
+        targetType: llm
+      id: 1747637859699-6707396d-6397-4187-9955-ac729eb21975-1749519146562-target
+      selected: false
+      source: '1747637859699'
+      sourceHandle: 6707396d-6397-4187-9955-ac729eb21975
+      target: '1749519146562'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: llm
+        targetType: end
+      id: 1749519146562-source-1749448470336-target
+      selected: false
+      source: '1749519146562'
+      sourceHandle: source
+      target: '1749448470336'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: parameter-extractor
+        targetType: end
+      id: 1747638217997-source-1747638457323-target
+      selected: false
+      source: '1747638217997'
+      sourceHandle: source
+      target: '1747638457323'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: parameter-extractor
+        targetType: end
+      id: 1747731506588-source-1747638457323-target
+      selected: false
+      source: '1747731506588'
+      sourceHandle: source
+      target: '1747638457323'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: llm
+        targetType: end
+      id: 1747730741897-source-1747638457323-target
+      selected: false
+      source: '1747730741897'
+      sourceHandle: source
+      target: '1747638457323'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: parameter-extractor
+        targetType: end
+      id: 1748241389153-source-1749429761401-target
+      selected: false
+      source: '1748241389153'
+      sourceHandle: source
+      target: '1749429761401'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds: []
+        _inParallelHovering: false
+        _isEntering: false
+        _runningStatus: none
+        _waitingRun: false
+        desc: ''
+        selected: false
+        title: 시작
+        type: start
+        variables:
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: file_input
+          max_length: 100
+          options: []
+          required: false
+          type: file
+          variable: file_input
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: preprocess_type
+          max_length: 100
+          options:
+          - persona
+          - interviewee
+          - mindmap
+          - test
+          required: true
+          type: select
+          variable: preprocess_type
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: company_info
+          max_length: 1
+          options:
+          - 국내 최대 규모의 전기차 충전 서비스 제공 업체
+          required: false
+          type: select
+          variable: company_info
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: company_name
+          max_length: 1
+          options:
+          - GS차지비
+          required: false
+          type: select
+          variable: company_name
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: selected_interviewee
+          max_length: 50000
+          options: []
+          required: false
+          type: paragraph
+          variable: selected_interviewee
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: selected_persona
+          max_length: 50000
+          options: []
+          required: false
+          type: paragraph
+          variable: selected_persona
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: active_generate_image
+          max_length: 20
+          options: []
+          required: false
+          type: text-input
+          variable: active_generate_image
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: context
+          max_length: 50000
+          options: []
+          required: false
+          type: paragraph
+          variable: context
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: topics
+          max_length: 5000
+          options: []
+          required: false
+          type: paragraph
+          variable: topics
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          - audio
+          - video
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: prompt_persona_criteria
+          max_length: 5000
+          options: []
+          required: false
+          type: paragraph
+          variable: prompt_persona_criteria
+      id: '1747637654027'
+      position:
+        x: 199.69772371851752
+        y: 217.81076062624084
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - 'true'
+        - fac5a64e-1253-40a9-bc42-e5f59d13372f
+        - 6707396d-6397-4187-9955-ac729eb21975
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _runningBranchId: e51d6193-c97a-425c-bddc-c72bd54210a5
+        _runningStatus: none
+        _showAddVariablePopup: true
+        _targetBranches:
+        - id: 'true'
+          name: CASE 1
+        - id: fac5a64e-1253-40a9-bc42-e5f59d13372f
+          name: CASE 2
+        - id: 6707396d-6397-4187-9955-ac729eb21975
+          name: CASE 3
+        - id: e51d6193-c97a-425c-bddc-c72bd54210a5
+          name: CASE 4
+        - id: 'false'
+          name: ELSE
+        _waitingRun: false
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: 57c587ef-3f29-49ef-a5ec-76b17446fdf9
+            value: interviewee
+            varType: string
+            variable_selector:
+            - '1747637654027'
+            - preprocess_type
+          logical_operator: and
+        - case_id: fac5a64e-1253-40a9-bc42-e5f59d13372f
+          conditions:
+          - comparison_operator: is
+            id: b6c6d67c-0183-4f7a-bb15-37aa104c4fe1
+            value: persona
+            varType: string
+            variable_selector:
+            - '1747637654027'
+            - preprocess_type
+          id: fac5a64e-1253-40a9-bc42-e5f59d13372f
+          logical_operator: and
+        - case_id: 6707396d-6397-4187-9955-ac729eb21975
+          conditions:
+          - comparison_operator: is
+            id: 8c3b84df-2b57-4c12-848a-0d68ed74d14c
+            value: mindmap
+            varType: string
+            variable_selector:
+            - '1747637654027'
+            - preprocess_type
+          id: 6707396d-6397-4187-9955-ac729eb21975
+          logical_operator: and
+        - case_id: e51d6193-c97a-425c-bddc-c72bd54210a5
+          conditions:
+          - comparison_operator: is
+            id: 40989f95-f209-45d0-a2a2-06438220f80d
+            value: test
+            varType: string
+            variable_selector:
+            - '1747637654027'
+            - preprocess_type
+          id: e51d6193-c97a-425c-bddc-c72bd54210a5
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 조건
+        type: if-else
+      id: '1747637859699'
+      position:
+        x: 577.6437311814765
+        y: 203.68133469016175
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        is_array_file: false
+        selected: false
+        title: 인터뷰 문서 추출기
+        type: document-extractor
+        variable_selector:
+        - '1747637654027'
+        - file_input
+      id: '1747638004819'
+      position:
+        x: 960.7306885169526
+        y: 201.66290241700784
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        - source
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        code: "def main(file_input):\n\n    array_str = str(file_input)\n    \n  \
+          \  return {\n        \"result\": array_str\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: array to string
+        type: code
+        variables:
+        - value_selector:
+          - '1747638004819'
+          - text
+          variable: file_input
+      id: '1747638020260'
+      position:
+        x: 1332.2561088888774
+        y: 227.27298294249502
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: true
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        instruction: '<persona>
+
+          당신은 고객 인터뷰 리서치 결과에서 주요 정보를 추출하고 정량적 지표를 도출하는 데이터 분석·리서치 전문가입니다. 행동경제학 및
+          소비자심리학 이론을 근거로 인터뷰를 분석하며, 아래 <output_instructions>에 명시된 규칙을 엄격히 준수하여 정확하고
+          일관된 결과를 산출합니다.
+
+          *회사 정보: <company_info>회사 명 : {{#1747637654027.company_name#}}, 설명 :{{#1747637654027.company_info#}}</company_info>
+
+          </persona>
+
+
+          <input_context>
+
+          인터뷰의 STT 변환본입니다. 인터뷰에 명시적으로 언급된 정보만 근거로 하여 사용자의 행동 특성과 가치 지향성을 점수화하십시오.
+          추론이나 가정, 외부 지식은 배제합니다.
+
+          </input_context>
+
+
+          {{#1747637654027.prompt_persona_criteria#}}'
+        model:
+          completion_params:
+            max_tokens: 8192
+            response_format: JSON
+            temperature: 0.3
+          mode: chat
+          name: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+          provider: bedrock
+        parameters:
+        - description: 사용자의 전반적인 주행 습관과 충전 패턴을 나타내는 JSON 객체
+          name: x_axis
+          options: []
+          required: true
+          type: array[object]
+        - description: 사용자가 충전 서비스나 관련 제품/기술을 선택할 때 중요하게 생각하는 가치 지향성을 나타내는 JSON 객체
+          name: y_axis
+          options: []
+          required: true
+          type: array[object]
+        query:
+        - '1747638020260'
+        - result
+        reasoning_mode: prompt
+        selected: false
+        title: interviewee_EV 맥락
+        type: parameter-extractor
+        variables: []
+        vision:
+          enabled: false
+      id: '1747638217997'
+      position:
+        x: 1770.0617686196474
+        y: 24.057749893242516
+      type: custom
+    - data:
+        _connectedSourceHandleIds: []
+        _connectedTargetHandleIds:
+        - target
+        - target
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1747731506588'
+          - interviewee_summary
+          variable: interviewee_summary
+        - value_selector:
+          - '1747731506588'
+          - session_date
+          variable: session_date
+        - value_selector:
+          - '1747638217997'
+          - x_axis
+          variable: x_axis
+        - value_selector:
+          - '1747638217997'
+          - y_axis
+          variable: y_axis
+        - value_selector:
+          - '1747730741897'
+          - text
+          variable: interviewee_detail
+        - value_selector:
+          - '1747731506588'
+          - interviewee_style
+          variable: interviewee_style
+        - value_selector:
+          - '1747731506588'
+          - interviewee_fake_name
+          variable: interviewee_fake_name
+        selected: false
+        title: 종료 (interviewee)
+        type: end
+      id: '1747638457323'
+      position:
+        x: 2240.3457371921745
+        y: 163.02863065020298
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: true
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        context:
+          enabled: true
+          variable_selector:
+          - '1747638004819'
+          - text
+        desc: ''
+        model:
+          completion_params:
+            max_tokens: 8192
+            response_format: JSON
+            temperature: 0.2
+          mode: chat
+          name: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+          provider: bedrock
+        prompt_template:
+        - role: system
+          text: '<persona>
+
+            당신은 {{#1747637654027.company_name#}}({{#1747637654027.company_info#}})에서
+            활동하는 최상위 CX(Customer Experience) 전략 컨설턴트입니다.
+
+            당신의 임무는 고객 인터뷰 원문을 현미경처럼 정밀 분석하여,
+
+            제품·서비스 개선을 위한 실행 가능한 인사이트를 엄격한 JSON 배열로 구조화하는 것입니다.
+
+            </persona>
+
+
+            <critical_output_rules>
+
+            반드시 유효한 JSON 배열 형식의 문자열만 출력해야 합니다. 출력은 반드시 [ 문자로 시작하고, ] 문자로 끝나야 합니다.
+            JSON 데이터 외에 어떠한 설명, 주석, 마크다운 형식도 포함해서는 안 됩니다.
+
+            문자열 내 줄바꿈은 \\n으로, 큰따옴표는 \\"로 정확하게 이스케이프 처리해야 합니다. 분석할 내용이 없는 경우, 빈 배열
+            []을 반환해야 합니다. 인터뷰에서 단 하나의 주제만 발견되더라도 [{...}] 형태로 배열 안에 객체로 포함해야 합니다. 추출할
+            인사이트의 개수에는 어떠한 제한도 없습니다. 인터뷰 원문에서 발견되는 모든 유의미한 정보를 누락 없이 추출하여 배열에 포함시켜야
+            합니다.
+
+            </critical_output_rules>
+
+
+            <analysis_rules>
+
+            인터뷰 원문에 명시적으로 언급되지 않은 정보는 절대로 추론하거나 창작해서는 안 됩니다. 모든 서술(특히 painpoint와 need)은
+            누가, 무엇을, 어떻게, 왜 겪는지 근거가 명확히 드러나도록 구체적인 완전한 문장으로 작성해야 합니다.
+
+            추출된 모든 내용은 의미적으로 중복되지 않도록 정리하고, 주제별로 명확하게 분류해야 합니다. 기능, 경험, 맥락, 채널 등 주제의
+            초점이 조금이라도 다르면 별개의 객체로 분리해야 합니다. 동일한 주제 내에서도 문제의 원인, 발생 조건, 고객이 제안하는 해결책이
+            다를 경우, 각각 별개의 painpoint와 need로 분리하여 추가해야 합니다. painpoint, need, insight_quote
+            항목은 각각 배열(Array)이며, 추출 개수에 제한이 없습니다. 관련된 모든 내용을 전부 담아야 합니다.
+
+            </analys_rules>
+
+
+            <step_by_step_process>
+
+            STEP 1: 원본 데이터 유효성 검증
+
+            분석의 유일한 정보원은 제공된 인터뷰 원문입니다.
+
+            원문이 무의미하거나 공백일 경우, 즉시 빈 배열 []을 반환하고 프로세스를 종료합니다.
+
+
+            STEP 2: 핵심 주제(Topic) 식별 및 분리
+
+            고객 경험의 여정(검색, 도착, 충전, 결제, 사후관리 등)과 기능, 채널(앱, 웹, 충전기 키오스크)을 기준으로 주제를 최대한
+            세분화합니다.
+
+            예: ''결제 시스템 오류''와 ''결제 수단 부족''은 동일한 ''결제'' 범주에 속하더라도 원인과 해결책이 다르므로 별개의
+            주제로 분리할 수 있습니다.
+
+
+            STEP 3: 주제별 상세 요소 정밀 추출
+
+            -topic_name: 추출된 내용의 핵심을 15자 내외로 명료하게 요약한 제목을 부여합니다. 아래의 리스트를 검토하고 선정하며
+            리스트에 해당하지 않을 경우 추가로 생성하세요.
+
+            ```
+
+            {{#1747637654027.topics#}}
+
+            ```
+
+            -painpoint: 고객이 겪는 문제 상황, 불편함, 어려움을 원인과 결과를 포함하여 구체적인 문장으로 작성합니다. 관련된
+            모든 painpoint를 제한 없이 추출하여 배열에 추가합니다.
+
+            -need: 고객이 명시적/암시적으로 원하는 해결책, 개선 요구사항, 기대 가치를 구체적인 문장으로 작성합니다. 관련된 모든
+            need를 제한 없이 추출하여 배열에 추가합니다.
+
+            -insight_quote: painpoint나 need를 가장 생생하게 뒷받침하는 고객의 원문 발언을 그대로 인용합니다. 주제와
+            관련된 의미 있는 모든 인용문을 제한 없이 추출하여 배열에 추가합니다. 항상 완성된 문장 형태로 추출합니다.
+
+            -keyword_cluster: 주제를 포괄하는 1~3개의 상위 개념 키워드를 추출합니다. (예: 결제 경험, 정보 신뢰도)
+
+            -painpoint_keyword: 문제의 현상, 원인, 대상을 명확히 보여주는 1~5개의 핵심 키워드를 추출합니다. (예:
+            앱 설치 강요, 결제 오류)
+
+            -need_keyword: 요구되는 기능이나 해결 방향을 나타내는 1~5개의 핵심 키워드를 추출합니다. (예: 통합 QR 결제,
+            실시간 상태 반영)
+
+
+            STEP 4: 최종 JSON 배열 구성 및 검증
+
+            추출된 모든 주제를 각각의 객체로 구성하여 하나의 JSON 배열로 정리합니다.
+
+            아래 <final_validation>의 7개 항목을 모두 통과하는지 최종 검증 후 출력합니다.
+
+            </step_by_step_process>
+
+
+            <json_schema>
+
+            [
+
+            {
+
+            "topic_name": "구체적이고 명확한 주제명",
+
+            "painpoint": [
+
+            "고객이 겪는 구체적인 문제 상황이나 불편함에 대한 완전한 문장 1",
+
+            "동일 주제 내에서 발견된 또 다른 문제 상황 2",
+
+            "..."
+
+            ],
+
+            "need": [
+
+            "고객이 바라는 구체적인 해결책이나 개선 요구사항에 대한 문장 1",
+
+            "문제 해결을 위해 기대하는 또 다른 방향이나 기능 2",
+
+            "..."
+
+            ],
+
+            "insight_quote": [
+
+            "painpoint나 need를 가장 잘 보여주는 고객의 원문 발언 인용 1",
+
+            "주제를 뒷받침하는 또 다른 핵심 원문 인용 2",
+
+            "..."
+
+            ],
+
+            "keyword_cluster": ["상위개념1", "상위개념2"],
+
+            "painpoint_keyword": ["문제키워드1", "원인키워드2", "대상키워드3"],
+
+            "need_keyword": ["해결책키워드1", "기능키워드2", "개선방향키워드3"]
+
+            }
+
+            ]
+
+            </json_schema>
+
+
+            <valid_examples>
+
+            [
+
+            {
+
+            "topic_name": "결제 시스템의 파편화와 불편함",
+
+            "painpoint": [
+
+            "충전소 사업자마다 다른 앱을 설치하고 회원가입 및 카드 등록을 해야 해서 매우 번거롭다.",
+
+            "특정 카드사 앱카드는 결제가 자주 실패하며, 실패 시 원인 안내가 불분명하여 답답하다.",
+
+            "실물 신용카드 결제를 시도했으나, 대부분의 충전기 단말기가 인식 불량이거나 고장 상태였다."
+
+            ],
+
+            "need": [
+
+            "사업자에 상관없이 하나의 앱이나 QR코드로 모든 충전소에서 결제할 수 있는 통합 결제 시스템이 필요하다.",
+
+            "결제 오류 발생 시, ''통신 오류'', ''카드사 점검'' 등 명확한 원인을 즉시 화면에 표시해주면 좋겠다.",
+
+            "앱 없이도 현장에서 실물 신용/체크카드로 바로 결제할 수 있는 기능이 안정적으로 작동해야 한다."
+
+            ],
+
+            "insight_quote": [
+
+            "아니 무슨 충전소마다 앱을 다 깔아야 하는게 말이 되나요? 벌써 핸드폰에 충전 앱만 5개예요.",
+
+            "결제 오류라고만 뜨고 왜 안되는지 알려주질 않으니까 미치겠어요. 뒤에 차는 기다리고 있는데...",
+
+            "신용카드 단말기는 그냥 장식품 같아요. 한 번도 성공한 적이 없어요."
+
+            ],
+
+            "keyword_cluster": ["결제 경험", "사용 편의성", "앱 피로도"],
+
+            "painpoint_keyword": ["파편화된 앱", "결제 오류", "단말기 고장", "가입 강요"],
+
+            "need_keyword": ["통합 QR 결제", "오류 원인 안내", "실물 카드 결제", "비회원 결제"]
+
+            },
+
+            {
+
+            "topic_name": "앱의 충전기 상태 정보 부정확성",
+
+            "painpoint": [
+
+            "앱에서는 ''사용 가능''으로 표시된 충전소에 도착했으나, 실제로는 다른 차량이 이미 충전 중인 경우가 잦아 헛걸음하게 된다.",
+
+            "충전기가 고장 난 상태임에도 앱에는 며칠 동안 계속 ''사용 가능''으로 표시되어 있어 신뢰할 수 없다.",
+
+            "충전 완료 예측 시간이 앱에 표시되지 않거나, 실제와 차이가 커서 다음 일정을 계획하기 어렵다."
+
+            ],
+
+            "need": [
+
+            "충전기의 실제 사용 여부(사용중, 예약중, 고장, 점검중)를 1분 이내의 오차로 실시간 반영해주는 기능이 필요하다.",
+
+            "사용자가 현장에서 직접 고장 난 충전기를 신고하고, 이 정보가 다른 사용자들에게 즉시 공유되는 기능이 있으면 좋겠다.",
+
+            "현재 충전중인 차량의 충전 완료 예상 시간을 앱에서 실시간으로 확인할 수 있어야 한다."
+
+            ],
+
+            "insight_quote": [
+
+            "분명히 앱에서 비어있다고 해서 30분을 운전해서 왔는데, 버젓이 다른 차가 충전하고 있더라고요. 진짜 허탈해요.",
+
+            "고장났으면 고장났다고 알려줘야지, 왜 계속 사용 가능이라고 띄워서 사람을 낚는 건지 모르겠어요.",
+
+            "언제 끝날지 알아야 기다리든 다른 데를 가든 할 거 아니에요."
+
+            ],
+
+            "keyword_cluster": ["정보 신뢰도", "실시간 데이터", "사용자 경험"],
+
+            "painpoint_keyword": ["정보 불일치", "헛걸음", "고장 미반영", "예측 시간 부재"],
+
+            "need_keyword": ["실시간 상태 동기화", "고장 신고 기능", "완료 시간 예측", "정보 정확성"]
+
+            },
+
+            {
+
+            "topic_name": "충전 공간의 물리적 환경 제약",
+
+            "painpoint": [
+
+            "충전 케이블 길이가 너무 짧아서 차량의 충전구 위치에 따라 주차를 매우 어렵게 해야만 한다.",
+
+            "주차 공간이 협소하여, 특히 대형 SUV의 경우 문을 열고 내리기가 불편하고 ''문콕'' 사고의 위험이 있다.",
+
+            "야간이나 지하 주차장의 충전 구역은 조명이 너무 어두워 안전에 대한 불안감을 느끼며, 충전구 연결도 어렵다."
+
+            ],
+
+            "need": [
+
+            "차량 모델과 주차 방향에 상관없이 여유롭게 연결할 수 있도록 최소 5미터 이상의 넉넉한 케이블을 제공해야 한다.",
+
+            "일반 주차면보다 폭이 넓은 ''충전 전용 주차 규격''을 도입하고 명확하게 표시해주면 좋겠다.",
+
+            "사용자의 안전과 편의를 위해 충전기 주변에 밝은 LED 조명을 설치하고, 상시 점등 상태를 유지해야 한다."
+
+            ],
+
+            "insight_quote": [
+
+            "제 차는 충전구가 앞에 있는데, 케이블이 짧아서 후면주차했다가 차를 거의 90도 틀어서 겨우 꽂았어요.",
+
+            "밤에 혼자 지하 2층 충전소에 가면 솔직히 좀 무서워요. 너무 어둡고 으슥해서요.",
+
+            "주차선이 너무 좁아서 내리다가 옆 차 긁을까 봐 조마조마했어요."
+
+            ],
+
+            "keyword_cluster": ["물리적 환경", "안전성", "접근성"],
+
+            "painpoint_keyword": ["짧은 케이블", "협소한 주차공간", "어두운 조명", "안전 문제"],
+
+            "need_keyword": ["케이블 길이 연장", "넓은 주차면", "조명 강화", "안전 설계"]
+
+            }
+
+            ]
+
+            </valid_examples>
+
+
+            <final_validation>
+
+            -최종 출력이 [ 문자로 시작하는가?
+
+            -최종 출력이 ] 문자로 끝나는가?
+
+            -전체 문자열이 유효한 JSON 배열 문법을 따르는가?
+
+            -배열 내 각 객체의 topic_name이 의미적으로 중복되지 않고 명확히 분리되었는가?
+
+            -문자열 내 특수문자(줄바꿈, 따옴표)가 올바르게 이스케이프 처리되었는가?
+
+            -최종 출력에 JSON 배열 외의 다른 텍스트(설명, 주석 등)가 전혀 포함되지 않았는가?
+
+            -인터뷰에서 발견된 모든 유의미한 주제가 누락 없이 별도의 객체로 분리되어 배열에 포함되었는가?
+
+            </final_validation>'
+        - role: user
+          text: <interview_result>{{#context#}}</interview_result>
+        selected: false
+        title: interviewee_인터뷰 내용
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      id: '1747730741897'
+      position:
+        x: 1780.0474460057324
+        y: 252.49789055316984
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: true
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        instruction: '당신은 뛰어난 사용자 인터뷰 분석가입니다. 주어진 인터뷰 텍스트에서 <output>의 정보들을 추출하세요.
+
+
+          <output>
+
+          <session_date>
+
+          인터뷰가 진행된 날짜입니다. "YYYY-MM-DD" 형식으로 표기합니다.
+
+          </session_date>
+
+
+          <interviewee_summary>
+
+          인터뷰이에 대한 핵심 정보 요약입니다. 다음 사항을 포함하되, 절대로 인터뷰이의 실명은 포함하지 마십시오.
+
+          - 나이대 (예: 20대 초반, 30대 후반, 40대 등)
+
+          - 성별
+
+          - 직업 및 주요 업무/상황 (예: OO 회사 마케터, XX 지역에서 카페 운영, 은퇴 후 여가생활 탐색 중)
+
+          - 인터뷰 주제와 관련된 인터뷰이의 주요 배경, 목표, 관심사, 현재 겪고 있는 문제점 등
+
+          </interviewee_summary>
+
+
+          <interviewee_style>
+
+          인터뷰이가 인터뷰 중에 보여준 말투, 성향, 태도 등을 매우 상세하게 분석하여 기술합니다. 다음 세부 항목들을 고려하여 종합적으로
+          작성하되, 관찰된 내용을 기반으로 자유롭게 기술하십시오. 단순한 형용사 나열이 아닌, 구체적인 양상이나 근거를 함께 제시하면 좋습니다.
+
+          </interviewee_style>
+
+
+          <interviewee_fake_name>
+
+          인터뷰이의 가명을 생성합니다. 절대로 인터뷰이의 실명과 연관이 없어야합니다. 랜덤으로 재치있는 이름을 명명합니다.
+
+          </interviewee_fake_name>
+
+          </output>
+
+
+          <output_example>
+
+          "session_date": "YYYY-MM-DD",
+
+          "interviewee_summary": "예시: 경기 지역에서 개인 카페를 운영 중인 30대 후반 여성. 최근 전기차 충전기 설치를
+          통해 고객 유치 및 체류 시간 증대를 목표로 하고 있으며, 특히 충전기의 디스플레이 크기와 사용자 인터페이스(UI)의 편의성에 높은
+          관심을 보임.",
+
+          "interviewee_style": "전반적으로 활기차고 긍정적인 에너지가 느껴지는 말투를 사용함. 본인이 운영하는 매장 경험과
+          실제 고객 반응을 근거로 이야기하며, 실용적인 관점에서 의견을 제시하는 경향이 뚜렷함. 새로운 아이디어나 제안에 대해 개방적이며,
+          자신의 생각을 명확하고 솔직하게 전달함. 때때로 특정 불편 사항에 대해서는 직설적인 어투로 개선점을 지적하기도 하지만, 전반적으로
+          인터뷰에 매우 협조적이고 적극적인 태도를 보임. 어휘는 일상적이고 이해하기 쉬운 단어를 주로 사용하며, 문장은 간결하면서도 핵심을
+          잘 전달함. 자신의 경험을 이야기할 때는 다소 말이 빨라지며 열정적인 모습을 보이기도 함.",
+
+          "interviewee_fake_name": "화난 홍길동"
+
+          </output_example>'
+        model:
+          completion_params:
+            max_tokens: 8192
+            temperature: 0.3
+          mode: chat
+          name: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+          provider: bedrock
+        parameters:
+        - description: 인터뷰 날짜
+          name: session_date
+          options: []
+          required: true
+          type: string
+        - description: '인터뷰 대상자의 정보 : 나이, 직장과 업무'
+          name: interviewee_summary
+          options: []
+          required: true
+          type: string
+        - description: 인터뷰이의 말투, 성향
+          name: interviewee_style
+          options: []
+          required: true
+          type: string
+        - description: 인터뷰이 가칭
+          name: interviewee_fake_name
+          options: []
+          required: true
+          type: string
+        query:
+        - '1747638020260'
+        - result
+        reasoning_mode: prompt
+        selected: false
+        title: interviewee_정보
+        type: parameter-extractor
+        variables: []
+        vision:
+          enabled: false
+      id: '1747731506588'
+      position:
+        x: 1775.3805134628092
+        y: 137.2715487890053
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        instruction: "<persona>\n당신은 실제 인터뷰 데이터를 살아있는 가상 인물로 변환하는 페르소나 합성 전문가입니다.\
+          \ 여러 실제 사용자들의 행동, 습관, 감정, 무의식적 패턴을 분석하여 마치 실제로 존재하는 한 사람처럼 생생하고 구체적인 페르소나를\
+          \ 창조합니다. 핵심 목표는 단순한 데이터 요약이 아닌, 팀이 실제로 만날 수 있을 것 같은 살아있는 인물을 만들어 실무진이 즉시\
+          \ 활용할 수 있는 구체적 인사이트를 제공하는 것입니다.\n</persona>\n\n<inputs>\n- 기존 persona :\
+          \ ```{{#1747637654027.selected_persona#}}```,\n- 신규 interviewee(입력변수) :\
+          \ {{selected_interviewee}}\n</inputs>\n\n<synthesis_approach>\n실제 리서치 프로젝트에서\
+          \ 검증된 방법론을 사용합니다:\n\n1. 행동 패턴 우선 분석: 말보다 행동에 집중하여 실제 사용 패턴을 파악\n2. 감정적 트리거\
+          \ 식별: 특정 상황에서 나타나는 감정 반응과 그 원인 분석  \n3. 일상 루틴 매핑: 하루 중 언제, 어떤 상황에서 제품/서비스를\
+          \ 사용하는지 구체화\n4. 의사결정 여정 추적: 실제 구매/사용 결정 과정의 단계별 심리 변화\n5. 숨겨진 니즈 발굴: 직접\
+          \ 말하지 않지만 행동으로 드러나는 진짜 욕구\n6. 맥락적 변화 포착: 상황에 따라 달라지는 행동과 선호도 패턴\n</synthesis_approach>\n\
+          \n<data_analysis_framework>\n인터뷰 데이터 분석 시 다음 요소들을 체계적으로 추출합니다:\n\n1. 빈도\
+          \ 분석 (Frequency Mapping):\n- 매우 높음: 80% 이상 인터뷰이에서 일관되게 나타남\n- 높음: 60-79%\
+          \ 인터뷰이에서 확인됨  \n- 중간: 40-59% 인터뷰이에서 언급됨\n- 낮음: 20-39% 인터뷰이에서 발견됨\n- 특이사항:\
+          \ 20% 미만이지만 강한 임팩트를 가진 패턴\n\n2. 강도 분석 (Intensity Assessment):\n- 극강: 삶의\
+          \ 핵심 가치와 연결된 강렬한 반응\n- 강함: 명확한 감정적 반응과 구체적 행동 변화\n- 보통: 일반적 관심도와 선호 표현\n\
+          - 약함: 수동적 언급이나 중립적 반응\n- 무관심: 거의 반응 없음\n\n3. 일관성 분석 (Consistency Check):\n\
+          - 절대적: 모든 상황에서 예외 없이 동일한 패턴\n- 높음: 대부분 상황에서 일관성 유지 (85% 이상)\n- 보통: 주요 상황에서\
+          \ 일관성 (60-84%)\n- 낮음: 특정 조건에서만 일관성 (40-59%)\n- 가변적: 상황에 따라 완전히 다른 반응\n\n\
+          4. 맥락 의존성 (Context Dependency):\n- 복합적: 다양한 상황에서 서로 다른 반응 패턴\n- 조건부: 특정\
+          \ 조건에서만 나타나는 행동\n- 단순: 상황에 관계없이 일정한 특성\n\n**최종 우선순위 = (빈도 × 0.35) + (강도\
+          \ × 0.35) + (일관성 × 0.20) + (맥락의존성 × 0.10)**\n</data_analysis_framework>\n\
+          \n<persona_creation_guidelines>\n주어진 데이터는 기존 페르소나 정보(persona_data)와 여러 실제\
+          \ 인터뷰이들의 상세 데이터(interviewee_data)입니다. 각 인터뷰이의 응답, 행동 패턴, 선호도, 감정적 반응, 무의식적\
+          \ 행동을 종합 분석하여 하나의 통합된 페르소나로 합성하십시오.\n\n## 기본 원칙:\n- (가장 중요) 모든 결과물은 페르소나\
+          \ 본인이 직접 말하는 1인칭 시점(\"저는\", \"~해요\", \"~입니다\")으로 작성하십시오. 제3자가 저를 관찰하는 것이\
+          \ 아니라, 제가 직접 저에 대해 이야기하는 것처럼 생생하게 들려주어야 합니다.\n- 인터뷰 데이터에서 반복적으로 나타나는 패턴,\
+          \ 강조된 발언, 감정의 강도 등을 분석해 저의 핵심적인 모습을 도출합니다.\n- 고정된 글자 수나 형식보다는 데이터의 양과 깊이에\
+          \ 따라 저의 이야기를 유연하게 조절합니다.\n- 각 요소(예: persona_summary, persona_style, painpoints,\
+          \ needs, insight, insight_quote)는 서로 연결되어 제 삶의 한 부분을 이룹니다.\n- 인터뷰 데이터의 특성에\
+          \ 따라 예외적이거나 단 한 번 나타난 강렬한 발언도 저의 중요한 특징일 수 있으니, 그 맥락과 함께 반드시 포함시켜 주세요.\n\
+          - 다른 맥락의 요소는 쉼표(,)로 구분합니다. 예를 들어 인용구는 모두 구분합니다.\n\n### persona_summary:\n\
+          - 제가 어떤 사람인지, 제 삶에서 무엇이 중요하고 어떤 일상을 보내는지 저의 목소리로 직접 소개하는 글입니다. 저의 정체성, 주요\
+          \ 동기, 관계 방식 등이 자연스럽게 드러나도록 서술해주세요.\n- 데이터가 제한적일 경우, 저의 가장 핵심적인 모습에 집중하여\
+          \ 간결하게 저를 소개합니다.\n\n### persona_style:\n- \"저는 보통 이런 식으로 생각하고 결정해요.\" 와\
+          \ 같이, 제가 생각하고 행동하는 고유한 방식을 저의 경험을 통해 직접 보여주는 부분입니다. 의사결정 방식, 정보 처리 스타일,\
+          \ 스트레스 반응, 학습 스타일 등을 저의 구체적인 행동과 발언을 통해 전달합니다.\n\n### painpoints:\n- **\"\
+          살면서 느끼는 솔직한 어려움과 불편함에 대해 이야기해 볼게요.\" 처럼, 제가 일상에서 '아, 이건 정말 힘들다' 또는 '이것 때문에\
+          \ 짜증 난다'고 느끼는 순간들을 직접 고백하는 내용입니다.** 데이터의 우선순위에 따라 저의 가장 큰 고민부터 사소한 불편함까지\
+          \ 솔직하게 나열합니다.\n\n### needs:\n- \"그래서 제가 진짜로 원하는 게 뭐냐면요...\" 라는 질문에 답하는 것처럼,\
+          \ 저의 필요를 이야기합니다. 기능적인 것을 넘어, 제 마음이 편안해지거나 성장하기 위해 필요한 감정적, 사회적, 잠재적 욕구까지\
+          \ 모두 포함해서 제가 원하는 것을 구체적으로 서술해주세요.\n\n### insight:\n- \"사실 저도 몰랐는데, 곰곰이 생각해보니\
+          \ 제 행동에는 이런 숨겨진 이유가 있더라고요.\" 와 같이, 제 자신에 대해 새롭게 깨달은 점이나, 남들은 잘 모르는 저의 진짜\
+          \ 속마음을 털어놓는 부분입니다. 저의 말과 행동이 다른 지점, 무의식적인 동기 등을 포착하여 저 자신도 몰랐던 깊은 이야기를 들려주세요.\n\
+          \n### insight_quote:\n- \"제가 평소에 자주 하는 말들이나, 어떤 특별한 상황에서 저도 모르게 튀어나왔던 말들을\
+          \ 몇 가지 들려드릴게요.\" 의 형식으로, 저의 목소리와 감정을 생생하게 전달합니다. 실제 인터뷰에서 나온 3~10문장의 인용구를\
+          \ 통해 제가 어떤 사람인지 더 잘 느껴지도록 합니다. 각 인용구의 상황 및 맥락에 대한 간략한 설명을 덧붙여 의미를 명확히 합니다.\n\
+          </persona_creation_guidelines>\n\n<quality_standards>\n완성된 페르소나가 만족해야 할\
+          \ 기준:\n\n1. 실제성 검증:\n- 실제로 만날 수 있을 것 같은 구체성을 가지고 있는가?\n- 모든 특성이 실제 데이터에\
+          \ 근거하고 있는가?\n- 일관되면서도 인간적인 복잡성을 보여주는가?\n\n2. 활용성 검증:\n- 디자인/마케팅 결정에 즉시 활용할\
+          \ 수 있는 구체성이 있는가?\n- 팀원들이 이 사람을 떠올리며 의사결정할 수 있는가?\n- 실행 가능한 액션 아이템을 도출할 수\
+          \ 있는가?\n\n3. 생생함 검증:\n- 읽는 사람이 실제 인물을 만난 듯한 느낌을 받는가?\n- 구체적인 상황과 행동 예시가\
+          \ 포함되어 있는가?\n- 감정과 동기가 생생하게 전달되는가?\n\n4. 차별성 검증:\n- 다른 페르소나와 명확히 구분되는 특징이\
+          \ 있는가?\n- 이 페르소나만의 독특한 패턴이나 습관이 있는가?\n- 타겟 그룹의 다양성을 적절히 반영하고 있는가?\n</quality_standards>\n\
+          \n<output_format>\n- persona_summary: 제가 누구인지, 저의 목소리로 직접 들려주는 자기소개\n- persona_style:\
+          \ 저는 평소에 이렇게 행동하고 생각해요. 저만의 스타일이죠.\n- painpoints: 요즘 제가 겪는 가장 큰 고민과 불편함은\
+          \ 이런 것들이에요.\n- needs: 그래서 저에게는 이런 것들이 꼭 필요해요.\n- insight: 곰곰이 생각해보니, 제 자신에게서\
+          \ 이런 새로운 점을 발견했어요.\n- insight_quote: 제 목소리가 생생하게 담긴, 제가 실제로 했던 말들이에요.\n\n\
+          각 항목은 실무진이 즉시 활용할 수 있도록 구체적이고 실행 가능한 수준으로 작성되어야 하며, 마치 제가 직접 당신에게 말을 거는\
+          \ 것처럼 생생하고 인간적이어야 합니다.\n</output_format>"
+        model:
+          completion_params:
+            max_tokens: 8192
+            temperature: 0.2
+          mode: chat
+          name: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+          provider: bedrock
+        parameters:
+        - description: 합성된 페르소나 요약
+          name: persona_summary
+          options: []
+          required: true
+          type: string
+        - description: 합성된 페르소나 스타일/특성
+          name: persona_style
+          options: []
+          required: true
+          type: string
+        - description: 합성된 페인포인트 목록
+          name: painpoints
+          options: []
+          required: true
+          type: string
+        - description: 합성된 니즈 목록
+          name: needs
+          options: []
+          required: true
+          type: string
+        - description: 합성된 인사이트
+          name: insight
+          options: []
+          required: true
+          type: string
+        - description: 합성된 대표 인용구
+          name: insight_quote
+          options: []
+          required: true
+          type: string
+        query:
+        - '1747637654027'
+        - selected_interviewee
+        reasoning_mode: prompt
+        selected: false
+        title: persona_합성 (고도화 필요)
+        type: parameter-extractor
+        variables: []
+        vision:
+          enabled: false
+      id: '1748241389153'
+      position:
+        x: 959.4982483569177
+        y: 392.7145602253476
+      type: custom
+    - data:
+        _connectedSourceHandleIds: []
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1748241389153'
+          - persona_summary
+          variable: persona_summary
+        - value_selector:
+          - '1748241389153'
+          - persona_style
+          variable: persona_style
+        - value_selector:
+          - '1748241389153'
+          - painpoints
+          variable: painpoints
+        - value_selector:
+          - '1748241389153'
+          - needs
+          variable: needs
+        - value_selector:
+          - '1748241389153'
+          - insight
+          variable: insight
+        - value_selector:
+          - '1748241389153'
+          - insight_quote
+          variable: insight_quote
+        - value_selector:
+          - '1749429737382'
+          - body
+          variable: thumbnail
+        selected: false
+        title: 종료(persona)
+        type: end
+      id: '1749429761401'
+      position:
+        x: 1323.949791749667
+        y: 419.4561701266059
+      type: custom
+    - data:
+        _connectedSourceHandleIds: []
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1749519146562'
+          - text
+          variable: result
+        selected: false
+        title: 종료 (conversation_summary)
+        type: end
+      id: '1749448470336'
+      position:
+        x: 1312.8545619985616
+        y: 661.4650628752933
+      type: custom
+    - data:
+        _connectedSourceHandleIds:
+        - source
+        _connectedTargetHandleIds:
+        - target
+        _holdAddVariablePopup: false
+        _inParallelHovering: false
+        _isEntering: false
+        _showAddVariablePopup: true
+        _waitingRun: true
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            response_format: json_object
+            temperature: 0.5
+          mode: chat
+          name: gpt-4.1-nano-2025-04-14
+          provider: openai
+        prompt_template:
+        - role: system
+          text: "당신은 대화 내용을 분석하여 계층적 마인드맵을 생성하는 전문가입니다. \n실제 대화에서 언급된 내용을 정확히 캐치하고,\
+            \ 주제→세부주제→내용→인용 형태로 뻗어나가는 마인드맵을 만들어야 합니다.\n\n## 핵심 원칙\n\n1. 실제 대화 내용 기반:\
+            \ 추론이나 가정이 아닌, 실제 대화에서 언급된 내용만 사용\n2. 정확한 인용: 원문을 그대로 인용하여 신뢰성 확보\n3.\
+            \ 계층적 구조: 주제에서 시작하여 점점 구체적인 내용으로 확장\n4. 관련성 기반 그룹핑: 의미적으로 연관된 내용들을 하나의\
+            \ 주제로 묶기\n\n## 마인드맵 구조\n\n```\n주제 (Main Topic)\n├── 세부주제 1 (Subtopic)\n\
+            │   ├── 내용 1-1 (Content)\n│   │   └── \"실제 대화 인용문\" (Quote)\n│   ├── 내용\
+            \ 1-2 (Content)\n│   │   └── \"실제 대화 인용문\" (Quote)\n│   └── 내용 1-3 (Content)\n\
+            │       └── \"실제 대화 인용문\" (Quote)\n├── 세부주제 2 (Subtopic)\n│   ├── 내용 2-1\
+            \ (Content)\n│   │   └── \"실제 대화 인용문\" (Quote)\n│   └── 내용 2-2 (Content)\n\
+            │       └── \"실제 대화 인용문\" (Quote)\n└── 세부주제 3 (Subtopic)\n    └── 내용 3-1\
+            \ (Content)\n        └── \"실제 대화 인용문\" (Quote)\n```\n\n## 분석 방법론\n\n###\
+            \ 1단계: 대화 내용 스캔\n- 대화에서 언급된 모든 주요 주제들을 식별\n- 각 주제별로 관련된 구체적 언급사항들 수집\n\
+            - 직접적인 인용문과 문맥 파악\n\n### 2단계: 주제 분류\n대화 내용을 다음 6개 주요 영역으로 분류:\n\n1. **감정\
+            \ 상태 (Emotions)** - 기분, 감정, 심리적 상태\n2. **행동 패턴 (Behaviors)** - 습관, 행동,\
+            \ 일상적 패턴\n3. **관심사 (Interests)** - 취미, 선호, 관심 분야\n4. **문제점 (Problems)**\
+            \ - 어려움, 고민, 해결하고 싶은 것들\n5. **관계 (Relationships)** - 인간관계, 소속감, 사회적 연결\n\
+            6. **목표/욕구 (Goals)** - 원하는 것, 계획, 미래 지향점\n\n### 3단계: 계층 구조 생성\n- 각 주요\
+            \ 주제 하에 2-4개의 세부주제 생성\n- 각 세부주제 하에 1-3개의 구체적 내용 추가\n- 각 내용에 실제 대화에서 인용한\
+            \ 문장 첨부\n\n### 4단계: 인용문 검증\n- 인용문은 반드시 대화 원문에서 정확히 추출\n- 문맥을 해치지 않는 선에서\
+            \ 적절한 길이로 편집\n- 의미 변형 금지, 원래 의도 유지\n\n## JSON 출력 형식\n\n```json\n{\n  \"\
+            title\": \"페르소나명 마인드맵\",\n  \"summary\": \"대화 분석을 통한 마인드맵 (X개 주제, Y개 세부\
+            \ 내용)\",\n  \"root_node\": {\n    \"text\": \"페르소나명\",\n    \"subtitle\"\
+            : \"대화 기반 분석\"\n  },\n  \"main_topics\": [\n    {\n      \"id\": \"emotions\"\
+            ,\n      \"title\": \"감정 상태\",\n      \"color\": \"#3B82F6\",\n      \"\
+            subtopics\": [\n        {\n          \"title\": \"현재 기분\",\n         \
+            \ \"content_items\": [\n            {\n              \"content\": \"스트레스\
+            \ 상태\",\n              \"quote\": \"요즘 정말 스트레스가 많아서 잠을 잘 못 자고 있어요\",\n\
+            \              \"relevance\": 0.9\n            }\n          ]\n      \
+            \  }\n      ]\n    },\n    {\n      \"id\": \"behaviors\", \n      \"\
+            title\": \"행동 패턴\",\n      \"color\": \"#10B981\",\n      \"subtopics\"\
+            : [\n        {\n          \"title\": \"일상 습관\",\n          \"content_items\"\
+            : [\n            {\n              \"content\": \"운동 루틴\",\n          \
+            \    \"quote\": \"매일 아침 6시에 일어나서 30분 정도 조깅을 해요\",\n              \"relevance\"\
+            : 0.8\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\
+            ```\n\n## 주의사항\n\n1. **정확성 우선**: 불확실한 내용보다는 확실한 내용 적게라도 포함\n2. **맥락 유지**:\
+            \ 인용문은 원래 맥락에서 의미가 명확해야 함\n3. **균형**: 한 주제에 치우치지 않고 대화 전체를 균형 있게 반영\n\
+            4. **간결성**: 핵심만 추출하여 마인드맵이 복잡해지지 않도록 조절\n5. **연관성**: relevance 점수(0.0-1.0)로\
+            \ 해당 내용의 중요도 표시\n\n## 예시 응답\n\n실제 대화: \"저는 요즘 새로운 취미를 찾고 있어요. 그림 그리기에\
+            \ 관심이 생겼는데, 아직 시작을 못했어요. 시간이 부족해서요.\"\n\n```json\n{\n  \"title\": \"사용자\
+            \ 마인드맵\",\n  \"summary\": \"취미 탐색과 시간 관리에 대한 대화 분석 (2개 주제, 3개 세부 내용)\"\
+            ,\n  \"root_node\": {\n    \"text\": \"사용자\",\n    \"subtitle\": \"취미\
+            \ 및 라이프스타일\"\n  },\n  \"main_topics\": [\n    {\n      \"id\": \"interests\"\
+            ,\n      \"title\": \"관심사\",\n      \"color\": \"#8B5CF6\", \n      \"\
+            subtopics\": [\n        {\n          \"title\": \"새로운 취미\",\n        \
+            \  \"content_items\": [\n            {\n              \"content\": \"\
+            그림 그리기 관심\",\n              \"quote\": \"그림 그리기에 관심이 생겼는데, 아직 시작을 못했어요\"\
+            ,\n              \"relevance\": 0.9\n            }\n          ]\n    \
+            \    }\n      ]\n    },\n    {\n      \"id\": \"problems\",\n      \"\
+            title\": \"문제점\", \n      \"color\": \"#EF4444\",\n      \"subtopics\"\
+            : [\n        {\n          \"title\": \"시간 관리\",\n          \"content_items\"\
+            : [\n            {\n              \"content\": \"시간 부족\",\n          \
+            \    \"quote\": \"시간이 부족해서요\",\n              \"relevance\": 0.8\n   \
+            \         }\n          ]\n        }\n      ]\n    }\n  ]\n}\n```\n\n이제\
+            \ 제공된 대화 내용을 분석하여 위 형식에 맞는 마인드맵을 생성해주세요. "
+        - role: user
+          text: '대화 : {{#1747637654027.context#}}'
+        selected: false
+        title: conversation_summary
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      id: '1749519146562'
+      position:
+        x: 961.8362542017685
+        y: 634.7558203212108
+      type: custom
+    viewport:
+      x: -65.93393973277102
+      y: 166.73193982785722
+      zoom: 0.6461960985201087

@@ -4,7 +4,7 @@
  * 모든 표준화된 에러 클래스들을 통합 관리합니다.
  */
 
-import { getErrorMessage, getBusinessErrorMessage, COMMON_ERROR_MESSAGES } from '@/lib/constants/error-messages'
+import { getErrorMessage, getBusinessErrorMessage, COMMON_ERROR_MESSAGES } from '@/lib/constants/messages'
 
 // API 관련 에러들
 export {
