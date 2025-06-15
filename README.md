@@ -4,9 +4,9 @@
 
 # 🎭 Persona Insight
 
-### **고객을 더 깊이 이해하는 AI 페르소나 분석 서비스**
+### **AI 기반 고객 페르소나 분석 플랫폼**
 
-*인터뷰 데이터를 지능형 페르소나로 변환하여 고객의 목소리를 생생하게 들어보세요*
+*인터뷰 데이터로 실제 고객의 목소리를 듣고 대화하세요*
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
@@ -22,160 +22,208 @@
 
 ---
 
-## 🌟 **왜 Persona Insight인가요?**
+## 🌟 **핵심 가치**
 
 > **"고객을 이해하는 것이 성공적인 제품의 시작입니다."**
 
-**Persona Insight**는 단순한 설문조사나 통계를 넘어서, **실제 고객의 목소리**를 AI를 통해 **살아있는 페르소나**를 만들어냅니다. 이제 가설이 아닌 **데이터에 기반한 고객 이해**로 더 나은 제품을 만들어보세요.
+**Persona Insight**는 인터뷰 데이터를 AI로 분석하여 **실제 고객의 목소리**를 담은 페르소나를 생성합니다. 가설이 아닌 **데이터 기반 고객 이해**로 더 나은 제품을 만드세요.
 
-### 🎯 **이런 분들께 완벽해요**
-- **💼 제품 기획자** - 사용자 니즈를 정확히 파악하고 싶은
-- **🎨 UX 디자이너** - 실제 사용자 관점에서 디자인하고 싶은  
-- **📊 리서처** - 인터뷰 데이터를 체계적으로 분석하고 싶은
+### 🎯 **적합한 사용자**
+- **💼 제품 기획자** - 정확한 사용자 니즈 파악
+- **🎨 UX 디자이너** - 실제 사용자 관점 반영  
+- **📊 리서처** - 체계적인 인터뷰 데이터 분석
 
 ---
 
-## 🚀 **3분만에 시작하기**
+## ✨ **주요 기능**
 
-### **📋 준비물 체크리스트**
-- [ ] Node.js 18+ 설치됨
-- [ ] pnpm 패키지 매니저 설치됨
-- [ ] Supabase 계정 보유
-- [ ] MISO API 액세스 권한
+<table>
+<tr>
+<td width="50%">
 
-### **⚡ 초고속 설치 가이드**
+### 🎤 **인터뷰 분석**
+- 음성/영상/텍스트 파일 자동 처리
+- MISO API 기반 AI 분석
+- 실시간 처리 상태 추적
+- 병렬 처리로 빠른 분석
+
+</td>
+<td width="50%">
+
+### 🎭 **페르소나 생성**
+- 인터뷰 데이터 기반 자동 생성
+- 2D 매트릭스 분류 시스템
+- 페인포인트 및 니즈 추출
+- AI 생성 썸네일 이미지
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 💬 **실시간 대화**
+- 페르소나와 자연스러운 대화
+- 스트리밍 응답 지원
+- 대화 히스토리 관리
+- 컨텍스트 유지 기능
+
+</td>
+<td width="50%">
+
+### 📊 **인사이트 대시보드**
+- 시간별 트렌드 분석
+- 토픽 자동 분류
+- 팀 협업 지원
+- 회사별 데이터 격리
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ **기술 스택**
+
+| 분야 | 기술 | 선택 이유 |
+|------|------|-----------|
+| **Frontend** | Next.js 15, React 19, TypeScript | 최신 기능과 타입 안전성 |
+| **UI/UX** | shadcn/ui, Radix UI, Framer Motion | 접근성과 애니메이션 |
+| **Backend** | Next.js API Routes, Supabase | 서버리스 확장성 |
+| **Database** | PostgreSQL (Supabase) | 관계형 DB 안정성 |
+| **AI** | MISO API, OpenAI API | 전문 AI 서비스 |
+| **State** | TanStack Query, Zustand | 효율적인 상태 관리 |
+
+---
+
+## 🚀 **빠른 시작**
+
+### **필수 요구사항**
+- Node.js 18+
+- pnpm
+- Supabase 계정
+- MISO API 액세스
+
+### **설치 및 실행**
 
 ```bash
-# 🚀 1단계: 프로젝트 클론 (30초)
+# 1. 프로젝트 클론
 git clone https://github.com/your-org/persona-insight.git
 cd persona-insight
 
-# 📦 2단계: 패키지 설치 (2분)
+# 2. 패키지 설치
 pnpm install
 
-# ⚙️ 3단계: 환경 설정 (30초)
+# 3. 환경 변수 설정
 cp .env.example .env.local
-# 아래 환경 변수들을 설정해주세요
+# .env.local 파일을 열어서 필요한 값들을 설정하세요
 
-# 🎉 4단계: 개발 서버 실행 (즉시)
+# 4. 개발 서버 실행
 pnpm dev
 ```
 
-### **🔧 환경 변수 설정하기**
-
-<details>
-<summary><strong>📝 환경 변수 상세 가이드 (클릭해서 펼치기)</strong></summary>
+### **환경 변수 설정**
 
 ```env
-# 🔹 Supabase 설정 (필수)
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# 🔹 MISO API 설정 (필수)
+# MISO API
 MISO_API_URL=https://api.holdings.miso.gs
-MISO_API_KEY=your-miso-api-key-here
+MISO_API_KEY=your-miso-api-key
 
-# 🔹 OpenAI 설정 (선택사항 - 추가 기능용)
+# OpenAI (선택사항)
 OPENAI_API_KEY=sk-proj-...
-
-# 🔹 기본 애플리케이션 설정
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-NODE_ENV=development
 ```
 
-**💡 팁:** 
-- Supabase 키는 [Supabase 대시보드](https://app.supabase.com) → 프로젝트 설정에서 확인
-- MISO API 키는 MISO 담당자에게 문의
-- 모든 키는 `.env.local` 파일에 안전하게 저장됩니다
-
-</details>
-
-### **✅ 설치 완료 확인하기**
-
-브라우저에서 `http://localhost:3000`에 접속하시면 아래와 같은 화면을 보실 수 있습니다:
-
-```
-🎉 Persona Insight에 오신 것을 환영합니다!
-👤 로그인/회원가입 버튼이 보이나요?
-🎭 로고와 네비게이션이 제대로 표시되나요?
-```
+**접속 확인**: `http://localhost:3000`에서 로그인 화면이 나타나면 성공!
 
 ---
 
-## 📁 **프로젝트 구조 한눈에 보기**
+## 📁 **프로젝트 구조**
 
 ```
 persona-insight/
-├── 📁 app/                    # 🎯 Next.js 15 App Router (메인 앱)
-│   ├── 📁 api/               # 🔌 RESTful API 엔드포인트
-│   │   ├── chat/             # 💬 실시간 페르소나 대화 API
-│   │   ├── personas/         # 🎭 페르소나 CRUD 및 AI 합성
-│   │   ├── interviews/       # 🎤 인터뷰 파일 업로드 및 분석
-│   │   ├── projects/         # 📋 프로젝트 및 팀 관리
-│   │   └── workflow/         # ⚙️ AI 처리 파이프라인
-│   ├── 📁 auth/              # 🔐 로그인/회원가입 페이지
-│   ├── 📁 chat/              # 💬 페르소나 채팅 인터페이스
-│   ├── 📁 projects/          # 📊 프로젝트 관리 대시보드
-│   └── 📁 insights/          # 📈 분석 및 인사이트 대시보드
+├── app/                      # Next.js 15 App Router
+│   ├── api/                  # API 엔드포인트
+│   │   ├── chat/             # 페르소나 대화
+│   │   ├── personas/         # 페르소나 관리
+│   │   ├── interviews/       # 인터뷰 처리
+│   │   ├── projects/         # 프로젝트 관리
+│   │   └── workflow/         # AI 처리 파이프라인
+│   ├── auth/                 # 인증 페이지
+│   ├── chat/                 # 채팅 인터페이스
+│   ├── projects/             # 프로젝트 대시보드
+│   └── insights/             # 인사이트 대시보드
 │
-├── 📁 components/            # 🧩 재사용 가능한 React 컴포넌트
-│   ├── auth/                 # 🔐 인증 관련 (로그인, 회원가입)
-│   ├── persona/              # 🎭 페르소나 카드, 스위처 등
-│   ├── project/              # 📋 프로젝트 관리 UI
-│   ├── chat/                 # 💬 채팅 메시지, 입력창 등
-│   ├── shared/               # 🔄 공통 컴포넌트 (네비게이션 등)
-│   └── ui/                   # 🎨 shadcn/ui 디자인 시스템
+├── components/               # React 컴포넌트
+│   ├── auth/                 # 인증 관련
+│   ├── persona/              # 페르소나 UI
+│   ├── project/              # 프로젝트 관리
+│   ├── chat/                 # 채팅 UI
+│   ├── shared/               # 공통 컴포넌트
+│   └── ui/                   # shadcn/ui 디자인 시스템
 │
-├── 📁 hooks/                 # 🪝 커스텀 React 훅 (비즈니스 로직)
-│   ├── use-auth.tsx          # 👤 사용자 인증 상태 관리
-│   ├── use-personas.ts       # 🎭 페르소나 데이터 관리
-│   ├── use-projects.ts       # 📋 프로젝트 데이터 관리
-│   └── use-workflow-queue.ts # ⚙️ AI 처리 큐 관리
+├── hooks/                    # 커스텀 React 훅
+│   ├── use-auth.tsx          # 인증 상태
+│   ├── use-personas.ts       # 페르소나 데이터
+│   ├── use-projects.ts       # 프로젝트 데이터
+│   └── use-workflow-queue.ts # 작업 큐 관리
 │
-├── 📁 lib/                   # 🛠️ 핵심 유틸리티 및 설정
-│   ├── api/                  # 🌐 API 클라이언트 함수들
-│   ├── constants/            # ⚙️ 앱 전역 상수 관리
-│   ├── errors/               # ❌ 에러 처리 시스템
-│   └── utils/                # 🔧 헬퍼 함수들
+├── lib/                      # 핵심 유틸리티
+│   ├── api/                  # API 클라이언트
+│   ├── constants/            # 상수 관리
+│   ├── errors/               # 에러 처리
+│   └── utils/                # 헬퍼 함수
 │
-├── 📁 types/                 # 📝 TypeScript 타입 정의
-│   ├── api.ts                # 🔌 API 요청/응답 타입
-│   ├── persona.ts            # 🎭 페르소나 관련 타입
-│   └── database.ts           # 🗄️ 데이터베이스 스키마 타입
-│
-└── 📁 docs/                  # 📚 프로젝트 문서
-    ├── api.md                # 🔌 API 사용법 가이드
-    ├── deployment.md         # 🚀 배포 가이드
-    └── 코드베이스_품질_보고서.md # 📊 코드 품질 분석
+└── types/                    # TypeScript 타입
+    ├── api.ts                # API 타입
+    ├── persona.ts            # 페르소나 타입
+    └── database.ts           # DB 스키마 타입
+```
+
+### **아키텍처 특징**
+- **도메인 중심 설계**: 기능별 명확한 분리
+- **컴포넌트 재사용성**: 일관된 디자인 시스템
+- **비즈니스 로직 분리**: 커스텀 훅 활용
+- **타입 안전성**: 포괄적인 TypeScript 지원
+
+---
+
+## 🛠️ **개발 명령어**
+
+```bash
+# 개발 서버
+pnpm dev
+
+# 빌드
+pnpm build
+
+# 프로덕션 서버
+pnpm start
+
+# 코드 검사
+pnpm lint
 ```
 
 ---
 
-## 🚀 **배포 가이드**
+## 🚀 **배포**
 
-### **☁️ Vercel 배포 (권장)**
-
+### **Vercel (권장)**
 ```bash
-# Vercel CLI 설치
 npm i -g vercel
-
-# 로그인 및 배포
 vercel login
-vercel
-
-# 프로덕션 배포
 vercel --prod
 ```
 
-**환경 변수 설정**: Vercel 대시보드에서 모든 필수 환경 변수를 설정해주세요.
+환경 변수는 Vercel 대시보드에서 설정하세요.
 
 ---
 
 <div align="center">
 
-## **🎭 Persona Insight와 함께 우리의 고객을 만나보세요!**
-
-### **❤️ Made with Love by MISO GS 52g **
+## **🎭 더 나은 고객 이해의 시작**
 
 *"고객을 이해하는 것에서 혁신이 시작됩니다."*
 
