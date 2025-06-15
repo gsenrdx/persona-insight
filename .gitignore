@@ -98,7 +98,12 @@ claude_desktop_config.json
 # Support folder (Claude temp files)
 /Support/
 
+# Claude project documentation (contains project context)
+CLAUDE.md
+claude_*.md
+
 # Documentation drafts/temp files in docs
 docs/miso_api_guide_agent,chatflow.md
 docs/miso_api_guide_agent.txt
 docs/지식API.txt
+docs/코드베이스_품질_*.md
