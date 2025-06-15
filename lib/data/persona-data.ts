@@ -44,16 +44,23 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
         
         return {
           id: persona.id,
-          name: persona.persona_title || persona.persona_description, // persona_title 우선, 없으면 persona_description
+          name: persona.persona_title || persona.persona_description,
           image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
-          keywords: [], // 키워드 비우기
-          insight: persona.insight_quote,
-          summary: persona.persona_description, // persona_description을 summary로 사용
+          keywords: [],
+          insight: persona.insight,
+          summary: persona.persona_description,
           painPoint: persona.painpoints,
           hiddenNeeds: persona.needs,
           persona_character: persona.persona_style,
           persona_type: persona.persona_type,
-          persona_description: persona.persona_description
+          persona_description: persona.persona_description,
+          // Chat API에서 필요한 정확한 필드명들 추가
+          persona_title: persona.persona_title,
+          persona_summary: persona.persona_summary,
+          persona_style: persona.persona_style,
+          painpoints: persona.painpoints,
+          needs: persona.needs,
+          insight_quote: persona.insight_quote
         }
       })
       .sort((a, b) => {
@@ -114,13 +121,20 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
       name: persona.persona_title || persona.persona_description,
       image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
       keywords: [],
-      insight: persona.insight_quote,
+      insight: persona.insight,
       summary: persona.persona_description,
       painPoint: persona.painpoints,
       hiddenNeeds: persona.needs,
       persona_character: persona.persona_style,
       persona_type: persona.persona_type,
-      persona_description: persona.persona_description
+      persona_description: persona.persona_description,
+      // Chat API에서 필요한 정확한 필드명들 추가
+      persona_title: persona.persona_title,
+      persona_summary: persona.persona_summary,
+      persona_style: persona.persona_style,
+      painpoints: persona.painpoints,
+      needs: persona.needs,
+      insight_quote: persona.insight_quote
     }
   } catch (error) {
     console.error("Error fetching persona by ID:", error)
@@ -185,4 +199,11 @@ export interface PersonaCardData {
   persona_character: string
   persona_type: string
   persona_description: string
+  // Chat API에서 필요한 추가 필드들 (nullable)
+  persona_title?: string | null
+  persona_summary?: string | null
+  persona_style?: string | null
+  painpoints?: string | null
+  needs?: string | null
+  insight_quote?: string | null
 } 

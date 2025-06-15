@@ -23,6 +23,13 @@ interface PersonaForPage {
   painPoint?: string;
   hiddenNeeds?: string;
   persona_character?: string;
+  // Chat API에서 필요한 추가 필드들
+  persona_title?: string;
+  persona_summary?: string;
+  persona_style?: string;
+  painpoints?: string;
+  needs?: string;
+  insight_quote?: string;
 }
 
 interface ChatPageProps {
@@ -182,7 +189,7 @@ export default function ChatPage({ params }: ChatPageProps) {
             <div className="relative h-full flex justify-between items-center p-3 sm:p-4 md:p-5">
               <div className="flex-1 pr-2 sm:pr-3 md:pr-4 z-10">
                 <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1">
-                  {persona.name}
+                  {persona.persona_title || persona.name}
                 </h2>
                 {persona.summary && (
                   <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
@@ -192,8 +199,8 @@ export default function ChatPage({ params }: ChatPageProps) {
               </div>
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 relative flex-shrink-0">
                 <Image
-                  src={persona.image || `/placeholder.svg?height=256&width=256&text=${encodeURIComponent(persona.name)}`}
-                  alt={persona.name}
+                  src={persona.image || `/placeholder.svg?height=256&width=256&text=${encodeURIComponent(persona.persona_title || persona.name)}`}
+                  alt={persona.persona_title || persona.name}
                   width={96}
                   height={96}
                   className="object-contain w-full h-full select-none drop-shadow-md"
@@ -208,31 +215,31 @@ export default function ChatPage({ params }: ChatPageProps) {
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-6">
               {/* 성격 및 말투 - 토스 스타일 적용 */}
-              {persona.persona_character && (
+              {(persona.persona_style || persona.persona_character) && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
                     "본인에 대해서 설명해주세요"
                   </h3>
                   <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    {persona.persona_character}
+                    {persona.persona_style || persona.persona_character}
                   </div>
                 </div>
               )}
 
               {/* 페인 포인트 - 토스 스타일 적용 */}
-              {persona.painPoint && (
+              {(persona.painpoints || persona.painPoint) && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
                     "고민이 있으신가요?"
                   </h3>
                   <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
-                    {persona.painPoint}
+                    {persona.painpoints || persona.painPoint}
                   </div>
                 </div>
               )}
 
               {/* 인사이트와 숨겨진 니즈 통합 섹션 */}
-              {(persona.insight || persona.hiddenNeeds) && (
+              {(persona.insight || persona.needs || persona.hiddenNeeds) && (
                 <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
                   <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
                     "어떤게 필요하세요?"
@@ -243,9 +250,9 @@ export default function ChatPage({ params }: ChatPageProps) {
                         <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.insight}
                       </div>
                     )}
-                    {persona.hiddenNeeds && (
+                    {(persona.needs || persona.hiddenNeeds) && (
                       <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.hiddenNeeds}
+                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.needs || persona.hiddenNeeds}
                       </div>
                     )}
                   </div>

@@ -17,6 +17,19 @@ export async function POST(req: NextRequest) {
 
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
+  // 요청 데이터 로깅
+  console.log('Chat API Request:', {
+    lastUser,
+    personaData: {
+      persona_title: personaData.persona_title || personaData.name || '',
+      persona_summary: personaData.persona_summary || personaData.summary || '',
+      persona_style: personaData.persona_style || personaData.persona_character || '',
+      painpoints: personaData.painpoints || personaData.painPoint || '',
+      needs: personaData.needs || personaData.hiddenNeeds || '',
+      insight: personaData.insight || '',
+      insight_quote: personaData.insight_quote || ''
+    }
+  })
 
   // MISO API 호출
   const upstream = await fetch(
@@ -30,13 +43,13 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         query: lastUser,
         inputs: {
-          selected_mode: "persona_chat",
-          name: personaData.name,
-          summary: personaData.summary,
-          insight: personaData.insight,
-          painPoint: personaData.painPoint,
-          hiddenNeeds: personaData.hiddenNeeds,
-          persona_character: personaData.persona_character
+          persona_title: personaData.persona_title || personaData.name || '',
+          persona_summary: personaData.persona_summary || personaData.summary || '',
+          persona_style: personaData.persona_style || personaData.persona_character || '',
+          painpoints: personaData.painpoints || personaData.painPoint || '',
+          needs: personaData.needs || personaData.hiddenNeeds || '',
+          insight: personaData.insight || '',
+          insight_quote: personaData.insight_quote || ''
         },
         mode: 'streaming',
         conversation_id: clientConversationId || '',
@@ -48,7 +61,12 @@ export async function POST(req: NextRequest) {
 
   if (!upstream.ok || !upstream.body) {
     const err = await upstream.text().catch(() => '')
-    return new Response('외부 API 오류', { status: 500 })
+    console.error('MISO API Error:', {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      error: err
+    })
+    return new Response(`외부 API 오류: ${upstream.status} ${err}`, { status: 500 })
   }
 
   // MISO API 가이드에 따른 직접 스트림 전달

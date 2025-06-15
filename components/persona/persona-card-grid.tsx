@@ -46,13 +46,20 @@ export default function PersonaCardGrid() {
         name: persona.persona_title || persona.persona_description,
         image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
         keywords: [], // 키워드는 비워둠
-        insight: persona.insight_quote,
+        insight: persona.insight,
         summary: persona.persona_description,
         painPoint: persona.painpoints,
         hiddenNeeds: persona.needs,
         persona_character: persona.persona_style,
         persona_type: persona.persona_type,
-        persona_description: persona.persona_description
+        persona_description: persona.persona_description,
+        // Chat API에서 필요한 추가 필드들
+        persona_title: persona.persona_title,
+        persona_summary: persona.persona_summary,
+        persona_style: persona.persona_style,
+        painpoints: persona.painpoints,
+        needs: persona.needs,
+        insight_quote: persona.insight_quote
       }
     }).sort((a, b) => a.persona_type.localeCompare(b.persona_type))
   }, [rawPersonas])

@@ -96,11 +96,11 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       {
         id: "1",
         role: "assistant" as const,
-        content: `안녕하세요! 저는 ${personaData.name}입니다. 무엇을 도와드릴까요?`,
+        content: `안녕하세요! 저는 ${personaData.persona_title || personaData.name}입니다. 무엇을 도와드릴까요?`,
         createdAt: new Date(),
       }
     ]);
-  }, [personaData.name]);
+  }, [personaData.persona_title, personaData.name]);
 
 
   const scrollToBottom = useCallback(() => {
@@ -296,13 +296,13 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         body: JSON.stringify({
           messages: apiMessages,
           personaData: {
-            name: personaData.name,
-            insight: personaData.insight,
-            painPoint: personaData.painPoint,
-            hiddenNeeds: personaData.hiddenNeeds,
-            keywords: personaData.keywords || [],
-            summary: personaData.summary || "",
-            persona_character: personaData.persona_character || ""
+            persona_title: personaData.persona_title || personaData.name || '',
+            persona_summary: personaData.persona_summary || personaData.summary || '',
+            persona_style: personaData.persona_style || personaData.persona_character || '',
+            painpoints: personaData.painpoints || personaData.painPoint || '',
+            needs: personaData.needs || personaData.hiddenNeeds || '',
+            insight: personaData.insight || '',
+            insight_quote: personaData.insight_quote || ''
           },
           conversationId: misoConversationId
         }),
