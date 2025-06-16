@@ -67,6 +67,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const isUsingToolRef = useRef<boolean>(false)
+  const hasGreetedRef = useRef<boolean>(false) // 인사 실행 여부 추적
   const [isClient, setIsClient] = useState(false)
   const [misoConversationId, setMisoConversationId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<Message[]>([])
@@ -92,17 +93,28 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     }
   }, [])
 
-  // 초기 메시지 설정
+  // 초기 자동 인사 메시지 전송
   useEffect(() => {
-    setChatMessages([
-      {
-        id: "1",
-        role: "assistant" as const,
-        content: `안녕하세요! 저는 ${personaData.persona_title || personaData.name}입니다. 무엇을 도와드릴까요?`,
+    // 초기 로딩 시 한 번만 실행
+    if (!hasGreetedRef.current && personaData && personaData.name) {
+      hasGreetedRef.current = true;
+      
+      // 사용자 인사 메시지 추가
+      const greetingMessage: Message = {
+        id: "greeting-user",
+        role: "user" as const,
+        content: "안녕하세요!",
         createdAt: new Date(),
-      }
-    ]);
-  }, [personaData.persona_title, personaData.name]);
+      };
+      
+      setChatMessages([greetingMessage]);
+      
+      // 약간의 지연 후 자동으로 인사 메시지 전송
+      setTimeout(() => {
+        handleAutoGreeting();
+      }, 800);
+    }
+  }, [personaData]); // personaData만 의존성으로 설정
 
 
   const scrollToBottom = useCallback(() => {
@@ -137,6 +149,75 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const cancelReply = useCallback(() => {
     setReplyingTo(null);
   }, []);
+
+  // 자동 인사 메시지 전송 함수
+  const handleAutoGreeting = async () => {
+    const greetingUserMessage: Message = {
+      id: "greeting-user",
+      role: "user",
+      content: "안녕하세요!",
+      createdAt: new Date(),
+    };
+
+    setLoading(true);
+    setIsStreaming(false);
+    setShowLoadingMsg(true);
+    isUsingToolRef.current = false;
+    setIsUsingTool(false);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [greetingUserMessage],
+          personaData: {
+            persona_title: personaData.persona_title || personaData.name || '',
+            persona_summary: personaData.persona_summary || personaData.summary || '',
+            persona_style: personaData.persona_style || personaData.persona_character || '',
+            painpoints: personaData.painpoints || personaData.painPoint || '',
+            needs: personaData.needs || personaData.hiddenNeeds || '',
+            insight: personaData.insight || '',
+            insight_quote: personaData.insight_quote || ''
+          },
+          conversationId: null
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // MISO 스트리밍 처리
+      await processMisoStreaming(response);
+
+    } catch (error) {
+      setShowLoadingMsg(false);
+      
+      // 오류 메시지 추가
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
+          createdAt: new Date(),
+        }
+      ]);
+    } finally {
+      setLoading(false);
+      setIsStreaming(false);
+      isUsingToolRef.current = false;
+      setIsUsingTool(false);
+      
+      setTimeout(() => {
+        scrollToBottom();
+        focusInput();
+      }, 200);
+    }
+  };
 
 
 
