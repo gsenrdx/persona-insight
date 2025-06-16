@@ -3,9 +3,9 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { useChat, type Message } from "ai/react"
 import Image from "next/image"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2, Brain } from "lucide-react"
+import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2, ArrowUp, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { SummaryModal } from "@/components/chat/summary"
@@ -65,7 +65,7 @@ interface ExtendedMessage extends Message {
 
 export default function ChatInterface({ personaId, personaData }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const isUsingToolRef = useRef<boolean>(false)
   const hasGreetedRef = useRef<boolean>(false) // 인사 실행 여부 추적
   const [isClient, setIsClient] = useState(false)
@@ -639,8 +639,8 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         }
       `}</style>
       
-      <div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-zinc-50 dark:bg-zinc-900 custom-scrollbar">
-        <div className="max-w-3xl mx-auto space-y-4">
+      <div className="flex-1 overflow-y-auto py-6 px-4 md:px-6 bg-transparent custom-scrollbar">
+        <div className="max-w-3xl mx-auto space-y-6">
           <AnimatePresence initial={false}>
             {chatMessages.map((message, index) => {
               // 꼬리질문으로 답변한 메시지인지 확인
@@ -655,12 +655,12 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-6`}
                 >
                   <div 
                     className={`
-                      flex max-w-[90%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"} 
-                      items-end gap-2
+                      flex max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"} 
+                      items-end gap-3
                     `}
                   >
                     {message.role === "assistant" && (
@@ -684,19 +684,22 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                     
                     <div
                       className={`
-                        group relative px-4 py-3 rounded-md text-sm 
+                        group relative px-4 py-4 rounded-xl text-[15px] 
                         ${message.role === "user" 
-                          ? "bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-sm dark:bg-indigo-900/20 dark:text-indigo-100 dark:border-indigo-800/40" 
-                          : "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+                          ? "bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800/50" 
+                          : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700"
                         }
                       `}
                     >
-                      {/* 꼬리질문 배지 */}
+                      {/* 꼬리질문 배지 - 깔끔한 디자인 */}
                       {sourceMessage && message.role === "user" && (
-                        <div className="mb-2 text-xs text-indigo-500 dark:text-indigo-300 p-2 bg-indigo-50/70 dark:bg-indigo-900/20 rounded-md border border-indigo-100 dark:border-indigo-800/30">
-                          <p className="italic font-medium mb-1">* 아래 답변에 대한 꼬리 질문입니다</p>
-                          <div className="pl-2 border-l-2 border-indigo-300 dark:border-indigo-600 py-1">
-                            <span className="line-clamp-2 text-zinc-600 dark:text-zinc-300">
+                        <div className="mb-3 text-xs text-blue-600 dark:text-blue-300 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800/40">
+                          <p className="italic font-medium mb-2 flex items-center gap-1.5">
+                            <div className="w-1 h-3 bg-blue-500 rounded-full"></div>
+                            답변에 대한 추가 질문
+                          </p>
+                          <div className="pl-3 border-l-2 border-blue-300 dark:border-blue-600 py-1">
+                            <span className="line-clamp-2 text-zinc-600 dark:text-zinc-300 leading-relaxed">
                               {sourceMessage.content}
                             </span>
                           </div>
@@ -734,23 +737,23 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                         </p>
                       </div>
                       
-                      {/* 메시지 액션 버튼 - 어시스턴트 메시지에만 표시 */}
+                      {/* 메시지 액션 버튼 - 깔끔한 디자인 */}
                       {message.role === "assistant" && (
-                        <div className="message-actions absolute -right-[90px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5">
+                        <div className="message-actions absolute -right-[90px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col gap-2">
                           <button 
                             onClick={() => handleCopyMessage(message.id, message.content)}
-                            className="text-xs px-3 py-1.5 rounded-sm bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors"
+                            className="text-xs px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
                           >
                             <Copy className="h-3 w-3" />
-                            <span>{isCopied === message.id ? "복사됨" : "복사"}</span>
+                            <span className="font-medium">{isCopied === message.id ? "복사됨" : "복사"}</span>
                           </button>
                           
                           <button 
                             onClick={() => handleReplyMessage(message)}
-                            className="text-xs px-3 py-1.5 rounded-sm bg-white dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors"
+                            className="text-xs px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
                           >
                             <MessageSquareMore className="h-3 w-3" />
-                            <span>꼬리질문</span>
+                            <span className="font-medium">꼬리질문</span>
                           </button>
                         </div>
                       )}
@@ -786,7 +789,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                     </div>
                   )}
                 </div>
-                <div className="px-4 py-3 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                <div className="px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
                   <div className="loading-dots">
                     <div></div>
                     <div></div>
@@ -801,8 +804,8 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
         </div>
       </div>
 
-      <div className="flex-shrink-0 border-t border-zinc-200 dark:border-zinc-800 p-4 bg-white dark:bg-zinc-950">
-        {/* 꼬리질문 중인 메시지 표시 */}
+      <div className="flex-shrink-0 p-6 bg-transparent">
+        {/* 꼬리질문 중인 메시지 표시 - 개선된 디자인 */}
         <AnimatePresence>
           {replyingTo && (
             <motion.div 
@@ -810,11 +813,11 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="max-w-3xl mx-auto mb-2"
+              className="max-w-3xl mx-auto mb-3"
             >
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800/40 rounded-md p-2 pr-8 flex items-center relative overflow-hidden">
-                <div className="flex-shrink-0 w-1 h-full max-h-6 bg-indigo-400 mr-2 rounded-full"></div>
-                <div className="text-xs text-indigo-800 dark:text-indigo-200 font-medium truncate">
+              <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/60 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/50 rounded-lg p-3 pr-10 flex items-center relative overflow-hidden backdrop-blur-sm">
+                <div className="flex-shrink-0 w-1 h-6 bg-blue-400 mr-3 rounded-full"></div>
+                <div className="text-xs text-blue-800 dark:text-blue-200 font-medium truncate">
                   {replyingTo.content.substring(0, 100)}
                   {replyingTo.content.length > 100 ? '...' : ''}
                 </div>
@@ -822,9 +825,9 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                   size="icon" 
                   variant="ghost" 
                   onClick={cancelReply}
-                  className="h-5 w-5 rounded-full absolute right-1 top-1/2 transform -translate-y-1/2 hover:bg-indigo-200 dark:hover:bg-indigo-800/40"
+                  className="h-6 w-6 rounded-full absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-blue-200/80 dark:hover:bg-blue-800/50 transition-colors"
                 >
-                  <X className="h-3 w-3 text-indigo-500 dark:text-indigo-300" />
+                  <X className="h-3 w-3 text-blue-500 dark:text-blue-300" />
                   <span className="sr-only">취소</span>
                 </Button>
               </div>
@@ -832,31 +835,45 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
           )}
         </AnimatePresence>
 
-        <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto relative">
-          <div className="relative flex items-center">
-            <Input
-              ref={inputRef}
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
-              disabled={loading}
-              className="pr-14 py-3 h-12 rounded-md bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent placeholder:text-zinc-400 dark:placeholder:text-zinc-500 shadow-sm transition-all"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (userInput.trim() && !loading) {
-                    handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+        <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-3 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all duration-200">
+            <div className="flex-1 relative">
+              <Textarea
+                ref={inputRef}
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
+                disabled={loading}
+                rows={1}
+                className="w-full min-h-[40px] max-h-[200px] resize-none p-0 bg-transparent border-none outline-none focus:ring-0 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100 text-[15px] leading-relaxed"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (userInput.trim() && !loading) {
+                      handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+                    }
                   }
-                }
-              }}
-            />
+                }}
+                style={{
+                  height: 'auto',
+                  minHeight: '40px',
+                  border: 'none',
+                  boxShadow: 'none'
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+                }}
+              />
+            </div>
             <Button 
               type="submit" 
               size="icon"
               disabled={loading || !userInput.trim()}
-              className="absolute right-1 h-10 w-10 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm disabled:bg-indigo-400 disabled:shadow-none transition-all focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+              className="h-10 w-10 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 transition-all duration-200 flex-shrink-0 border-0 outline-none focus:ring-0"
             >
-              <Send className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4" />
               <span className="sr-only">전송</span>
             </Button>
           </div>
@@ -877,11 +894,11 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               onClick={handleGenerateSummary}
               disabled={isGeneratingSummary || chatMessages.length <= 1}
               className={`
-                px-4 py-2 h-10 rounded-lg bg-blue-600 
-                hover:bg-blue-700 text-white text-sm font-medium shadow-md 
-                border-0 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
-                transition-colors duration-200
-                ${isGeneratingSummary || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed' : ''}
+                px-4 py-2.5 h-11 rounded-xl bg-blue-500 hover:bg-blue-600 
+                text-white text-sm font-medium shadow-lg 
+                border-0 focus:ring-2 focus:ring-blue-400/50 focus:ring-offset-2
+                transition-all duration-200
+                ${isGeneratingSummary || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed bg-blue-400' : ''}
               `}
             >
               {isGeneratingSummary ? (
@@ -891,7 +908,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                 </>
               ) : (
                 <>
-                  <FileText className="h-4 w-4 mr-2" />
+                  <Sparkles className="h-4 w-4 mr-2" />
                   AI 요약
                 </>
               )}

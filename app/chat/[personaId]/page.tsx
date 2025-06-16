@@ -156,34 +156,34 @@ export default function ChatPage({ params }: ChatPageProps) {
       
       {/* 콘텐츠 영역 - 최적화된 레이아웃 구조 */}
       <div className="flex flex-1 h-full overflow-hidden">
-        {/* 사이드바 - 토스 스타일 디자인, 모바일에서 토글 가능 */}
+        {/* 사이드바 - 개선된 모던 디자인 */}
         <aside className={`
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
           fixed md:relative md:w-80 lg:w-96 z-30 md:z-auto
           h-[calc(100dvh-57px)] md:h-full w-[85%] max-w-xs
-          bg-white dark:bg-zinc-950 flex flex-col shadow-sm md:shadow-none
-          border-r border-zinc-200 dark:border-zinc-800 
-          overflow-hidden transition-transform duration-300
+          bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm flex flex-col shadow-lg md:shadow-none
+          border-r border-zinc-200/50 dark:border-zinc-800/50 
+          overflow-hidden transition-all duration-300 ease-in-out
         `}>
-          {/* 상단 헤더 - 깔끔한 네비게이션 (데스크톱 전용) */}
-          <div className="hidden md:flex shrink-0 items-center p-4 border-b border-zinc-100 dark:border-zinc-800 h-16">
+          {/* 상단 헤더 - 최소화된 네비게이션 */}
+          <div className="hidden md:flex shrink-0 items-center justify-between p-4 border-b border-zinc-100/80 dark:border-zinc-800/80 h-14">
             <Link href="/" className="inline-flex">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="gap-1.5 text-zinc-800 dark:text-zinc-200 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all duration-200 rounded-lg"
               >
                 <Home className="h-4 w-4" />
-                <span className="text-sm">돌아가기</span>
+                <span className="text-sm">홈</span>
               </Button>
             </Link>
           </div>
           
-          {/* 페르소나 프로필 섹션 - 페르소나 정보만 표시 */}
-          <div className="shrink-0 h-32 sm:h-36 md:h-40 relative border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-            <div className="relative h-full flex justify-between items-center p-3 sm:p-4 md:p-5">
-              <div className="flex-1 pr-2 sm:pr-3 md:pr-4 z-10">
-                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1">
+          {/* 페르소나 프로필 섹션 - 원래 디자인 + 여백 개선 */}
+          <div className="shrink-0 h-36 sm:h-40 md:h-44 relative border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+            <div className="relative h-full flex justify-between items-center p-4 sm:p-5 md:p-6">
+              <div className="flex-1 pr-3 sm:pr-4 md:pr-5 z-10">
+                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1.5">
                   {persona.persona_title || persona.name}
                 </h2>
                 {persona.summary && (
@@ -206,65 +206,69 @@ export default function ChatPage({ params }: ChatPageProps) {
             </div>
           </div>
 
-          {/* 스크롤 가능한 정보 영역 - 토스 스타일 적용 */}
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-            <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-6">
-              {/* 성격 및 말투 - 토스 스타일 적용 */}
+          {/* 스크롤 가능한 정보 영역 - 개선된 디자인 */}
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent">
+            <div className="px-5 py-4 space-y-5">
+              {/* 성격 및 말투 - 모던 카드 스타일 */}
               {(persona.persona_style || persona.persona_character) && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    "본인에 대해서 설명해주세요"
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                    성격 & 특징
                   </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/30 dark:to-indigo-950/20 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
                     {persona.persona_style || persona.persona_character}
                   </div>
                 </div>
               )}
 
-              {/* 페인 포인트 - 토스 스타일 적용 */}
+              {/* 페인 포인트 - 개선된 스타일 */}
               {(persona.painpoints || persona.painPoint) && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    "고민이 있으신가요?"
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-rose-500 rounded-full"></div>
+                    고민 & 어려움
                   </h3>
-                  <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                  <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-rose-50/50 to-pink-50/30 dark:from-rose-950/30 dark:to-pink-950/20 rounded-xl border border-rose-100/50 dark:border-rose-900/30">
                     {persona.painpoints || persona.painPoint}
                   </div>
                 </div>
               )}
 
-              {/* 인사이트와 숨겨진 니즈 통합 섹션 */}
+              {/* 인사이트와 니즈 - 통합된 섹션 */}
               {(persona.insight || persona.needs || persona.hiddenNeeds) && (
-                <div className="pb-4 sm:pb-5 border-b border-zinc-100 dark:border-zinc-800">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                    "어떤게 필요하세요?"
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
+                    니즈 & 인사이트
                   </h3>
                   <div className="space-y-3">
                     {persona.insight && (
-                      <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.insight}
+                      <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/30 dark:to-teal-950/20 rounded-xl border border-emerald-100/50 dark:border-emerald-900/30">
+                        {persona.insight}
                       </div>
                     )}
                     {(persona.needs || persona.hiddenNeeds) && (
-                      <div className="text-xs sm:text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 py-2.5 sm:py-3 px-3 sm:px-4 bg-sky-50 dark:bg-sky-950/20 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                        <span className="font-medium text-zinc-600 dark:text-zinc-400"></span> {persona.needs || persona.hiddenNeeds}
+                      <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/30 dark:to-teal-950/20 rounded-xl border border-emerald-100/50 dark:border-emerald-900/30">
+                        {persona.needs || persona.hiddenNeeds}
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* 키워드 섹션 - 토스 스타일 적용 */}
+              {/* 키워드 섹션 - 개선된 태그 디자인 */}
               {(persona.keywords || []).length > 0 && (
-                <div className="pb-0 sm:pb-4">
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
                     키워드
                   </h3>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {(persona.keywords || []).map((keyword, index) => (
                       <Badge 
                         key={index} 
-                        className="text-[10px] sm:text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1"
+                        className="text-xs font-medium bg-gradient-to-r from-zinc-100 to-zinc-50 hover:from-zinc-200 hover:to-zinc-100 text-zinc-700 dark:from-zinc-800 dark:to-zinc-700 dark:hover:from-zinc-700 dark:hover:to-zinc-600 dark:text-zinc-200 rounded-lg px-3 py-1.5 border border-zinc-200/50 dark:border-zinc-700/50 transition-all duration-200"
                       >
                         {keyword}
                       </Badge>
@@ -275,8 +279,8 @@ export default function ChatPage({ params }: ChatPageProps) {
             </div>
           </div>
 
-          {/* 페르소나 선택 - 통합된 컴포넌트 사용 */}
-          <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-3 sm:p-4">
+          {/* 페르소나 선택 - 개선된 디자인 */}
+          <div className="shrink-0 border-t border-zinc-100/80 dark:border-zinc-800/80 bg-gradient-to-t from-zinc-50/80 to-transparent dark:from-zinc-900/80 dark:to-transparent p-4">
             <PersonaSwitcher 
               currentPersona={persona} 
               allPersonas={allPersonas} 
