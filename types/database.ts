@@ -44,11 +44,14 @@ export type Database = {
           company_id: string
           created_at: string | null
           created_by: string | null
+          file_path: string | null
           id: string
           interview_detail: Json | null
           interviewee_fake_name: string | null
           interviewee_style: string | null
           interviewee_summary: string | null
+          persona_id: string | null
+          persona_reflected: boolean | null
           project_id: string | null
           session_date: string
           thumbnail: string | null
@@ -62,11 +65,14 @@ export type Database = {
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          file_path?: string | null
           id?: string
           interview_detail?: Json | null
           interviewee_fake_name?: string | null
           interviewee_style?: string | null
           interviewee_summary?: string | null
+          persona_id?: string | null
+          persona_reflected?: boolean | null
           project_id?: string | null
           session_date: string
           thumbnail?: string | null
@@ -80,11 +86,14 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          file_path?: string | null
           id?: string
           interview_detail?: Json | null
           interviewee_fake_name?: string | null
           interviewee_style?: string | null
           interviewee_summary?: string | null
+          persona_id?: string | null
+          persona_reflected?: boolean | null
           project_id?: string | null
           session_date?: string
           thumbnail?: string | null
@@ -107,6 +116,57 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      persona_topic_documents: {
+        Row: {
+          id: string
+          persona_id: string
+          topic_id: string
+          miso_document_id: string
+          document_title: string | null
+          last_synced_at: string | null
+          interview_count: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          persona_id: string
+          topic_id: string
+          miso_document_id: string
+          document_title?: string | null
+          last_synced_at?: string | null
+          interview_count?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          persona_id?: string
+          topic_id?: string
+          miso_document_id?: string
+          document_title?: string | null
+          last_synced_at?: string | null
+          interview_count?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_topic_documents_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_topic_documents_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "main_topics"
             referencedColumns: ["id"]
           },
         ]
@@ -221,6 +281,7 @@ export type Database = {
       }
       personas: {
         Row: {
+          active: boolean | null
           company_id: string
           created_at: string | null
           criteria_configuration_id: string | null
@@ -228,6 +289,7 @@ export type Database = {
           insight: string
           insight_quote: string
           matrix_position: Json | null
+          miso_dataset_id: string | null
           needs: string
           painpoints: string
           persona_description: string
@@ -244,6 +306,7 @@ export type Database = {
           y_min: number | null
         }
         Insert: {
+          active?: boolean | null
           company_id: string
           created_at?: string | null
           criteria_configuration_id?: string | null
@@ -251,6 +314,7 @@ export type Database = {
           insight: string
           insight_quote: string
           matrix_position?: Json | null
+          miso_dataset_id?: string | null
           needs: string
           painpoints: string
           persona_description: string
@@ -267,6 +331,7 @@ export type Database = {
           y_min?: number | null
         }
         Update: {
+          active?: boolean | null
           company_id?: string
           created_at?: string | null
           criteria_configuration_id?: string | null
@@ -274,6 +339,7 @@ export type Database = {
           insight?: string
           insight_quote?: string
           matrix_position?: Json | null
+          miso_dataset_id?: string | null
           needs?: string
           painpoints?: string
           persona_description?: string

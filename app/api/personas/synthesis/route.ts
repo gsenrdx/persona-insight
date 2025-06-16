@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { syncInterviewTopicsToPersona } from '@/lib/miso-knowledge'
 
 export async function POST(req: NextRequest) {
   try {
@@ -188,12 +189,17 @@ export async function POST(req: NextRequest) {
       let errorDetails = null;
       
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        errorDetails = errorData.details;
-      } catch (parseError) {
         const errorText = await response.text();
-        errorMessage = errorText || errorMessage;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+          errorDetails = errorData.details;
+        } catch (jsonParseError) {
+          errorMessage = errorText || errorMessage;
+        }
+      } catch (textError) {
+        // response body를 읽을 수 없는 경우
+        errorMessage = `HTTP ${response.status} ${response.statusText}`;
       }
       
       return NextResponse.json({
@@ -217,6 +223,7 @@ export async function POST(req: NextRequest) {
 
     // outputs가 있으면 personas 테이블 업데이트 또는 생성
     if (outputs && Object.keys(outputs).length > 0) {
+      let insertResult: any = null;
       try {
         if (isNewPersona) {
           // 동일한 company_id와 persona_type을 가진 페르소나가 있는지 다시 확인
@@ -288,10 +295,12 @@ export async function POST(req: NextRequest) {
               updated_at: new Date().toISOString()
             };
 
-            const { data: insertResult, error: insertError } = await supabase
+            const { data: insertResultData, error: insertError } = await supabase
               .from('personas')
               .insert([insertData])
               .select();
+
+            insertResult = insertResultData;
 
             if (insertError) {
               // Error handling removed
@@ -337,6 +346,7 @@ export async function POST(req: NextRequest) {
             .from('interviewees')
             .update({
               persona_reflected: true,
+              persona_id: isNewPersona && insertResult ? insertResult[0].id : selectedPersona.id,
               updated_at: new Date().toISOString()
             })
             .eq('id', parsedInterviewee.id)
@@ -344,6 +354,33 @@ export async function POST(req: NextRequest) {
 
           if (interviewUpdateError) {
             // Error handling removed
+          }
+
+          // Topic 동기화 실행 (페르소나에 miso_dataset_id가 있을 때만)
+          const finalPersonaId = isNewPersona && insertResult ? insertResult[0].id : selectedPersona.id;
+          
+          // 페르소나의 최신 데이터 조회 (miso_dataset_id 확인)
+          const { data: currentPersona } = await supabase
+            .from('personas')
+            .select('miso_dataset_id')
+            .eq('id', finalPersonaId)
+            .single();
+
+          if (currentPersona?.miso_dataset_id) {
+            try {
+              console.log(`Topic 동기화 시작: 인터뷰 ${parsedInterviewee.id} → 페르소나 ${finalPersonaId}`);
+              await syncInterviewTopicsToPersona(
+                parsedInterviewee.id,
+                finalPersonaId,
+                currentPersona.miso_dataset_id
+              );
+              console.log(`Topic 동기화 완료: 인터뷰 ${parsedInterviewee.id}`);
+            } catch (topicSyncError) {
+              console.error('Topic 동기화 실패:', topicSyncError);
+              // Topic 동기화 실패해도 synthesis 자체는 성공으로 처리
+            }
+          } else {
+            console.log('페르소나에 miso_dataset_id가 없어 topic 동기화를 건너뜁니다');
           }
         }
 

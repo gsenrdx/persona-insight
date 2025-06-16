@@ -50,9 +50,7 @@ export function MisoKnowledgeStatusModal({
 }: MisoKnowledgeStatusModalProps) {
   const { profile } = useAuth()
   const queryClient = useQueryClient()
-  
-  console.log('현재 사용자 프로필:', profile)
-  
+    
   // 권한 체크: company_user는 읽기 전용
   const canEdit = profile?.role !== 'company_user'
 
