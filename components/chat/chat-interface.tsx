@@ -5,7 +5,7 @@ import { useChat, type Message } from "ai/react"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2 } from "lucide-react"
+import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2, Brain } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { SummaryModal } from "@/components/chat/summary"
@@ -66,6 +66,7 @@ interface ExtendedMessage extends Message {
 export default function ChatInterface({ personaId, personaData }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isUsingToolRef = useRef<boolean>(false)
   const [isClient, setIsClient] = useState(false)
   const [misoConversationId, setMisoConversationId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<Message[]>([])
@@ -79,6 +80,7 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const [isGeneratingSummary, setIsGeneratingSummary] = useState<boolean>(false)
   const [summaryModalOpen, setSummaryModalOpen] = useState<boolean>(false)
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
+  const [isUsingTool, setIsUsingTool] = useState<boolean>(false) // 도구 사용 중 상태
 
   useEffect(() => {
     setIsClient(true)
@@ -187,48 +189,67 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
               setMisoConversationId(payload.conversation_id);
             }
             
+            // MISO agent_thought 이벤트 처리 - 도구 사용 추적
+            if (payload.event === 'agent_thought') {
+              // tool 필드가 비어있지 않으면 도구 사용 시작
+              if (payload.tool && payload.tool !== '') {
+                isUsingToolRef.current = true;
+                setIsUsingTool(true);
+              } 
+              // tool 필드가 빈 문자열이면 도구 사용 종료
+              else if (payload.tool === '') {
+                isUsingToolRef.current = false;
+                setIsUsingTool(false);
+              }
+            }
+            
             // MISO 이벤트별 처리 - agent_message만 스트리밍
-            if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
+            else if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
               const receivedText = payload.answer;
               
               // 빈 answer는 무시
               if (receivedText === "") continue;
               
-              // 누적된 전체 텍스트인지 델타 텍스트인지 감지하여 처리
-              setChatMessages(prev => {
-                const updated = [...prev];
-                const lastIndex = updated.length - 1;
-                if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && updated[lastIndex].id === assistantMessage.id) {
-                  const currentContent = updated[lastIndex].content;
-                  
-                  // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
-                  if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
-                    updated[lastIndex] = {
-                      ...updated[lastIndex],
-                      content: receivedText,
-                    };
-                  } 
-                  // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
-                  else if (currentContent.startsWith(receivedText)) {
-                    return prev; // 상태 업데이트 없음
+              // 도구 사용 중이 아닐 때만 메시지 업데이트
+              if (!isUsingToolRef.current) {
+                // 누적된 전체 텍스트인지 델타 텍스트인지 감지하여 처리
+                setChatMessages(prev => {
+                  const updated = [...prev];
+                  const lastIndex = updated.length - 1;
+                  if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && updated[lastIndex].id === assistantMessage.id) {
+                    const currentContent = updated[lastIndex].content;
+                    
+                    // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
+                    if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
+                      updated[lastIndex] = {
+                        ...updated[lastIndex],
+                        content: receivedText,
+                      };
+                    } 
+                    // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
+                    else if (currentContent.startsWith(receivedText)) {
+                      return prev; // 상태 업데이트 없음
+                    }
+                    // 그 외의 경우는 델타 텍스트로 추가
+                    else {
+                      updated[lastIndex] = {
+                        ...updated[lastIndex],
+                        content: currentContent + receivedText,
+                      };
+                    }
                   }
-                  // 그 외의 경우는 델타 텍스트로 추가
-                  else {
-                    updated[lastIndex] = {
-                      ...updated[lastIndex],
-                      content: currentContent + receivedText,
-                    };
-                  }
-                }
-                return updated;
-              });
-              
-              // 스크롤 업데이트
-              scrollToBottom();
+                  return updated;
+                });
+                
+                // 스크롤 업데이트
+                scrollToBottom();
+              }
             }
             
             // MISO message_end 이벤트 처리 (스트림 종료)
             else if (payload.event === 'message_end') {
+              isUsingToolRef.current = false;
+              setIsUsingTool(false); // 메시지 종료 시 도구 사용 상태 초기화
               return; // 스트림 완료
             }
             
@@ -269,6 +290,8 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     setIsStreaming(false);
     setShowLoadingMsg(true); // 로딩 메시지 박스 표시
     setReplyingTo(null); // 꼬리질문 상태 초기화
+    isUsingToolRef.current = false;
+    setIsUsingTool(false); // 도구 사용 상태 초기화
 
     try {
       // API에 보낼 메시지 생성
@@ -345,6 +368,8 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
       setLoading(false);
       setIsStreaming(false);
       setUserInput("");
+      isUsingToolRef.current = false;
+      setIsUsingTool(false); // 도구 사용 상태 초기화
       
       // 응답 완료 후 스크롤 및 포커스
       setTimeout(() => {
@@ -495,14 +520,53 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
             transform: scale(1.2);
           }
         }
+        
+        .thinking-text {
+          background: linear-gradient(
+            90deg,
+            #9ca3af 0%,
+            #374151 50%,
+            #9ca3af 100%
+          );
+          background-size: 200% auto;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer 2s linear infinite;
+        }
+        
+        .dark .thinking-text {
+          background: linear-gradient(
+            90deg,
+            #6b7280 0%,
+            #e5e7eb 50%,
+            #6b7280 100%
+          );
+          background-size: 200% auto;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
       `}</style>
       
       <div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-zinc-50 dark:bg-zinc-900 custom-scrollbar">
         <div className="max-w-3xl mx-auto space-y-4">
           <AnimatePresence initial={false}>
-            {chatMessages.map((message) => {
+            {chatMessages.map((message, index) => {
               // 꼬리질문으로 답변한 메시지인지 확인
               const sourceMessage = message.role === "user" ? getReplySourceMessage(message.id) : null;
+              // 마지막 어시스턴트 메시지이고 스트리밍 중이며 도구 사용 중인지 확인
+              const isLastAssistantMessage = message.role === "assistant" && index === chatMessages.length - 1;
+              const showToolUsing = isLastAssistantMessage && isStreaming && isUsingTool;
               
               return (
                 <motion.div
@@ -556,6 +620,28 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                             </span>
                           </div>
                         </div>
+                      )}
+                      
+                      {/* 도구 사용 중 표시 */}
+                      {showToolUsing && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mb-2"
+                        >
+                          <span 
+                            className="thinking-text text-xs italic"
+                            style={{ 
+                              fontStyle: 'italic',
+                              transform: 'skew(-12deg)',
+                              display: 'inline-block'
+                            }}
+                          >
+                            thinking...
+                          </span>
+                        </motion.div>
                       )}
                       
                       <p className="whitespace-pre-wrap leading-relaxed">
