@@ -16,6 +16,15 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      {
+        module: /node_modules\/.pnpm\/@supabase\+realtime-js/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ]
+    return config
+  },
 }
 
 export default nextConfig

@@ -9,14 +9,19 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, ArrowUpRight, ChevronRight, ChevronDown, AlertCircle, Clock } from 'lucide-react'
+import { LogOut, ArrowUpRight, ChevronRight, ChevronDown, AlertCircle, Clock, Database } from 'lucide-react'
 import ProfileModal from './profile-modal'
+import { MisoKnowledgeStatusModal } from '@/components/modal/miso-knowledge-status-modal'
 
 export default function UserMenu() {
   const { user, profile, error, signOut, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [knowledgeStatusOpen, setKnowledgeStatusOpen] = useState(false)
 
   const handleSignOut = async () => {
     setLoading(true)
@@ -89,10 +94,20 @@ export default function UserMenu() {
 
           <DropdownMenuSeparator className="m-0" />
 
-          <DropdownMenuItem className="flex justify-between items-center px-3 py-2 text-xs">
-            <span>관리 메뉴</span>
-            <ChevronRight className="h-3 w-3" />
-          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex justify-between items-center px-3 py-2 text-xs">
+              <span>관리 메뉴</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-56">
+              <DropdownMenuItem
+                onClick={() => setKnowledgeStatusOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-xs"
+              >
+                <Database className="h-4 w-4" />
+                <span>MISO Knowledge 연동 상태</span>
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
           <DropdownMenuSeparator className="m-0" />
 
@@ -110,6 +125,13 @@ export default function UserMenu() {
       <ProfileModal
         open={profileModalOpen}
         onOpenChange={setProfileModalOpen}
+      />
+      
+      {/* MISO Knowledge 연동 상태 모달 */}
+      <MisoKnowledgeStatusModal
+        open={knowledgeStatusOpen}
+        onOpenChange={setKnowledgeStatusOpen}
+        companyId={profile?.company_id || ''}
       />
     </>
   )

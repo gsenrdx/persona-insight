@@ -37,7 +37,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
-import { Plus, Eye, Image, Loader2, AlertTriangle, Upload } from 'lucide-react'
+import { Plus, Eye, Image, Loader2, AlertTriangle, Upload, Database } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
@@ -1577,6 +1577,7 @@ export const PersonaCriteriaModal = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
       </DialogContent>
     </Dialog>
   )

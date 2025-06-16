@@ -22,6 +22,29 @@ function calculateCoordinateBounds(index: number, segmentCount: number): { min: 
   return { min, max }
 }
 
+// 페르소나별 MISO 데이터셋 ID 조회 함수 (생성 로직 제거)
+async function getPersonaDatasetId(persona: PersonaData, requestId: string): Promise<string | null> {
+  // 기존 페르소나에 데이터셋 ID가 있는지 확인 (ID가 있는 경우만)
+  if (persona.id) {
+    const { data: existingPersona, error: personaError } = await supabase
+      .from('personas')
+      .select('miso_dataset_id')
+      .eq('id', persona.id)
+      .single()
+
+    if (personaError) {
+      console.error(`[${requestId}] 기존 페르소나 조회 오류:`, personaError)
+      return null
+    } else if (existingPersona?.miso_dataset_id) {
+      console.log(`[${requestId}] 페르소나 ${persona.persona_type} 기존 데이터셋 ID 사용: ${existingPersona.miso_dataset_id}`)
+      return existingPersona.miso_dataset_id
+    }
+  }
+
+  console.log(`[${requestId}] 페르소나 ${persona.persona_type} 데이터셋 ID 없음 - 직접 입력 필요`)
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { company_id, project_id, personas, criteria_configuration_id, x_segments_count, y_segments_count } = await req.json()
@@ -37,14 +60,22 @@ export async function POST(req: NextRequest) {
     console.log(`=== 페르소나 동기화 시작 [${requestId}] ===`)
     console.log('company_id:', company_id)
     console.log('project_id:', project_id)
+    console.log('criteria_configuration_id:', criteria_configuration_id)
     console.log('요청된 페르소나들:', personas.map(p => ({ id: p.id, type: p.persona_type })))
     console.log('요청된 페르소나 ID들:', personas.filter(p => p.id).map(p => p.id))
 
-    // 비활성화 로직 제거 - 순수하게 ID 기반으로만 처리
-
-    // 5. 각 페르소나 처리 (ID 기반)
+    // 1. 각 페르소나 처리 (ID 기반)
     const upsertOperations = personas.map(async (persona: PersonaData) => {
-      // 좌표 범위 계산 (x_segments_count, y_segments_count가 있는 경우)
+      // 1-1. 페르소나별 MISO 데이터셋 ID 조회 (생성 안함)
+      let personaDatasetId: string | null = null
+      try {
+        personaDatasetId = await getPersonaDatasetId(persona, requestId)
+        console.log(`[${requestId}] 페르소나 ${persona.persona_type} 데이터셋 ID: ${personaDatasetId || '없음'}`)
+      } catch (error: any) {
+        console.error(`[${requestId}] 페르소나 ${persona.persona_type} 데이터셋 조회 오류:`, error)
+      }
+
+      // 1-2. 좌표 범위 계산 (x_segments_count, y_segments_count가 있는 경우)
       let xBounds, yBounds
       if (x_segments_count && y_segments_count) {
         xBounds = calculateCoordinateBounds(persona.matrix_position.xIndex, x_segments_count)
@@ -64,6 +95,8 @@ export async function POST(req: NextRequest) {
         ...(yBounds && { y_min: yBounds.min, y_max: yBounds.max }),
         // criteria_configuration_id 추가 (있는 경우만)
         ...(criteria_configuration_id && { criteria_configuration_id }),
+        // MISO 데이터셋 ID 추가 (있는 경우만)
+        ...(personaDatasetId && { miso_dataset_id: personaDatasetId }),
         active: true, // 새로 저장되는 것들은 모두 활성화
         updated_at: new Date().toISOString()
       }
@@ -75,7 +108,7 @@ export async function POST(req: NextRequest) {
         // 기존 데이터의 AI 생성 필드들 보존
         const { data: existing } = await supabase
           .from('personas')
-          .select('persona_summary, persona_style, painpoints, needs, insight, insight_quote')
+          .select('persona_summary, persona_style, painpoints, needs, insight, insight_quote, miso_dataset_id')
           .eq('id', persona.id)
           .single()
         
@@ -89,7 +122,9 @@ export async function POST(req: NextRequest) {
             painpoints: existing?.painpoints || '',
             needs: existing?.needs || '',
             insight: existing?.insight || '',
-            insight_quote: existing?.insight_quote || ''
+            insight_quote: existing?.insight_quote || '',
+            // 기존 miso_dataset_id가 있으면 보존, 없으면 새로 생성된 것 사용
+            miso_dataset_id: existing?.miso_dataset_id || personaDatasetId
           })
           .eq('id', persona.id)
           .select()
@@ -118,6 +153,8 @@ export async function POST(req: NextRequest) {
             needs: '',
             insight: '',
             insight_quote: '',
+            // 새로 생성하는 경우 생성된 데이터셋 ID 저장
+            miso_dataset_id: personaDatasetId,
             created_at: new Date().toISOString()
           }])
           .select()
@@ -131,7 +168,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // 6. 모든 upsert 작업 실행
+    // 2. 모든 upsert 작업 실행
     await Promise.all(upsertOperations)
 
     const created = personas.filter(p => !p.id).length

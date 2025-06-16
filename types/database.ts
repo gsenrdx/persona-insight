@@ -160,6 +160,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          miso_dataset_id: string | null
           output_config: Json
           persona_matrix: Json
           project_id: string | null
@@ -175,6 +176,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          miso_dataset_id?: string | null
           output_config?: Json
           persona_matrix?: Json
           project_id?: string | null
@@ -190,6 +192,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          miso_dataset_id?: string | null
           output_config?: Json
           persona_matrix?: Json
           project_id?: string | null
