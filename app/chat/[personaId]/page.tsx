@@ -308,7 +308,7 @@ export default function ChatPage({ params }: ChatPageProps) {
               </div>
             </div>
           }>
-            <ChatInterface personaId={personaId} personaData={persona} />
+            <ChatInterface personaId={personaId} personaData={persona} allPersonas={allPersonas} />
           </Suspense>
         </main>
       </div>

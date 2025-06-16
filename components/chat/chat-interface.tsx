@@ -9,12 +9,16 @@ import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, File
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { SummaryModal } from "@/components/chat/summary"
+import { PersonaMentionDropdown } from "@/components/chat/persona-mention-dropdown"
+import { MessageContent } from "@/components/chat/message-content"
+import { findMentionContext, insertMention, MentionData, extractMentionedPersonas } from "@/lib/utils/mention"
 
 
 
 interface ChatInterfaceProps {
   personaId: string
   personaData: any
+  allPersonas?: any[]
 }
 
 // MISO 응답에서 오는 데이터 타입 정의
@@ -63,7 +67,7 @@ interface ExtendedMessage extends Message {
   };
 }
 
-export default function ChatInterface({ personaId, personaData }: ChatInterfaceProps) {
+export default function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const isUsingToolRef = useRef<boolean>(false)
@@ -82,6 +86,26 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
   const [summaryModalOpen, setSummaryModalOpen] = useState<boolean>(false)
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
   const [isUsingTool, setIsUsingTool] = useState<boolean>(false) // 도구 사용 중 상태
+  
+  // 멘션 관련 상태
+  const [showMentionDropdown, setShowMentionDropdown] = useState<boolean>(false)
+  const [mentionSearchText, setMentionSearchText] = useState<string>("")
+  const [cursorPosition, setCursorPosition] = useState<number>(0)
+  const [mentionedPersonas, setMentionedPersonas] = useState<Array<{id: string, name: string}>>([])
+  
+  // 현재 입력에서 멘션된 페르소나 추적
+  useEffect(() => {
+    const mentionedIds = extractMentionedPersonas(userInput)
+    const mentioned = mentionedIds.map(id => {
+      const persona = allPersonas.find(p => p.id === id)
+      return {
+        id,
+        name: persona?.persona_title || persona?.name || id
+      }
+    }).filter(p => p.name !== p.id) // 유효한 페르소나만 필터링
+    
+    setMentionedPersonas(mentioned)
+  }, [userInput, allPersonas])
 
   useEffect(() => {
     setIsClient(true)
@@ -473,6 +497,68 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
     return chatMessages.find(msg => msg.id === repliedMessages[messageId]) || null;
   }, [chatMessages, repliedMessages]);
 
+  // 멘션 관련 핸들러들
+  const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const newCursorPosition = e.target.selectionStart || 0;
+    
+    setUserInput(newValue);
+    setCursorPosition(newCursorPosition);
+    
+    // 멘션 컨텍스트 확인
+    const mentionContext = findMentionContext(newValue, newCursorPosition);
+    
+    if (mentionContext.isInMention) {
+      setMentionSearchText(mentionContext.searchText);
+      setShowMentionDropdown(true);
+    } else {
+      setShowMentionDropdown(false);
+      setMentionSearchText("");
+    }
+  }, []);
+
+  const handleMentionSelect = useCallback((mention: MentionData) => {
+    if (!inputRef.current) return;
+    
+    const result = insertMention(userInput, cursorPosition, mention);
+    setUserInput(result.newText);
+    setShowMentionDropdown(false);
+    setMentionSearchText("");
+    
+    // 커서 위치 업데이트
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(result.newCursorPosition, result.newCursorPosition);
+      }
+    }, 0);
+  }, [userInput, cursorPosition]);
+
+  const removeMention = useCallback((personaId: string) => {
+    // 특정 페르소나의 멘션을 텍스트에서 제거
+    const mentionPattern = new RegExp(`@\\[[^\\]]*\\]\\(${personaId}\\)`, 'g');
+    const newText = userInput.replace(mentionPattern, '').trim();
+    setUserInput(newText);
+    
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [userInput]);
+
+  const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 멘션 드롭다운이 열려있을 때는 기본 키 이벤트 처리를 드롭다운에 맡김
+    if (showMentionDropdown && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+      return;
+    }
+    
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (userInput.trim() && !loading) {
+        handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+      }
+    }
+  }, [showMentionDropdown, userInput, loading]);
+
   // 대화 요약 생성 함수
   const handleGenerateSummary = useCallback(async () => {
     if (chatMessages.length <= 1 || isGeneratingSummary) return; // 초기 메시지만 있으면 생성하지 않음
@@ -728,9 +814,10 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                         </motion.div>
                       )}
                       
-                      <p className="whitespace-pre-wrap leading-relaxed">
-                        {message.content}
-                      </p>
+                      <MessageContent 
+                        content={message.content}
+                        className="whitespace-pre-wrap leading-relaxed"
+                      />
                       <div className="mt-1.5 flex justify-end items-center gap-1.5">
                         <p className={`text-[10px] ${message.role === "user" ? "text-indigo-500 dark:text-indigo-300/80" : "text-zinc-500 dark:text-zinc-400"}`}>
                           {isClient && message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ''}
@@ -835,25 +922,58 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
           )}
         </AnimatePresence>
 
+        {/* 멘션된 페르소나 표시 */}
+        <AnimatePresence>
+          {mentionedPersonas.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: 10 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-3xl mx-auto mb-3"
+            >
+              <div className="flex flex-wrap gap-2">
+                {mentionedPersonas.map((persona) => (
+                  <motion.div
+                    key={persona.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    className="bg-gradient-to-r from-purple-50/80 to-blue-50/60 dark:from-purple-950/40 dark:to-blue-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-lg px-4 py-2 flex items-center gap-3 relative overflow-hidden backdrop-blur-sm"
+                  >
+                    <div className="flex-shrink-0 w-1 h-5 bg-purple-400 rounded-full"></div>
+                    <div className="text-sm text-purple-800 dark:text-purple-200 font-medium">
+                      @{persona.name}에게 질문 중...
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeMention(persona.id)}
+                      className="h-5 w-5 rounded-full hover:bg-purple-200/80 dark:hover:bg-purple-800/50 transition-colors"
+                    >
+                      <X className="h-3 w-3 text-purple-500 dark:text-purple-300" />
+                      <span className="sr-only">멘션 제거</span>
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto">
           <div className="flex items-end gap-3 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all duration-200">
             <div className="flex-1 relative">
               <Textarea
                 ref={inputRef}
                 value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
+                onChange={handleTextareaChange}
+                placeholder={replyingTo ? "꼬리질문을 입력하세요... (@로 페르소나 멘션)" : "메시지를 입력하세요... (@로 페르소나 멘션)"}
                 disabled={loading}
                 rows={1}
-                className="w-full min-h-[40px] max-h-[200px] resize-none p-0 bg-transparent border-none outline-none focus:ring-0 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100 text-[15px] leading-relaxed"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (userInput.trim() && !loading) {
-                      handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
-                    }
-                  }
-                }}
+                className="w-full min-h-[40px] max-h-[200px] resize-none p-0 bg-transparent border-none outline-none focus:ring-0 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100 text-[15px] leading-relaxed caret-zinc-700 dark:caret-zinc-300"
+                onKeyDown={handleTextareaKeyDown}
                 style={{
                   height: 'auto',
                   minHeight: '40px',
@@ -865,6 +985,16 @@ export default function ChatInterface({ personaId, personaData }: ChatInterfaceP
                   target.style.height = 'auto';
                   target.style.height = Math.min(target.scrollHeight, 200) + 'px';
                 }}
+              />
+              
+              {/* 멘션 드롭다운 */}
+              <PersonaMentionDropdown
+                open={showMentionDropdown}
+                onSelect={handleMentionSelect}
+                onOpenChange={setShowMentionDropdown}
+                searchText={mentionSearchText}
+                personas={allPersonas}
+                anchorEl={inputRef.current}
               />
             </div>
             <Button 
