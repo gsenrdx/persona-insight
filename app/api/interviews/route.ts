@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       .from('interviewees')
       .select(`
         *,
-        personas:persona_id(
+        personas:persona_id!inner(
           id,
           persona_type,
           persona_title,
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         )
       `)
       .eq('company_id', company_id)
+      .eq('personas.active', true) // 활성화된 페르소나만 조인
       .order('session_date', { ascending: false })
       .range(offset, offset + limit - 1)
 

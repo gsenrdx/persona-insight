@@ -73,37 +73,17 @@ export async function POST(req: NextRequest) {
           needs,
           insight,
           insight_quote,
-          thumbnail
+          thumbnail,
+          project_id
         `)
         .eq('id', personaId)
-        .eq('company_id', companyId);
-      
-      personas = data;
-      personasError = error;
-    } else if (projectId) {
-      // projectId가 있으면 기존 로직 사용
-      const { data, error } = await supabase
-        .from('personas')
-        .select(`
-          id,
-          persona_type,
-          persona_description,
-          persona_summary,
-          persona_style,
-          painpoints,
-          needs,
-          insight,
-          insight_quote,
-          thumbnail
-        `)
         .eq('company_id', companyId)
-        .eq('persona_type', personaType)
-        .eq('project_id', projectId);
+        .eq('active', true); // 활성화된 페르소나만 조회
       
       personas = data;
       personasError = error;
     } else {
-      // company 레벨에서 persona_type으로 조회
+      // company_id와 persona_type으로만 조회 (project_id 구분 없이)
       const { data, error } = await supabase
         .from('personas')
         .select(`
@@ -116,11 +96,12 @@ export async function POST(req: NextRequest) {
           needs,
           insight,
           insight_quote,
-          thumbnail
+          thumbnail,
+          project_id
         `)
         .eq('company_id', companyId)
         .eq('persona_type', personaType)
-        .is('project_id', null);
+        .eq('active', true); // 활성화된 페르소나만 조회
       
       personas = data;
       personasError = error;
@@ -238,43 +219,83 @@ export async function POST(req: NextRequest) {
     if (outputs && Object.keys(outputs).length > 0) {
       try {
         if (isNewPersona) {
-          // 신규 페르소나 생성
-          const insertData = {
-            persona_type: personaType,
-            persona_description: parsedInterviewee.description || parsedInterviewee.user_description || `${personaType} 타입 사용자`,
-            persona_summary: outputs.persona_summary || '',
-            persona_style: outputs.persona_style || '',
-            painpoints: outputs.painpoints || '',
-            needs: outputs.needs || '',
-            insight: outputs.insight || '',
-            insight_quote: outputs.insight_quote || '',
-            thumbnail: (() => {
-              // outputs.thumbnail이 문자열 URL이면 바로 사용, 객체면 imageUrl 추출
-              if (outputs.thumbnail && outputs.thumbnail !== null) {
-                if (typeof outputs.thumbnail === 'string') {
-                  // 이미 URL 문자열인 경우
-                  return outputs.thumbnail;
-                } else if (typeof outputs.thumbnail === 'object' && outputs.thumbnail.imageUrl) {
-                  // 객체 형태인 경우 imageUrl 추출
-                  return outputs.thumbnail.imageUrl;
-                }
-              }
-              return null;
-            })(),
-            company_id: companyId,
-            project_id: projectId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-
-
-          const { data: insertResult, error: insertError } = await supabase
+          // 동일한 company_id와 persona_type을 가진 페르소나가 있는지 다시 확인
+          const { data: existingPersona, error: checkError } = await supabase
             .from('personas')
-            .insert([insertData])
-            .select();
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('persona_type', personaType)
+            .eq('active', true) // 활성화된 페르소나만 확인
+            .single();
 
-          if (insertError) {
-            // Error handling removed
+          if (existingPersona && !checkError) {
+            // 이미 존재하는 페르소나가 있으면 업데이트
+            const updateData: any = {
+              updated_at: new Date().toISOString()
+            };
+
+            // 응답에서 받은 필드들로 업데이트 데이터 구성
+            if (outputs.persona_summary) updateData.persona_summary = outputs.persona_summary;
+            if (outputs.persona_style) updateData.persona_style = outputs.persona_style;
+            if (outputs.painpoints) updateData.painpoints = outputs.painpoints;
+            if (outputs.needs) updateData.needs = outputs.needs;
+            if (outputs.insight) updateData.insight = outputs.insight;
+            if (outputs.insight_quote) updateData.insight_quote = outputs.insight_quote;
+            if (outputs.thumbnail && outputs.thumbnail !== null) {
+              if (typeof outputs.thumbnail === 'string') {
+                updateData.thumbnail = outputs.thumbnail;
+              } else if (typeof outputs.thumbnail === 'object' && outputs.thumbnail.imageUrl) {
+                updateData.thumbnail = outputs.thumbnail.imageUrl;
+              }
+            }
+
+            const { data: updateResult, error: updateError } = await supabase
+              .from('personas')
+              .update(updateData)
+              .eq('id', existingPersona.id)
+              .select();
+
+            if (updateError) {
+              // Error handling removed
+            }
+          } else {
+            // 신규 페르소나 생성
+            const insertData = {
+              persona_type: personaType,
+              persona_description: parsedInterviewee.description || parsedInterviewee.user_description || `${personaType} 타입 사용자`,
+              persona_summary: outputs.persona_summary || '',
+              persona_style: outputs.persona_style || '',
+              painpoints: outputs.painpoints || '',
+              needs: outputs.needs || '',
+              insight: outputs.insight || '',
+              insight_quote: outputs.insight_quote || '',
+              thumbnail: (() => {
+                // outputs.thumbnail이 문자열 URL이면 바로 사용, 객체면 imageUrl 추출
+                if (outputs.thumbnail && outputs.thumbnail !== null) {
+                  if (typeof outputs.thumbnail === 'string') {
+                    // 이미 URL 문자열인 경우
+                    return outputs.thumbnail;
+                  } else if (typeof outputs.thumbnail === 'object' && outputs.thumbnail.imageUrl) {
+                    // 객체 형태인 경우 imageUrl 추출
+                    return outputs.thumbnail.imageUrl;
+                  }
+                }
+                return null;
+              })(),
+              company_id: companyId,
+              project_id: projectId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+
+            const { data: insertResult, error: insertError } = await supabase
+              .from('personas')
+              .insert([insertData])
+              .select();
+
+            if (insertError) {
+              // Error handling removed
+            }
           }
         } else {
           // 기존 페르소나 업데이트

@@ -398,21 +398,53 @@ export const PersonaCriteriaModal = ({
         return
       }
 
+      // 1. 기존 페르소나 데이터 조회
+      let existingPersonasMap: Map<string, any> = new Map()
+      
+      try {
+        const existingResponse = await fetch(`/api/supabase/personas?company_id=${profile?.company_id}&active=true`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        if (existingResponse.ok) {
+          const existingData = await existingResponse.json()
+          if (existingData.success && existingData.data) {
+            // persona_type을 키로 하는 Map 생성
+            existingPersonasMap = new Map(
+              existingData.data.map((p: any) => [p.persona_type, p])
+            )
+          }
+        }
+      } catch (error) {
+        console.warn('기존 페르소나 조회 실패, 새로 생성합니다:', error)
+      }
+
       const syncData = {
         company_id: profile?.company_id,
         project_id: projectId,
-        personas: validPersonas.map(p => ({
-          persona_type: p.personaType,
-          persona_title: p.title,
-          persona_description: p.description,
-          thumbnail: (p as any).thumbnail || null,
-          matrix_position: {
-            xIndex: p.xIndex,
-            yIndex: p.yIndex,
-            coordinate: generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
-              .find(c => c.xIndex === p.xIndex && c.yIndex === p.yIndex)?.label || ''
+        x_segments_count: xAxis.segments.length,
+        y_segments_count: yAxis.segments.length,
+        criteria_configuration_id: existingConfig?.id, // 기준 설정 ID 추가
+        personas: validPersonas.map(p => {
+          const existingPersona = existingPersonasMap.get(p.personaType)
+          
+          return {
+            id: existingPersona?.id, // 기존 페르소나 ID 포함
+            persona_type: p.personaType,
+            persona_title: p.title,
+            persona_description: p.description,
+            thumbnail: (p as any).thumbnail || null,
+            matrix_position: {
+              xIndex: p.xIndex,
+              yIndex: p.yIndex,
+              coordinate: generatePersonaMatrixCoordinates(xAxis.segments.length, yAxis.segments.length)
+                .find(c => c.xIndex === p.xIndex && c.yIndex === p.yIndex)?.label || ''
+            }
           }
-        }))
+        })
       }
 
       const response = await fetch('/api/personas/sync', {

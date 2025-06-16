@@ -159,6 +159,7 @@ async function matchPersonaFromScores(
       .from('personas')
       .select('id, persona_type, persona_title, persona_description, x_min, x_max, y_min, y_max')
       .eq('company_id', companyId)
+      .eq('active', true) // 활성화된 페르소나만 조회
       .lte('x_min', xCoordinate)
       .gte('x_max', xCoordinate)
       .lte('y_min', yCoordinate)

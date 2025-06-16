@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 interface PersonaData {
+  id?: string // 기존 페르소나 ID (있으면 업데이트, 없으면 생성)
   persona_type: string
   persona_title: string
   persona_description: string
@@ -13,9 +14,17 @@ interface PersonaData {
   }
 }
 
+// 좌표 범위 계산 함수
+function calculateCoordinateBounds(index: number, segmentCount: number): { min: number, max: number } {
+  const segmentSize = 100 / segmentCount
+  const min = index * segmentSize
+  const max = (index + 1) * segmentSize
+  return { min, max }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { company_id, project_id, personas } = await req.json()
+    const { company_id, project_id, personas, criteria_configuration_id, x_segments_count, y_segments_count } = await req.json()
     
     if (!company_id || !personas || !Array.isArray(personas)) {
       return NextResponse.json({
@@ -24,86 +33,24 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // 1. 기존 페르소나들 조회 (persona_type으로 매칭)
-    let existingPersonasQuery = supabase
-      .from('personas')
-      .select('*')
-      .eq('company_id', company_id)
+    const requestId = `sync-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+    console.log(`=== 페르소나 동기화 시작 [${requestId}] ===`)
+    console.log('company_id:', company_id)
+    console.log('project_id:', project_id)
+    console.log('요청된 페르소나들:', personas.map(p => ({ id: p.id, type: p.persona_type })))
+    console.log('요청된 페르소나 ID들:', personas.filter(p => p.id).map(p => p.id))
 
-    if (project_id) {
-      existingPersonasQuery = existingPersonasQuery.eq('project_id', project_id)
-    } else {
-      existingPersonasQuery = existingPersonasQuery.is('project_id', null)
-    }
+    // 비활성화 로직 제거 - 순수하게 ID 기반으로만 처리
 
-    const { data: existingPersonas, error: fetchError } = await existingPersonasQuery
-
-    if (fetchError) {
-      console.error('기존 페르소나 조회 오류:', fetchError)
-      return NextResponse.json({
-        error: '기존 페르소나 조회에 실패했습니다',
-        success: false
-      }, { status: 500 })
-    }
-
-    const existingPersonaMap = new Map(
-      (existingPersonas || []).map(p => [p.persona_type, p])
-    )
-
-    // 2. 새로운 페르소나 타입들
-    const newPersonaTypes = new Set(personas.map((p: PersonaData) => p.persona_type))
-
-    // 3. 삭제할 페르소나들 (기존에 있지만 새 목록에 없는 것들)
-    const personasToDelete = (existingPersonas || []).filter(
-      existing => !newPersonaTypes.has(existing.persona_type)
-    )
-
-    // 4. 삭제할 페르소나들이 있으면 연결된 인터뷰 확인
-    if (personasToDelete.length > 0) {
-      const deleteIds = personasToDelete.map(p => p.id)
-      
-      const { data: linkedInterviews, error: linkError } = await supabase
-        .from('interviewees')
-        .select('id, interviewee_fake_name')
-        .in('persona_id', deleteIds)
-        .limit(5) // 최대 5개만 확인
-
-      if (linkError) {
-        console.error('연결된 인터뷰 확인 오류:', linkError)
-      }
-
-      if (linkedInterviews && linkedInterviews.length > 0) {
-        return NextResponse.json({
-          error: '삭제하려는 페르소나에 연결된 인터뷰가 있습니다',
-          details: {
-            linkedInterviews: linkedInterviews.length,
-            examples: linkedInterviews.map(i => i.interviewee_fake_name || `인터뷰 ${i.id.slice(0, 8)}`),
-            personasToDelete: personasToDelete.map(p => p.persona_type)
-          },
-          success: false
-        }, { status: 409 })
-      }
-
-      // 5. 연결된 인터뷰가 없으면 페르소나 삭제
-      const { error: deleteError } = await supabase
-        .from('personas')
-        .delete()
-        .in('id', deleteIds)
-
-      if (deleteError) {
-        console.error('페르소나 삭제 오류:', deleteError)
-        return NextResponse.json({
-          error: '페르소나 삭제에 실패했습니다',
-          success: false
-        }, { status: 500 })
-      }
-
-    }
-
-    // 6. 새로운/업데이트할 페르소나들 처리
+    // 5. 각 페르소나 처리 (ID 기반)
     const upsertOperations = personas.map(async (persona: PersonaData) => {
-      const existingPersona = existingPersonaMap.get(persona.persona_type)
-      
+      // 좌표 범위 계산 (x_segments_count, y_segments_count가 있는 경우)
+      let xBounds, yBounds
+      if (x_segments_count && y_segments_count) {
+        xBounds = calculateCoordinateBounds(persona.matrix_position.xIndex, x_segments_count)
+        yBounds = calculateCoordinateBounds(persona.matrix_position.yIndex, y_segments_count)
+      }
+
       const personaData = {
         company_id,
         project_id: project_id || null,
@@ -112,55 +59,92 @@ export async function POST(req: NextRequest) {
         persona_description: persona.persona_description,
         thumbnail: persona.thumbnail,
         matrix_position: persona.matrix_position,
-        // 기본값들 - 실제 페르소나 반영 시 업데이트됨
-        persona_summary: existingPersona?.persona_summary || '',
-        persona_style: existingPersona?.persona_style || '',
-        painpoints: existingPersona?.painpoints || '',
-        needs: existingPersona?.needs || '',
-        insight: existingPersona?.insight || '',
-        insight_quote: existingPersona?.insight_quote || '',
+        // 좌표 범위 추가 (있는 경우만)
+        ...(xBounds && { x_min: xBounds.min, x_max: xBounds.max }),
+        ...(yBounds && { y_min: yBounds.min, y_max: yBounds.max }),
+        // criteria_configuration_id 추가 (있는 경우만)
+        ...(criteria_configuration_id && { criteria_configuration_id }),
+        active: true, // 새로 저장되는 것들은 모두 활성화
         updated_at: new Date().toISOString()
       }
 
-      if (existingPersona) {
-        // 업데이트
-        const { error } = await supabase
+      if (persona.id) {
+        // ID가 있으면 기존 페르소나 업데이트
+        console.log(`페르소나 ${persona.persona_type} 업데이트: ID ${persona.id}`)
+        
+        // 기존 데이터의 AI 생성 필드들 보존
+        const { data: existing } = await supabase
           .from('personas')
-          .update(personaData)
-          .eq('id', existingPersona.id)
+          .select('persona_summary, persona_style, painpoints, needs, insight, insight_quote')
+          .eq('id', persona.id)
+          .single()
+        
+        const { data: updateResult, error } = await supabase
+          .from('personas')
+          .update({
+            ...personaData,
+            // AI 생성 필드들은 기존 값 보존
+            persona_summary: existing?.persona_summary || '',
+            persona_style: existing?.persona_style || '',
+            painpoints: existing?.painpoints || '',
+            needs: existing?.needs || '',
+            insight: existing?.insight || '',
+            insight_quote: existing?.insight_quote || ''
+          })
+          .eq('id', persona.id)
+          .select()
 
         if (error) {
           console.error(`페르소나 ${persona.persona_type} 업데이트 오류:`, error)
           throw error
         }
 
+        console.log(`페르소나 ${persona.persona_type} 업데이트 결과:`, updateResult?.length || 0, '행 영향받음')
+        
+        if (!updateResult || updateResult.length === 0) {
+          console.error(`페르소나 ${persona.persona_type} (ID: ${persona.id}) 업데이트 실패 - 해당 ID가 존재하지 않음`)
+        }
       } else {
-        // 새로 생성
-        const { error } = await supabase
+        // ID가 없으면 새로 생성
+        console.log(`페르소나 ${persona.persona_type} 새로 생성 (ID가 없음)`)
+        const { data: insertResult, error } = await supabase
           .from('personas')
           .insert([{
             ...personaData,
+            // 새로 생성하는 경우 AI 필드들은 빈 값
+            persona_summary: '',
+            persona_style: '',
+            painpoints: '',
+            needs: '',
+            insight: '',
+            insight_quote: '',
             created_at: new Date().toISOString()
           }])
+          .select()
 
         if (error) {
           console.error(`페르소나 ${persona.persona_type} 생성 오류:`, error)
           throw error
         }
-
+        
+        console.log(`페르소나 ${persona.persona_type} 생성 완료:`, insertResult?.[0]?.id)
       }
     })
 
-    // 7. 모든 upsert 작업 실행
+    // 6. 모든 upsert 작업 실행
     await Promise.all(upsertOperations)
+
+    const created = personas.filter(p => !p.id).length
+    const updated = personas.filter(p => p.id).length
+
+    console.log(`=== 페르소나 동기화 완료 [${requestId}]: 생성 ${created}개, 업데이트 ${updated}개 ===`)
 
     return NextResponse.json({ 
       success: true,
       message: '페르소나 동기화가 완료되었습니다',
       summary: {
-        created: personas.filter((p: PersonaData) => !existingPersonaMap.has(p.persona_type)).length,
-        updated: personas.filter((p: PersonaData) => existingPersonaMap.has(p.persona_type)).length,
-        deleted: personasToDelete.length
+        created,
+        updated
       }
     })
 

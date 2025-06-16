@@ -19,7 +19,7 @@ export async function GET(
       .from('interviewees')
       .select(`
         *,
-        personas:persona_id(
+        personas:persona_id!left(
           id,
           persona_type,
           persona_title,
@@ -27,6 +27,7 @@ export async function GET(
         )
       `)
       .eq('id', id)
+      .eq('personas.active', true) // 활성화된 페르소나만 조인 (없으면 null)
       .single()
 
     if (error) {

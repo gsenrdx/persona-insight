@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         created_at
       `)
       .eq('company_id', company_id)
+      .eq('active', true) // 활성화된 페르소나만 조회
       .order('created_at', { ascending: false })
 
     // 프로젝트 필터링 추가 (project_id가 있으면 해당 프로젝트, 없으면 회사 레벨)

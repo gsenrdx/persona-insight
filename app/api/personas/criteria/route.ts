@@ -1,95 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
 
-// 좌표 범위 계산 함수
-function calculateCoordinateBounds(index: number, segmentCount: number): { min: number, max: number } {
-  const segmentSize = 100 / segmentCount
-  const min = index * segmentSize
-  const max = (index + 1) * segmentSize
-  return { min, max }
-}
-
-// 페르소나 타입 생성 함수 (A, B, C, D...)
-function generatePersonaType(index: number): string {
-  if (index < 26) {
-    return String.fromCharCode(65 + index) // A-Z
-  } else {
-    // AA, AB, AC...
-    const firstChar = String.fromCharCode(65 + Math.floor(index / 26) - 1)
-    const secondChar = String.fromCharCode(65 + (index % 26))
-    return firstChar + secondChar
-  }
-}
-
-// 페르소나 자동 생성 함수
-async function createPersonasFromMatrix(
-  configurationId: string,
-  companyId: string,
-  projectId: string | null,
-  xSegments: any[],
-  ySegments: any[],
-  personaMatrix: Record<string, any>,
-  unclassifiedCells: any[]
-) {
-  const personasToCreate: any[] = []
-  
-  // 셀 정보를 수집하고 정렬 (왼쪽 아래부터 오른쪽으로, 위로 올라가는 순서)
-  const cells: Array<[string, any]> = []
-  for (const [cellId, cell] of Object.entries(personaMatrix)) {
-    if (!cell || typeof cell !== 'object') continue
-    cells.push([cellId, cell])
-  }
-  
-  // yIndex 오름차순(아래부터), xIndex 오름차순(왼쪽부터) 정렬
-  cells.sort((a, b) => {
-    const yDiff = (a[1].yIndex || 0) - (b[1].yIndex || 0)
-    if (yDiff !== 0) return yDiff
-    return (a[1].xIndex || 0) - (b[1].xIndex || 0)
-  })
-  
-  // 정렬된 순서대로 페르소나 생성
-  cells.forEach(([cellId, cell], index) => {
-    const xBounds = calculateCoordinateBounds(cell.xIndex || 0, xSegments.length)
-    const yBounds = calculateCoordinateBounds(cell.yIndex || 0, ySegments.length)
-
-    personasToCreate.push({
-      persona_type: cell.personaType || generatePersonaType(index),  // UI에서 지정한 타입 우선 사용
-      persona_title: cell.title || '',
-      persona_description: cell.description || '',
-      persona_summary: '',
-      persona_style: '',
-      painpoints: '',
-      needs: '',
-      insight: '',
-      insight_quote: '',
-      thumbnail: cell.thumbnail || null,  // 썸네일 필드 추가
-      company_id: companyId,
-      project_id: projectId,
-      x_min: xBounds.min,
-      x_max: xBounds.max,
-      y_min: yBounds.min,
-      y_max: yBounds.max,
-      matrix_position: {
-        xIndex: cell.xIndex || 0,
-        yIndex: cell.yIndex || 0,
-        cellId: cellId
-      },
-      criteria_configuration_id: configurationId
-    })
-  })
-
-  if (personasToCreate.length > 0) {
-    const { error } = await supabaseAdmin
-      .from('personas')
-      .insert(personasToCreate)
-
-    if (error) {
-      throw error
-    }
-  }
-
-  return personasToCreate.length
-}
+// 페르소나 생성 로직은 /api/personas/sync로 이관됨
 
 // 권한 확인 함수
 async function checkPermission(companyId: string, userId: string, projectId?: string) {
@@ -262,20 +174,8 @@ export async function POST(request: Request) {
 
     const newConfiguration = data[0]
 
-    // 페르소나 자동 생성
-    try {
-      const personaCount = await createPersonasFromMatrix(
-        newConfiguration.id,
-        body.company_id,
-        body.project_id || null,
-        body.x_axis.segments || [],
-        body.y_axis.segments || [],
-        body.persona_matrix || {},
-        body.unclassified_cells || []
-      )
-    } catch (personaError) {
-      // 페르소나 생성 실패는 경고만 하고 계속 진행
-    }
+    // 페르소나 동기화는 별도 API(/api/personas/sync)에서 처리
+    // 클라이언트에서 기준 생성 후 동기화 API를 호출하도록 함
 
     return NextResponse.json({
       configuration: newConfiguration,
@@ -361,29 +261,8 @@ export async function PUT(request: Request) {
       }, { status: 404 })
     }
 
-    // 기존 페르소나 삭제 후 새로 생성
-    if (updateData.persona_matrix !== undefined) {
-      try {
-        // 기존 페르소나 삭제
-        await supabaseAdmin
-          .from('personas')
-          .delete()
-          .eq('criteria_configuration_id', id)
-
-        // 새 페르소나 생성
-        const personaCount = await createPersonasFromMatrix(
-          id,
-          existingConfig.company_id,
-          existingConfig.project_id,
-          updateData.x_axis?.segments || [],
-          updateData.y_axis?.segments || [],
-          updateData.persona_matrix || {},
-          updateData.unclassified_cells || []
-        )
-      } catch (personaError) {
-        // 페르소나 생성 실패는 경고만 하고 계속 진행
-      }
-    }
+    // 페르소나 동기화는 별도 API(/api/personas/sync)에서 처리
+    // 클라이언트에서 기준 저장 후 동기화 API를 호출하도록 함
 
     return NextResponse.json({
       configuration: data[0],

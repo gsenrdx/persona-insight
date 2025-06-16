@@ -81,25 +81,46 @@ export async function GET(request: Request) {
     // RPC 함수 실패 시 기존 방식으로 fallback
     console.error("RPC 함수 오류:", rpcError)
     
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .select(`
-        *,
-        project_members!inner(
-          id,
-          role,
-          joined_at,
-          user_id
-        ),
-        interviewees(count),
-        personas(count)
-      `)
-      .eq('company_id', company_id)
-      .eq('is_active', true)
-      .or(
-        `visibility.eq.public,and(visibility.eq.private,project_members.user_id.eq.${user_id})`
-      )
-      .order('created_at', { ascending: false })
+    // 두 개의 쿼리로 분리: 공개 프로젝트 + 사용자가 멤버인 비공개 프로젝트
+    const [publicProjects, privateProjects] = await Promise.all([
+      // 공개 프로젝트
+      supabaseAdmin
+        .from('projects')
+        .select(`
+          *,
+          project_members(id, role, joined_at, user_id),
+          interviewees(count),
+          personas!left(count)
+        `)
+        .eq('company_id', company_id)
+        .eq('is_active', true)
+        .eq('visibility', 'public')
+        .eq('personas.active', true),
+      
+      // 사용자가 멤버인 비공개 프로젝트
+      supabaseAdmin
+        .from('projects')
+        .select(`
+          *,
+          project_members!inner(id, role, joined_at, user_id),
+          interviewees(count),
+          personas!left(count)
+        `)
+        .eq('company_id', company_id)
+        .eq('is_active', true)
+        .eq('visibility', 'private')
+        .eq('project_members.user_id', user_id)
+        .eq('personas.active', true)
+    ])
+
+    const combinedData = [
+      ...(publicProjects.data || []),
+      ...(privateProjects.data || [])
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // 최신순 정렬
+
+    const combinedError = publicProjects.error || privateProjects.error
+    
+    const { data, error } = { data: combinedData, error: combinedError }
 
     if (error) {
       console.error("Supabase 조회 오류:", error)
