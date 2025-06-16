@@ -530,12 +530,10 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
                   {/* 액션 영역 */}
                   {interview.persona_reflected ? (
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 p-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full" />
-                          <span className="text-xs font-medium text-indigo-700 truncate text-center">
-                            {interview.personas?.persona_title || interview.personas?.persona_type}
-                          </span>
+                      <div className="flex-1 py-2">
+                        <div className="text-xs font-medium text-gray-700 flex items-center">
+                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 flex-shrink-0" />
+                          Type {interview.personas?.persona_type || interview.user_type}. {interview.personas?.persona_title || interview.personas?.persona_type}
                         </div>
                       </div>
                       
