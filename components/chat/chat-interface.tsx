@@ -60,6 +60,14 @@ interface SummaryData {
 
 // 확장된 메시지 타입 정의
 interface ExtendedMessage extends Message {
+  // 응답한 페르소나 정보 추가
+  respondingPersona?: {
+    id: string;
+    name: string;
+    image?: string;
+  };
+  // 멘션된 페르소나들
+  mentionedPersonas?: string[];
   metadata?: {
     isFollowUpQuestion?: boolean;
     originalMessageId?: string;
@@ -74,7 +82,7 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
   const hasGreetedRef = useRef<boolean>(false) // 인사 실행 여부 추적
   const [isClient, setIsClient] = useState(false)
   const [misoConversationId, setMisoConversationId] = useState<string | null>(null)
-  const [chatMessages, setChatMessages] = useState<Message[]>([])
+  const [chatMessages, setChatMessages] = useState<ExtendedMessage[]>([])
   const [userInput, setUserInput] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
@@ -93,7 +101,11 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
   const [cursorPosition, setCursorPosition] = useState<number>(0)
   const [mentionedPersonas, setMentionedPersonas] = useState<Array<{id: string, name: string}>>([])
   
-  // 현재 입력에서 멘션된 페르소나 추적
+  // 멀티 페르소나 상태
+  const [primaryPersona] = useState(personaData) // 기본 페르소나 (대화창의 주인)
+  const [activePersona, setActivePersona] = useState(personaData) // 현재 활성 페르소나 (응답할 페르소나)
+  
+  // 현재 입력에서 멘션된 페르소나 추적 및 활성 페르소나 변경
   useEffect(() => {
     const mentionedIds = extractMentionedPersonas(userInput)
     const mentioned = mentionedIds.map(id => {
@@ -105,7 +117,18 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     }).filter(p => p.name !== p.id) // 유효한 페르소나만 필터링
     
     setMentionedPersonas(mentioned)
-  }, [userInput, allPersonas])
+    
+    // 멘션된 페르소나가 있으면 첫 번째 페르소나를 활성 페르소나로 설정
+    if (mentioned.length > 0) {
+      const firstMentionedPersona = allPersonas.find(p => p.id === mentioned[0].id)
+      if (firstMentionedPersona) {
+        setActivePersona(firstMentionedPersona)
+      }
+    } else {
+      // 멘션이 없으면 기본 페르소나로 복귀
+      setActivePersona(primaryPersona)
+    }
+  }, [userInput, allPersonas, primaryPersona])
 
   useEffect(() => {
     setIsClient(true)
@@ -198,13 +221,13 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
         body: JSON.stringify({
           messages: [greetingUserMessage],
           personaData: {
-            persona_title: personaData.persona_title || personaData.name || '',
-            persona_summary: personaData.persona_summary || personaData.summary || '',
-            persona_style: personaData.persona_style || personaData.persona_character || '',
-            painpoints: personaData.painpoints || personaData.painPoint || '',
-            needs: personaData.needs || personaData.hiddenNeeds || '',
-            insight: personaData.insight || '',
-            insight_quote: personaData.insight_quote || ''
+            persona_title: activePersona.persona_title || activePersona.name || '',
+            persona_summary: activePersona.persona_summary || activePersona.summary || '',
+            persona_style: activePersona.persona_style || activePersona.persona_character || '',
+            painpoints: activePersona.painpoints || activePersona.painPoint || '',
+            needs: activePersona.needs || activePersona.hiddenNeeds || '',
+            insight: activePersona.insight || '',
+            insight_quote: activePersona.insight_quote || ''
           },
           conversationId: null
         }),
@@ -220,7 +243,7 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     } catch (error) {
       setShowLoadingMsg(false);
       
-      // 오류 메시지 추가
+      // 오류 메시지 추가 (활성 페르소나 정보 포함)
       setChatMessages(prev => [
         ...prev,
         {
@@ -228,7 +251,12 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
           role: "assistant",
           content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
           createdAt: new Date(),
-        }
+          respondingPersona: {
+            id: activePersona.id,
+            name: activePersona.persona_title || activePersona.name || '',
+            image: activePersona.image || activePersona.avatar
+          }
+        } as ExtendedMessage
       ]);
     } finally {
       setLoading(false);
@@ -251,12 +279,18 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     const decoder = new TextDecoder();
     let buffer = "";
     
-    // 어시스턴트 메시지 미리 생성 및 추가
-    const assistantMessage: Message = {
+    // 어시스턴트 메시지 미리 생성 및 추가 (활성 페르소나 정보 포함)
+    const assistantMessage: ExtendedMessage = {
       id: (Date.now() + 1).toString(),
       role: "assistant",
       content: "",
       createdAt: new Date(),
+      // 응답한 페르소나 정보 저장
+      respondingPersona: {
+        id: activePersona.id,
+        name: activePersona.persona_title || activePersona.name || '',
+        image: activePersona.image || activePersona.avatar
+      }
     };
 
     // 로딩 메시지 숨기고 빈 어시스턴트 메시지 추가
@@ -375,11 +409,13 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     
     if (!userInput.trim() || loading) return;
 
-    const newUserMessage: Message = {
+    const newUserMessage: ExtendedMessage = {
       id: Date.now().toString(),
       role: "user",
       content: userInput.trim(),
       createdAt: new Date(),
+      // 멘션된 페르소나 정보 저장
+      mentionedPersonas: extractMentionedPersonas(userInput.trim()),
     };
 
     // 꼬리질문인 경우 관계 추적
@@ -424,13 +460,13 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
         body: JSON.stringify({
           messages: apiMessages,
           personaData: {
-            persona_title: personaData.persona_title || personaData.name || '',
-            persona_summary: personaData.persona_summary || personaData.summary || '',
-            persona_style: personaData.persona_style || personaData.persona_character || '',
-            painpoints: personaData.painpoints || personaData.painPoint || '',
-            needs: personaData.needs || personaData.hiddenNeeds || '',
-            insight: personaData.insight || '',
-            insight_quote: personaData.insight_quote || ''
+            persona_title: activePersona.persona_title || activePersona.name || '',
+            persona_summary: activePersona.persona_summary || activePersona.summary || '',
+            persona_style: activePersona.persona_style || activePersona.persona_character || '',
+            painpoints: activePersona.painpoints || activePersona.painPoint || '',
+            needs: activePersona.needs || activePersona.hiddenNeeds || '',
+            insight: activePersona.insight || '',
+            insight_quote: activePersona.insight_quote || ''
           },
           conversationId: misoConversationId
         }),
@@ -458,13 +494,18 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
             content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
           };
         } else {
-          // 새 오류 메시지 추가
+          // 새 오류 메시지 추가 (활성 페르소나 정보 포함)
           updated.push({
             id: (Date.now() + 1).toString(),
             role: "assistant",
             content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
             createdAt: new Date(),
-          });
+            respondingPersona: {
+              id: activePersona.id,
+              name: activePersona.persona_title || activePersona.name || '',
+              image: activePersona.image || activePersona.avatar
+            }
+          } as ExtendedMessage);
         }
         
         return updated;
@@ -751,20 +792,29 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
                   >
                     {message.role === "assistant" && (
                       <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
-                        {personaData.image ? (
-                          <Image
-                            src={personaData.image}
-                            alt={personaData.name}
-                            width={36}
-                            height={36}
-                            className="object-cover w-full h-full"
-                            unoptimized={personaData.image.includes('supabase.co')}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                            {personaData.name.substring(0, 2)}
-                          </div>
-                        )}
+                        {(() => {
+                          // 응답한 페르소나 정보 사용 (없으면 기본 페르소나)
+                          const respondingPersona = (message as ExtendedMessage).respondingPersona
+                          const displayPersona = respondingPersona || {
+                            name: personaData.persona_title || personaData.name,
+                            image: personaData.image || personaData.avatar
+                          }
+                          
+                          return displayPersona.image ? (
+                            <Image
+                              src={displayPersona.image}
+                              alt={displayPersona.name}
+                              width={36}
+                              height={36}
+                              className="object-cover w-full h-full"
+                              unoptimized={displayPersona.image.includes('supabase.co')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                              {displayPersona.name.substring(0, 2)}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
                     
@@ -777,6 +827,18 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
                         }
                       `}
                     >
+                      {/* 페르소나 이름 표시 (assistant 메시지에만) */}
+                      {message.role === "assistant" && (() => {
+                        const respondingPersona = (message as ExtendedMessage).respondingPersona
+                        const displayName = respondingPersona?.name || personaData.persona_title || personaData.name
+                        
+                        return (
+                          <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                            {displayName}
+                          </div>
+                        )
+                      })()}
+                      
                       {/* 꼬리질문 배지 - 깔끔한 디자인 */}
                       {sourceMessage && message.role === "user" && (
                         <div className="mb-3 text-xs text-blue-600 dark:text-blue-300 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800/40">
@@ -861,22 +923,25 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
             >
               <div className="flex flex-row items-end gap-2">
                 <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
-                  {personaData.image ? (
+                  {activePersona.image || activePersona.avatar ? (
                     <Image
-                      src={personaData.image}
-                      alt={personaData.name}
+                      src={activePersona.image || activePersona.avatar}
+                      alt={activePersona.persona_title || activePersona.name}
                       width={36}
                       height={36}
                       className="object-cover w-full h-full"
-                      unoptimized={personaData.image.includes('supabase.co')}
+                      unoptimized={(activePersona.image || activePersona.avatar).includes('supabase.co')}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                      {personaData.name.substring(0, 2)}
+                      {(activePersona.persona_title || activePersona.name).substring(0, 2)}
                     </div>
                   )}
                 </div>
                 <div className="px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+                  <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                    {activePersona.persona_title || activePersona.name}
+                  </div>
                   <div className="loading-dots">
                     <div></div>
                     <div></div>
