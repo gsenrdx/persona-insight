@@ -17,7 +17,6 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    // 성능 최적화: JOIN을 사용하여 N+1 쿼리 문제 해결
     let query = supabase
       .from('interviewees')
       .select(`
@@ -27,10 +26,6 @@ export async function GET(request: Request) {
           persona_type,
           persona_title,
           persona_description
-        ),
-        profiles:created_by(
-          id,
-          name
         )
       `)
       .eq('company_id', company_id)
@@ -53,11 +48,31 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
-    // 데이터 변환 (프로필 정보를 기존 형식으로 변경)
+    // 작성자 정보가 있는 인터뷰들의 created_by ID들을 수집
+    const createdByIds = data
+      ?.filter(interview => interview.created_by)
+      ?.map(interview => interview.created_by)
+      ?.filter((id, index, arr) => arr.indexOf(id) === index) // 중복 제거
+
+    let profilesData: { id: string; name: string }[] = []
+    if (createdByIds && createdByIds.length > 0) {
+      // profiles 테이블에서 작성자 정보 조회 (성능 최적화: 배치 조회)
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', createdByIds)
+
+      if (!profilesError && profiles) {
+        profilesData = profiles
+      }
+    }
+
+    // 인터뷰 데이터에 작성자 정보 매핑
     const dataWithProfiles = data?.map(interview => ({
       ...interview,
-      created_by_profile: interview.profiles || null,
-      profiles: undefined // 중복 제거
+      created_by_profile: interview.created_by 
+        ? profilesData.find(profile => profile.id === interview.created_by) || null
+        : null
     }))
 
     // 성능 최적화: 캐시 헤더 추가 (2분간 캐시)
