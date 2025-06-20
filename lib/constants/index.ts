@@ -12,7 +12,7 @@
 import * as ApiConstants from './api'
 import * as RouteConstants from './routes'
 import * as MessageConstants from './messages'
-import * as ConfigConstants from './config'
+import * as ConfigConstants from '../config'
 
 // =============================================================================
 // 개별 상수 모듈 re-export

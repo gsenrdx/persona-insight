@@ -1,3 +1,5 @@
+import { formatFileSize } from './format'
+
 /**
  * 파일 검증 옵션
  */
@@ -171,13 +173,4 @@ export function validatePassword(password: string): PasswordValidationResult {
   }
 }
 
-/**
- * 파일 크기 포맷팅 (validation에서 사용)
- */
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+// formatFileSize는 ./format.ts에서 import

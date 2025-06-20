@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { syncInterviewTopicsToPersona } from '@/lib/miso-knowledge'
+import { syncInterviewTopicsToPersona } from '@/lib/services/miso'
 
 export async function POST(req: NextRequest) {
   try {
