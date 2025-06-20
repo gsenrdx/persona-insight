@@ -12,11 +12,11 @@ import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
 import { Navigation } from "@/components/shared"
 import { PersonaCriteriaModal } from '@/components/modal'
-import { ProjectHeader } from './sections/ProjectHeader'
-import { ProjectGrid } from './sections/ProjectGrid'
-import { ProjectSearchBar } from './components/ProjectSearchBar'
-import { CreateProjectDialog } from './components/CreateProjectDialog'
-import { ProjectSkeleton } from './components/ProjectSkeleton'
+import { ProjectHeader } from './sections/project-header'
+import { ProjectGrid } from './sections/project-grid'
+import { ProjectSearchBar } from './components/project-search-bar'
+import { CreateProjectDialog } from './components/create-project-dialog'
+import { ProjectSkeleton } from './components/project-skeleton'
 
 // 프로젝트 수정을 위한 인터페이스
 interface ProjectEditData {

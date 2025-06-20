@@ -2,7 +2,7 @@ import React from 'react'
 import { Button } from "@/components/ui/button"
 import { FolderOpen, Plus } from "lucide-react"
 import { ProjectWithMembership } from '@/types'
-import { ProjectCard } from '../components/ProjectCard'
+import { ProjectCard } from '../components/project-card'
 
 interface ProjectGridProps {
   projects: ProjectWithMembership[]

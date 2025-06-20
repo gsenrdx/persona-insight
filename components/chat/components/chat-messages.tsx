@@ -1,7 +1,7 @@
 import React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import Image from "next/image"
-import { ChatMessage } from "./ChatMessage"
+import { ChatMessage } from "./chat-message"
 import { ExtendedMessage } from "../types"
 import type { Message } from "ai/react"
 
