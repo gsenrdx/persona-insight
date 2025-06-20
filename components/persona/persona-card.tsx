@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, MessageCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/index"
 import { useTheme } from "next-themes"
 import { PersonaCardProps } from "@/types/components"
 

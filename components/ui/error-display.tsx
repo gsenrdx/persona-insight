@@ -4,7 +4,7 @@ import { AlertOctagon, RefreshCw, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/index"
 import { ErrorUtils, ApiError, ValidationError, NetworkError } from "@/lib/errors"
 
 export interface ErrorDisplayProps {

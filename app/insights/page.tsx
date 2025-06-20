@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/index"
 import { useAuth } from "@/hooks/use-auth"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"

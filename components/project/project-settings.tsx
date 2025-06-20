@@ -32,7 +32,7 @@ import {
 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils/index'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
 
