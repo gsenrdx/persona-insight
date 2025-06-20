@@ -155,7 +155,9 @@ export function PersonaMentionDropdown({
                   {filteredPersonas.map((persona, index) => (
                     <div
                       key={persona.id}
-                      ref={(el) => (itemRefs.current[index] = el)}
+                      ref={(el) => {
+                        itemRefs.current[index] = el
+                      }}
                       onClick={() => handleSelect(persona)}
                       className={`
                         flex items-center gap-3 px-3 py-3 cursor-pointer rounded-lg transition-all duration-150

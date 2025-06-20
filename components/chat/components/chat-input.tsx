@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { ArrowUp, X } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { PersonaMentionDropdown } from "@/components/chat/persona-mention-dropdown"
+import { PersonaMentionDropdown } from "@/components/chat/mention/persona-mention-dropdown"
 import type { Message } from "ai/react"
 
 interface ChatInputProps {
@@ -14,7 +14,7 @@ interface ChatInputProps {
   mentionSearchText: string
   mentionedPersonas: Array<{id: string, name: string}>
   allPersonas: any[]
-  inputRef: React.RefObject<HTMLTextAreaElement>
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void

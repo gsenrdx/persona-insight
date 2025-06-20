@@ -1,7 +1,7 @@
 import React from "react"
 import { motion } from "framer-motion"
 import { Copy, MessageSquareMore } from "lucide-react"
-import { MessageContent } from "@/components/chat/message-content"
+import { MessageContent } from "@/components/chat/mention/message-content"
 import { ChatHeader } from "./chat-header"
 import { ExtendedMessage } from "../types"
 import type { Message } from "ai/react"

@@ -13,7 +13,7 @@ interface ChatMessagesProps {
   isStreaming: boolean
   isUsingTool: boolean
   showLoadingMsg: boolean
-  messagesEndRef: React.RefObject<HTMLDivElement>
+  messagesEndRef: React.RefObject<HTMLDivElement | null>
   repliedMessages: Record<string, string>
   isCopied: string | null
   onCopyMessage: (messageId: string, content: string) => void

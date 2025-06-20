@@ -5,7 +5,7 @@ export function useMentionSystem(
   userInput: string,
   allPersonas: any[],
   primaryPersona: any,
-  inputRef: React.RefObject<HTMLTextAreaElement>
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
 ) {
   const [showMentionDropdown, setShowMentionDropdown] = useState<boolean>(false)
   const [mentionSearchText, setMentionSearchText] = useState<string>("")
