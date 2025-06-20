@@ -66,6 +66,18 @@ const startCacheCleanup = () => {
 // 캐시 시작
 startCacheCleanup();
 
+// 성능 최적화: 프로세스 종료 시 메모리 누수 방지
+if (typeof process !== 'undefined') {
+  process.on('exit', () => {
+    if (cleanupTimer) {
+      clearInterval(cleanupTimer);
+      cleanupTimer = null;
+    }
+    userProfileCache.clear();
+    lastAccessTime.clear();
+  });
+}
+
 /**
  * 토큰에서 사용자 ID 추출 (JWT 디코딩 없이 빠른 추출)
  */

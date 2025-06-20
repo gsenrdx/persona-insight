@@ -293,6 +293,11 @@ export async function GET(request: Request) {
 
     // 인터뷰가 없으면 빈 결과 반환
     if (!interviews || interviews.length === 0) {
+      // 빈 결과도 캐시 (5분)
+      const headers = {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+      }
+      
       return NextResponse.json({
         year: parseInt(year),
         intervieweeCount: 0,
@@ -303,7 +308,7 @@ export async function GET(request: Request) {
           totalQuotes: 0,
           message: "해당 연도에 인터뷰 데이터가 없습니다."
         }
-      })
+      }, { headers })
     }
 
     // interview_detail이 이미 포함되어 있으므로 바로 인사이트 변환
@@ -316,6 +321,11 @@ export async function GET(request: Request) {
     const insights = transformInterviewDataToInsights(interviews || [])
 
 
+    // 성능 최적화: 캐시 헤더 추가 (10분간 캐시)
+    const headers = {
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1800'
+    }
+
     return NextResponse.json({
       year: parseInt(year),
       intervieweeCount: interviews.length,
@@ -327,7 +337,7 @@ export async function GET(request: Request) {
         rawInterviewCount: interviews.length,
         detailedInterviewCount: interviews.filter(i => i.interview_detail && Array.isArray(i.interview_detail) && i.interview_detail.length > 0).length
       }
-    })
+    }, { headers })
 
   } catch (error) {
     return NextResponse.json(

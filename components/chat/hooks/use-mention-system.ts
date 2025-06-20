@@ -67,12 +67,15 @@ export function useMentionSystem(
     setMentionSearchText("")
     
     // 커서 위치 업데이트
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus()
         inputRef.current.setSelectionRange(result.newCursorPosition, result.newCursorPosition)
       }
     }, 0)
+    
+    // 성능 최적화: cleanup 함수에서 타임아웃 정리
+    return () => clearTimeout(timeoutId)
   }, [cursorPosition, inputRef])
 
   const removeMention = useCallback((personaId: string, currentText: string, setUserInput: React.Dispatch<React.SetStateAction<string>>) => {

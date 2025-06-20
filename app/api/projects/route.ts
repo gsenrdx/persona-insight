@@ -186,10 +186,15 @@ export async function GET(request: Request) {
       }
     })
 
+    // 성능 최적화: 캐시 헤더 추가 (1분간 캐시)
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
+    }
+
     return NextResponse.json({
       data: transformedData,
       success: true
-    })
+    }, { headers })
   } catch (error) {
     console.error("API route error:", error)
     

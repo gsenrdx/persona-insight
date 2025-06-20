@@ -116,6 +116,12 @@ export function useMisoStreaming() {
     } catch (streamError) {
       throw streamError
     } finally {
+      // 성능 최적화: 메모리 누수 방지를 위한 reader 정리
+      try {
+        reader.releaseLock()
+      } catch (e) {
+        // reader가 이미 해제된 경우 무시
+      }
       setIsStreaming(false)
     }
   }, [misoConversationId])

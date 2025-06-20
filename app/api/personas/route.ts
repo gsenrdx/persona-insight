@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-// 모든 페르소나 조회
+// 모든 페르소나 조회 (페이지네이션 적용)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const persona_type = searchParams.get('type')
     const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
+    
+    // 페이지네이션 파라미터
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100) // 최대 100개
+    const offset = (page - 1) * limit
 
     // company_id가 필수로 제공되어야 함
     if (!company_id) {
@@ -17,7 +22,38 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    let query = supabase
+    // 기본 쿼리 설정
+    let baseQuery = supabase
+      .from('personas')
+      .select('*', { count: 'exact' }) // 전체 개수 포함
+      .eq('company_id', company_id)
+      .eq('active', true) // 활성화된 페르소나만 조회
+
+    // 프로젝트 필터링 추가 (project_id가 있으면 해당 프로젝트, 없으면 회사 레벨)
+    if (project_id) {
+      baseQuery = baseQuery.eq('project_id', project_id)
+    } else {
+      baseQuery = baseQuery.is('project_id', null)
+    }
+
+    // 특정 타입 필터링
+    if (persona_type) {
+      baseQuery = baseQuery.eq('persona_type', persona_type)
+    }
+
+    // 전체 개수 조회를 위한 쿼리 (데이터 없이 count만)
+    const { count, error: countError } = await baseQuery
+
+    if (countError) {
+      console.error("Count 조회 오류:", countError)
+      return NextResponse.json({
+        error: "페르소나 개수 조회에 실패했습니다",
+        success: false
+      }, { status: 500 })
+    }
+
+    // 실제 데이터 조회 쿼리
+    let dataQuery = supabase
       .from('personas')
       .select(`
         id,
@@ -34,22 +70,22 @@ export async function GET(request: Request) {
         created_at
       `)
       .eq('company_id', company_id)
-      .eq('active', true) // 활성화된 페르소나만 조회
+      .eq('active', true)
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1) // 페이지네이션 적용
 
-    // 프로젝트 필터링 추가 (project_id가 있으면 해당 프로젝트, 없으면 회사 레벨)
+    // 필터 재적용
     if (project_id) {
-      query = query.eq('project_id', project_id)
+      dataQuery = dataQuery.eq('project_id', project_id)
     } else {
-      query = query.is('project_id', null)
+      dataQuery = dataQuery.is('project_id', null)
     }
 
-    // 특정 타입 필터링
     if (persona_type) {
-      query = query.eq('persona_type', persona_type)
+      dataQuery = dataQuery.eq('persona_type', persona_type)
     }
 
-    const { data, error } = await query
+    const { data, error } = await dataQuery
 
     if (error) {
       console.error("Supabase 조회 오류:", error)
@@ -59,10 +95,32 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
+    // 페이지네이션 메타데이터 계산
+    const totalPages = Math.ceil((count || 0) / limit)
+    const hasNextPage = page < totalPages
+    const hasPreviousPage = page > 1
+
+    // 캐시 헤더 추가 (5분간 캐시)
+    const headers = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      'X-Total-Count': String(count || 0),
+      'X-Total-Pages': String(totalPages),
+      'X-Current-Page': String(page),
+      'X-Page-Size': String(limit)
+    }
+
     return NextResponse.json({
       data,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage
+      },
       success: true
-    })
+    }, { headers })
   } catch (error) {
     console.error("API route error:", error)
     
