@@ -1,8 +1,14 @@
 "use client"
 
-import { useRef, useEffect, useCallback, useState } from "react"
+import { useRef, useEffect, useCallback, useState, useMemo, memo } from "react"
 import type { Message } from "ai/react"
-import { SummaryModal } from "@/components/chat/summary"
+import dynamic from "next/dynamic"
+
+// 성능 최적화: 요약 모달 동적 import (코드 스플리팅)
+const SummaryModal = dynamic(() => import("@/components/chat/summary").then(mod => ({ default: mod.SummaryModal })), {
+  ssr: false,
+  loading: () => null
+})
 import { ChatMessages } from "./components/chat-messages"
 import { ChatInput } from "./components/chat-input"
 import { SummaryButton } from "./components/summary-button"
@@ -12,7 +18,8 @@ import { chatStyles } from "./styles"
 import { ChatInterfaceProps, ExtendedMessage, SummaryData } from "./types"
 import { MentionData } from "@/lib/utils/mention"
 
-export default function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
+// 성능 최적화: 메모화된 ChatInterface 컴포넌트
+const ChatInterface = memo(function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasGreetedRef = useRef<boolean>(false)
@@ -29,7 +36,10 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
   const [isGeneratingSummary, setIsGeneratingSummary] = useState<boolean>(false)
   const [summaryModalOpen, setSummaryModalOpen] = useState<boolean>(false)
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
-  const [primaryPersona] = useState(personaData)
+  // 성능 최적화: 메모화된 persona 데이터
+  const memoizedPersonaData = useMemo(() => personaData, [personaData.id, personaData.persona_title, personaData.name])
+  const memoizedAllPersonas = useMemo(() => allPersonas, [allPersonas.length])
+  const [primaryPersona] = useState(memoizedPersonaData)
   
   // Custom hooks
   const {
@@ -50,7 +60,7 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     handleMentionSelect,
     removeMention,
     setShowMentionDropdown
-  } = useMentionSystem(userInput, allPersonas, primaryPersona, inputRef)
+  } = useMentionSystem(userInput, memoizedAllPersonas, primaryPersona, inputRef)
 
   useEffect(() => {
     setIsClient(true)
@@ -113,8 +123,32 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     setReplyingTo(null)
   }, [])
 
-  // API 호출 래퍼 함수
-  const callChatAPI = async (messages: ExtendedMessage[], conversationId: string | null) => {
+  // 성능 최적화: 메모화된 persona 데이터 객체
+  const memoizedPersonaApiData = useMemo(() => ({
+    persona_title: activePersona.persona_title || activePersona.name || '',
+    persona_summary: activePersona.persona_summary || activePersona.summary || '',
+    persona_style: activePersona.persona_style || activePersona.persona_character || '',
+    painpoints: activePersona.painpoints || activePersona.painPoint || '',
+    needs: activePersona.needs || activePersona.hiddenNeeds || '',
+    insight: activePersona.insight || '',
+    insight_quote: activePersona.insight_quote || ''
+  }), [
+    activePersona.persona_title,
+    activePersona.name,
+    activePersona.persona_summary,
+    activePersona.summary,
+    activePersona.persona_style,
+    activePersona.persona_character,
+    activePersona.painpoints,
+    activePersona.painPoint,
+    activePersona.needs,
+    activePersona.hiddenNeeds,
+    activePersona.insight,
+    activePersona.insight_quote
+  ])
+
+  // 성능 최적화: 메모화된 API 호출 함수
+  const callChatAPI = useCallback(async (messages: ExtendedMessage[], conversationId: string | null) => {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -122,15 +156,7 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
       },
       body: JSON.stringify({
         messages,
-        personaData: {
-          persona_title: activePersona.persona_title || activePersona.name || '',
-          persona_summary: activePersona.persona_summary || activePersona.summary || '',
-          persona_style: activePersona.persona_style || activePersona.persona_character || '',
-          painpoints: activePersona.painpoints || activePersona.painPoint || '',
-          needs: activePersona.needs || activePersona.hiddenNeeds || '',
-          insight: activePersona.insight || '',
-          insight_quote: activePersona.insight_quote || ''
-        },
+        personaData: memoizedPersonaApiData,
         conversationId
       }),
     })
@@ -140,7 +166,7 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     }
 
     return response
-  }
+  }, [memoizedPersonaApiData])
 
   // 자동 인사 메시지 전송
   const handleAutoGreeting = async () => {
@@ -478,4 +504,6 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
       />
     </div>
   )
-}
+})
+
+export default ChatInterface

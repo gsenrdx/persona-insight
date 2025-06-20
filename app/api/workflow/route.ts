@@ -11,6 +11,7 @@ import {
   DEFAULT_SCORING_GUIDELINES
 } from "@/types/persona-criteria"
 import { getFileStorageService } from "@/lib/utils/file"
+import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 
 // 기본 프롬프트 생성 (설정이 없을 때)
 function generateDefaultPrompt(): string {
@@ -109,7 +110,8 @@ ${outputConfig.y_axis_variable_name} = null
 </${outputConfig.y_axis_variable_name}>`
 }
 
-export const runtime = 'edge'
+// 성능 최적화: Node.js runtime 사용 (edge runtime 호환성 문제로 인해)
+export const runtime = 'nodejs'
 export const maxDuration = 60 // 시간 제한 60초로 연장
 
 // 페르소나 매칭 함수
@@ -251,29 +253,79 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
       return;
     }
 
-    // 각 토픽을 개별적으로 저장 시도 (중복 체크)
-    for (const topicName of topicNames) {
-      try {
-        const { data: insertedTopic, error: topicError } = await supabase
-          .from('main_topics')
-          .insert([{
-            topic_name: topicName,
-            company_id: companyId,
-          }])
-          .select('*');
+    // 성능 최적화: 배치 upsert로 N+1 쿼리 문제 해결
+    try {
+      const topicsToInsert = topicNames.map(topicName => ({
+        topic_name: topicName,
+        company_id: companyId,
+      }));
 
-        if (topicError) {
-          // 유니크 제약조건 위배 (중복)인 경우
-          if (topicError.code === '23505') {
-            console.log(`Topic already exists: ${topicName}`);
-          } else {
-            console.error(`Error inserting topic ${topicName}:`, topicError);
+      console.log(`배치 처리: ${topicsToInsert.length}개 토픽 upsert 시작`);
+      
+      const { data: upsertedTopics, error: batchError } = await supabase
+        .from('main_topics')
+        .upsert(topicsToInsert, { 
+          onConflict: 'topic_name,company_id',
+          ignoreDuplicates: false 
+        })
+        .select('*');
+
+      if (batchError) {
+        console.error('배치 upsert 오류:', batchError);
+        
+        // 배치 실패 시 개별 처리로 폴백 (안전장치)
+        console.log('개별 처리로 폴백...');
+        for (const topicName of topicNames) {
+          try {
+            await supabase
+              .from('main_topics')
+              .upsert({
+                topic_name: topicName,
+                company_id: companyId,
+              }, { 
+                onConflict: 'topic_name,company_id',
+                ignoreDuplicates: true 
+              });
+          } catch (fallbackError) {
+            console.error(`개별 처리 실패 (${topicName}):`, fallbackError);
           }
-        } else {
-          console.log(`Successfully inserted topic: ${topicName}`);
         }
-      } catch (individualError) {
-        console.error(`Individual error for topic ${topicName}:`, individualError);
+      } else {
+        const newTopics = upsertedTopics?.filter(topic => 
+          topic && typeof topic === 'object'
+        ) || [];
+        
+        console.log(`배치 처리 완료: ${newTopics.length}개 토픽 처리됨`);
+        
+        // 성공한 토픽들 로깅
+        newTopics.forEach(topic => {
+          console.log(`처리됨: ${topic.topic_name}`);
+        });
+      }
+      
+    } catch (batchProcessError) {
+      console.error('배치 처리 중 예외:', batchProcessError);
+      
+      // 최종 폴백: 기본 개별 처리
+      console.log('기본 개별 처리 실행...');
+      for (const topicName of topicNames) {
+        try {
+          const { error: fallbackError } = await supabase
+            .from('main_topics')
+            .upsert({
+              topic_name: topicName,
+              company_id: companyId,
+            }, { 
+              onConflict: 'topic_name,company_id',
+              ignoreDuplicates: true 
+            });
+          
+          if (fallbackError && fallbackError.code !== '23505') {
+            console.error(`최종 폴백 실패 (${topicName}):`, fallbackError);
+          }
+        } catch (finalError) {
+          console.error(`최종 처리 실패 (${topicName}):`, finalError);
+        }
       }
     }
 
@@ -316,53 +368,21 @@ export async function POST(req: NextRequest) {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // JWT 토큰에서 사용자 정보 추출
-  let userId: string | null = null;
-  let companyId: string | null = null;
-  let userName: string | null = null;
-  let companyName: string | null = null;
-  let companyInfo: string | null = null;
-
+  // 성능 최적화: 인증 정보 캐싱으로 DB 부하 감소
+  let userProfile;
+  
   try {
-    const token = authorization.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      return new Response('인증에 실패했습니다.', { status: 401 });
-    }
-
-    userId = user.id;
-
-    // 사용자 프로필에서 company_id와 회사 정보, 사용자 이름 조회
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select(`
-        company_id,
-        name,
-        company:companies(
-          id,
-          name,
-          description
-        )
-      `)
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !profile?.company_id || !profile?.company) {
-      return new Response('사용자 정보를 찾을 수 없습니다.', { status: 400 });
-    }
-
-    companyId = profile.company_id;
-    userName = profile.name;
-    
-    // company는 단일 객체이므로 안전하게 접근
-    const company = Array.isArray(profile.company) ? profile.company[0] : profile.company;
-    companyName = company?.name || '';
-    companyInfo = company?.description || '';
-    
+    userProfile = await getAuthenticatedUserProfile(authorization, supabase);
   } catch (error) {
-    return new Response('인증 처리 중 오류가 발생했습니다.', { status: 401 });
+    console.error('인증 실패:', error);
+    return new Response(
+      error instanceof Error ? error.message : '인증 처리 중 오류가 발생했습니다.', 
+      { status: 401 }
+    );
   }
+  
+  // 캐시된 사용자 정보 사용
+  const { userId, companyId, userName, companyName, companyInfo } = userProfile;
 
   // 1단계: 파일을 Supabase Storage에 저장
   let fileInfo: { path: string } | null = null;

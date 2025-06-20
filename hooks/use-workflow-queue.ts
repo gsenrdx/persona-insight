@@ -69,6 +69,11 @@ interface UseWorkflowQueueReturn {
 const MAX_CONCURRENT_JOBS = 5; // 동시 처리 가능한 최대 작업 수
 const STORAGE_KEY = 'workflow_queue_jobs';
 
+// 성능 최적화: localStorage 제한 설정
+const MAX_STORAGE_SIZE = 5 * 1024 * 1024; // 5MB 제한 (브라우저 안전 범위)
+const MAX_COMPLETED_JOBS = 10; // 완료된 작업 최대 보관 수
+const MAX_FILE_SIZE_FOR_STORAGE = 2 * 1024 * 1024; // 2MB 이상 파일은 localStorage 제외
+
 // 파일을 Base64로 변환
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -90,9 +95,22 @@ const base64ToFile = (base64: string, fileName: string, fileType: string): File 
   return new File([byteArray], fileName, { type: fileType });
 };
 
-// Job을 직렬화 가능한 형태로 변환
+// Job을 직렬화 가능한 형태로 변환 (성능 최적화 적용)
 const serializeJob = async (job: WorkflowJob): Promise<SerializableWorkflowJob> => {
-  const fileData = await fileToBase64(job.file);
+  // 대용량 파일은 localStorage에 저장하지 않음 (메모리 절약)
+  let fileData: string | undefined;
+  
+  if (job.file.size <= MAX_FILE_SIZE_FOR_STORAGE) {
+    try {
+      fileData = await fileToBase64(job.file);
+    } catch (error) {
+      console.warn(`파일 직렬화 실패 (${job.fileName}):`, error);
+      // 파일 데이터 없이 진행
+    }
+  } else {
+    console.info(`대용량 파일 localStorage 제외: ${job.fileName} (${job.file.size} bytes)`);
+  }
+
   return {
     id: job.id,
     fileName: job.fileName,
@@ -134,12 +152,81 @@ const deserializeJob = (serializedJob: SerializableWorkflowJob): WorkflowJob => 
   };
 };
 
-// localStorage에 jobs 저장
+// localStorage에 jobs 저장 (성능 최적화 및 용량 제한 적용)
 const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
   try {
-    const serializedJobs = await Promise.all(jobs.map(serializeJob));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializedJobs));
+    // 1. 완료된 작업 정리 (최근 MAX_COMPLETED_JOBS개만 유지)
+    const activeJobs = jobs.filter(job => 
+      job.status === WorkflowStatus.PENDING || 
+      job.status === WorkflowStatus.PROCESSING ||
+      job.status === WorkflowStatus.PERSONA_SYNTHESIZING
+    );
+    
+    const completedJobs = jobs
+      .filter(job => 
+        job.status === WorkflowStatus.COMPLETED ||
+        job.status === WorkflowStatus.PERSONA_SYNTHESIS_COMPLETED ||
+        job.status === WorkflowStatus.FAILED ||
+        job.status === WorkflowStatus.PERSONA_SYNTHESIS_FAILED
+      )
+      .sort((a, b) => (b.endTime?.getTime() || 0) - (a.endTime?.getTime() || 0))
+      .slice(0, MAX_COMPLETED_JOBS);
+
+    const filteredJobs = [...activeJobs, ...completedJobs];
+
+    // 2. 직렬화 및 크기 확인
+    const serializedJobs = await Promise.all(filteredJobs.map(serializeJob));
+    const dataString = JSON.stringify(serializedJobs);
+    const dataSize = new Blob([dataString]).size;
+
+    // 3. 크기 제한 검사
+    if (dataSize > MAX_STORAGE_SIZE) {
+      console.warn(`localStorage 용량 초과 (${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB > ${MAX_STORAGE_SIZE / 1024 / 1024}MB)`);
+      
+      // 크기 초과 시 완료된 작업을 더 줄임
+      const reducedCompletedJobs = completedJobs.slice(0, Math.max(1, MAX_COMPLETED_JOBS / 2));
+      const reducedJobs = [...activeJobs, ...reducedCompletedJobs];
+      const reducedSerialized = await Promise.all(reducedJobs.map(serializeJob));
+      const reducedDataString = JSON.stringify(reducedSerialized);
+      const reducedSize = new Blob([reducedDataString]).size;
+      
+      if (reducedSize <= MAX_STORAGE_SIZE) {
+        localStorage.setItem(STORAGE_KEY, reducedDataString);
+        console.info(`localStorage 저장 완료 (축소됨): ${Math.round(reducedSize / 1024 / 1024 * 100) / 100}MB`);
+      } else {
+        console.error('localStorage 저장 실패: 용량 초과');
+        // 활성 작업만 저장 (최소한의 기능 유지)
+        const activeOnlyString = JSON.stringify(await Promise.all(activeJobs.map(serializeJob)));
+        if (new Blob([activeOnlyString]).size <= MAX_STORAGE_SIZE) {
+          localStorage.setItem(STORAGE_KEY, activeOnlyString);
+          console.info('활성 작업만 localStorage에 저장됨');
+        }
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEY, dataString);
+      console.debug(`localStorage 저장 완료: ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB`);
+    }
+    
   } catch (error) {
+    console.error('localStorage 저장 중 오류:', error);
+    
+    // 복구 시도: 기본 정보만 저장
+    try {
+      const basicJobs = jobs
+        .filter(job => job.status !== WorkflowStatus.COMPLETED)
+        .map(job => ({
+          id: job.id,
+          fileName: job.fileName,
+          status: job.status,
+          progress: job.progress,
+          projectId: job.projectId
+        }));
+      
+      localStorage.setItem(STORAGE_KEY + '_backup', JSON.stringify(basicJobs));
+      console.info('기본 정보만 백업 저장됨');
+    } catch (backupError) {
+      console.error('백업 저장도 실패:', backupError);
+    }
   }
 };
 

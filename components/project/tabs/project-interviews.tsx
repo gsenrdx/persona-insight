@@ -12,8 +12,28 @@ import { useAuth } from '@/hooks/use-auth'
 import { IntervieweeData } from '@/types/interviewee'
 import InterviewDetail from '@/components/project/tabs/interview-detail'
 import { supabase } from '@/lib/supabase'
-import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
-import { PersonaClassificationModal, AddInterviewModal, WorkflowProgressModal } from '@/components/modal'
+import dynamic from 'next/dynamic'
+
+// 성능 최적화: 모달 컴포넌트들 동적 import (코드 스플리팅)
+const PersonaSelectionModal = dynamic(() => import('@/components/modal/persona-selection-modal'), {
+  ssr: false,
+  loading: () => null
+})
+
+const PersonaClassificationModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.PersonaClassificationModal })), {
+  ssr: false,
+  loading: () => null
+})
+
+const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
+  ssr: false,
+  loading: () => null
+})
+
+const WorkflowProgressModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.WorkflowProgressModal })), {
+  ssr: false,
+  loading: () => null
+})
 import { useWorkflowQueue, WorkflowJob } from '@/hooks/use-workflow-queue'
 import { toast } from 'sonner'
 
