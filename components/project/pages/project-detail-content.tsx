@@ -11,9 +11,9 @@ import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
 import { Navigation } from "@/components/shared"
-import ProjectSettings from '@/components/project/project-settings'
-import ProjectInterviews from '@/components/project/project-interviews'
-import ProjectInsights from '@/components/project/project-insights'
+import ProjectSettings from '@/components/project/tabs/project-settings'
+import ProjectInterviews from '@/components/project/tabs/project-interviews'
+import ProjectInsights from '@/components/project/tabs/project-insights'
 
 interface ProjectDetailContentProps {
   projectId: string

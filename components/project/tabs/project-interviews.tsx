@@ -4,19 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Play, FileText, Calendar, MoreHorizontal, Trash2, Plus, User, Sparkles } from "lucide-react"
+import { FileText, Trash2, Plus, User, Sparkles } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { IntervieweeData } from '@/types/interviewee'
-import InterviewDetail from './interview-detail'
+import InterviewDetail from '@/components/project/tabs/interview-detail'
 import { supabase } from '@/lib/supabase'
 import PersonaSelectionModal from '@/components/modal/persona-selection-modal'
 import { PersonaClassificationModal, AddInterviewModal, WorkflowProgressModal } from '@/components/modal'
-import { useWorkflowQueue, WorkflowStatus, WorkflowJob } from '@/hooks/use-workflow-queue'
+import { useWorkflowQueue, WorkflowJob } from '@/hooks/use-workflow-queue'
 import { toast } from 'sonner'
 
 interface Project {

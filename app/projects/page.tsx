@@ -1,5 +1,5 @@
 import AuthGuard from "@/components/auth/auth-guard"
-import { ProjectPageContent } from "@/components/project/project-page-content"
+import { ProjectPageContent } from "@/components/project/pages/project-page-content"
 
 export default function ProjectListPage() {
   return (

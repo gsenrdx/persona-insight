@@ -1,6 +1,9 @@
-export { ProjectPageContent } from './project-page-content'
-export { default as ProjectInterviews } from './project-interviews'
-export { default as InterviewDetail } from './interview-detail'
-export { default as ProjectDetailContent } from './project-detail-content'
-export { default as ProjectInsights } from './project-insights'
-export { default as ProjectSettings } from './project-settings' 
+// Pages
+export { ProjectPageContent } from './pages/project-page-content'
+export { ProjectDetailContent } from './pages/project-detail-content'
+
+// Tabs
+export { default as ProjectInterviews } from './tabs/project-interviews'
+export { default as ProjectInsights } from './tabs/project-insights'
+export { default as ProjectSettings } from './tabs/project-settings'
+export { default as InterviewDetail } from './tabs/interview-detail' 
