@@ -1,134 +1,56 @@
 "use client"
 
-import { useRef, useEffect, useCallback, useMemo, useState } from "react"
-import { useChat, type Message } from "ai/react"
-import Image from "next/image"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Send, ThumbsUp, ThumbsDown, Copy, MessageSquareMore, X, ArrowDown, FileText, Loader2, ArrowUp, Sparkles } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useRef, useEffect, useCallback, useState } from "react"
+import type { Message } from "ai/react"
 import { SummaryModal } from "@/components/chat/summary"
-import { PersonaMentionDropdown } from "@/components/chat/persona-mention-dropdown"
-import { MessageContent } from "@/components/chat/message-content"
-import { findMentionContext, insertMention, MentionData, extractMentionedPersonas } from "@/lib/utils/mention"
-
-
-
-interface ChatInterfaceProps {
-  personaId: string
-  personaData: any
-  allPersonas?: any[]
-}
-
-// MISO 응답에서 오는 데이터 타입 정의
-interface MisoStreamData {
-  misoConversationId?: string;
-  [key: string]: any;
-}
-
-// 요약 데이터 타입 정의
-interface ContentItem {
-  content: string;
-  quote: string;
-  relevance: number;
-}
-
-interface Subtopic {
-  title: string;
-  content_items: ContentItem[];
-}
-
-interface Topic {
-  id: string;
-  title: string;
-  color: string;
-  subtopics: Subtopic[];
-}
-
-interface RootNode {
-  text: string;
-  subtitle: string;
-}
-
-interface SummaryData {
-  title: string;
-  summary: string;
-  root_node: RootNode;
-  main_topics: Topic[];
-}
-
-// 확장된 메시지 타입 정의
-interface ExtendedMessage extends Message {
-  // 응답한 페르소나 정보 추가
-  respondingPersona?: {
-    id: string;
-    name: string;
-    image?: string;
-  };
-  // 멘션된 페르소나들
-  mentionedPersonas?: string[];
-  metadata?: {
-    isFollowUpQuestion?: boolean;
-    originalMessageId?: string;
-    [key: string]: any;
-  };
-}
+import { ChatMessages } from "./components/ChatMessages"
+import { ChatInput } from "./components/ChatInput"
+import { SummaryButton } from "./components/SummaryButton"
+import { useMisoStreaming } from "./hooks/useMisoStreaming"
+import { useMentionSystem } from "./hooks/useMentionSystem"
+import { chatStyles } from "./styles"
+import { ChatInterfaceProps, ExtendedMessage, SummaryData } from "./types"
+import { MentionData } from "@/lib/utils/mention"
 
 export default function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const isUsingToolRef = useRef<boolean>(false)
-  const hasGreetedRef = useRef<boolean>(false) // 인사 실행 여부 추적
+  const hasGreetedRef = useRef<boolean>(false)
+  
+  // 상태 관리
   const [isClient, setIsClient] = useState(false)
-  const [misoConversationId, setMisoConversationId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<ExtendedMessage[]>([])
   const [userInput, setUserInput] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
-  const [isStreaming, setIsStreaming] = useState<boolean>(false)
   const [showLoadingMsg, setShowLoadingMsg] = useState<boolean>(false)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [isCopied, setIsCopied] = useState<string | null>(null)
-  const [repliedMessages, setRepliedMessages] = useState<Record<string, string>>({}) // 꼬리질문 관계 추적
+  const [repliedMessages, setRepliedMessages] = useState<Record<string, string>>({})
   const [isGeneratingSummary, setIsGeneratingSummary] = useState<boolean>(false)
   const [summaryModalOpen, setSummaryModalOpen] = useState<boolean>(false)
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
-  const [isUsingTool, setIsUsingTool] = useState<boolean>(false) // 도구 사용 중 상태
+  const [primaryPersona] = useState(personaData)
   
-  // 멘션 관련 상태
-  const [showMentionDropdown, setShowMentionDropdown] = useState<boolean>(false)
-  const [mentionSearchText, setMentionSearchText] = useState<string>("")
-  const [cursorPosition, setCursorPosition] = useState<number>(0)
-  const [mentionedPersonas, setMentionedPersonas] = useState<Array<{id: string, name: string}>>([])
+  // Custom hooks
+  const {
+    misoConversationId,
+    isStreaming,
+    isUsingTool,
+    isUsingToolRef,
+    processMisoStreaming,
+    setIsUsingTool
+  } = useMisoStreaming()
   
-  // 멀티 페르소나 상태
-  const [primaryPersona] = useState(personaData) // 기본 페르소나 (대화창의 주인)
-  const [activePersona, setActivePersona] = useState(personaData) // 현재 활성 페르소나 (응답할 페르소나)
-  
-  // 현재 입력에서 멘션된 페르소나 추적 및 활성 페르소나 변경
-  useEffect(() => {
-    const mentionedIds = extractMentionedPersonas(userInput)
-    const mentioned = mentionedIds.map(id => {
-      const persona = allPersonas.find(p => p.id === id)
-      return {
-        id,
-        name: persona?.persona_title || persona?.name || id
-      }
-    }).filter(p => p.name !== p.id) // 유효한 페르소나만 필터링
-    
-    setMentionedPersonas(mentioned)
-    
-    // 멘션된 페르소나가 있으면 첫 번째 페르소나를 활성 페르소나로 설정
-    if (mentioned.length > 0) {
-      const firstMentionedPersona = allPersonas.find(p => p.id === mentioned[0].id)
-      if (firstMentionedPersona) {
-        setActivePersona(firstMentionedPersona)
-      }
-    } else {
-      // 멘션이 없으면 기본 페르소나로 복귀
-      setActivePersona(primaryPersona)
-    }
-  }, [userInput, allPersonas, primaryPersona])
+  const {
+    showMentionDropdown,
+    mentionSearchText,
+    mentionedPersonas,
+    activePersona,
+    handleTextareaChange,
+    handleMentionSelect,
+    removeMention,
+    setShowMentionDropdown
+  } = useMentionSystem(userInput, allPersonas, primaryPersona, inputRef)
 
   useEffect(() => {
     setIsClient(true)
@@ -142,27 +64,23 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
 
   // 초기 자동 인사 메시지 전송
   useEffect(() => {
-    // 초기 로딩 시 한 번만 실행
     if (!hasGreetedRef.current && personaData && personaData.name) {
-      hasGreetedRef.current = true;
+      hasGreetedRef.current = true
       
-      // 사용자 인사 메시지 추가
       const greetingMessage: Message = {
         id: "greeting-user",
         role: "user" as const,
         content: "안녕하세요!",
         createdAt: new Date(),
-      };
+      }
       
-      setChatMessages([greetingMessage]);
+      setChatMessages([greetingMessage])
       
-      // 약간의 지연 후 자동으로 인사 메시지 전송
       setTimeout(() => {
-        handleAutoGreeting();
-      }, 800);
+        handleAutoGreeting()
+      }, 800)
     }
-  }, [personaData]); // personaData만 의존성으로 설정
-
+  }, [personaData])
 
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -176,74 +94,92 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
     }
   }, [])
 
-  // 메시지 복사 함수
   const handleCopyMessage = useCallback(async (messageId: string, content: string) => {
     try {
-      await navigator.clipboard.writeText(content);
-      setIsCopied(messageId);
-      setTimeout(() => setIsCopied(null), 2000);
+      await navigator.clipboard.writeText(content)
+      setIsCopied(messageId)
+      setTimeout(() => setIsCopied(null), 2000)
     } catch (err) {
-      console.error('복사 실패:', err);
+      console.error('복사 실패:', err)
     }
-  }, []);
+  }, [])
 
-  // 꼬리질문 기능
   const handleReplyMessage = useCallback((message: Message) => {
-    setReplyingTo(message);
-    focusInput();
-  }, [focusInput]);
+    setReplyingTo(message)
+    focusInput()
+  }, [focusInput])
 
   const cancelReply = useCallback(() => {
-    setReplyingTo(null);
-  }, []);
+    setReplyingTo(null)
+  }, [])
 
-  // 자동 인사 메시지 전송 함수
+  // API 호출 래퍼 함수
+  const callChatAPI = async (messages: ExtendedMessage[], conversationId: string | null) => {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages,
+        personaData: {
+          persona_title: activePersona.persona_title || activePersona.name || '',
+          persona_summary: activePersona.persona_summary || activePersona.summary || '',
+          persona_style: activePersona.persona_style || activePersona.persona_character || '',
+          painpoints: activePersona.painpoints || activePersona.painPoint || '',
+          needs: activePersona.needs || activePersona.hiddenNeeds || '',
+          insight: activePersona.insight || '',
+          insight_quote: activePersona.insight_quote || ''
+        },
+        conversationId
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response
+  }
+
+  // 자동 인사 메시지 전송
   const handleAutoGreeting = async () => {
     const greetingUserMessage: Message = {
       id: "greeting-user",
       role: "user",
       content: "안녕하세요!",
       createdAt: new Date(),
-    };
+    }
 
-    setLoading(true);
-    setIsStreaming(false);
-    setShowLoadingMsg(true);
-    isUsingToolRef.current = false;
-    setIsUsingTool(false);
+    setLoading(true)
+    setShowLoadingMsg(true)
+    isUsingToolRef.current = false
+    setIsUsingTool(false)
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [greetingUserMessage],
-          personaData: {
-            persona_title: activePersona.persona_title || activePersona.name || '',
-            persona_summary: activePersona.persona_summary || activePersona.summary || '',
-            persona_style: activePersona.persona_style || activePersona.persona_character || '',
-            painpoints: activePersona.painpoints || activePersona.painPoint || '',
-            needs: activePersona.needs || activePersona.hiddenNeeds || '',
-            insight: activePersona.insight || '',
-            insight_quote: activePersona.insight_quote || ''
-          },
-          conversationId: null
-        }),
-      });
+      const response = await callChatAPI([greetingUserMessage], null)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // 어시스턴트 메시지 생성
+      const assistantMessage: ExtendedMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+        respondingPersona: {
+          id: activePersona.id,
+          name: activePersona.persona_title || activePersona.name || '',
+          image: activePersona.image || activePersona.avatar
+        }
       }
 
-      // MISO 스트리밍 처리
-      await processMisoStreaming(response);
+      setShowLoadingMsg(false)
+      setChatMessages(prev => [...prev, assistantMessage])
+
+      await processMisoStreaming(response, assistantMessage, setChatMessages, scrollToBottom)
 
     } catch (error) {
-      setShowLoadingMsg(false);
+      setShowLoadingMsg(false)
       
-      // 오류 메시지 추가 (활성 페르소나 정보 포함)
       setChatMessages(prev => [
         ...prev,
         {
@@ -257,188 +193,50 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
             image: activePersona.image || activePersona.avatar
           }
         } as ExtendedMessage
-      ]);
+      ])
     } finally {
-      setLoading(false);
-      setIsStreaming(false);
-      isUsingToolRef.current = false;
-      setIsUsingTool(false);
+      setLoading(false)
+      isUsingToolRef.current = false
+      setIsUsingTool(false)
       
       setTimeout(() => {
-        scrollToBottom();
-        focusInput();
-      }, 200);
+        scrollToBottom()
+        focusInput()
+      }, 200)
     }
-  };
+  }
 
-
-
-  // MISO 스트리밍 처리 함수
-  const processMisoStreaming = async (response: Response) => {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    
-    // 어시스턴트 메시지 미리 생성 및 추가 (활성 페르소나 정보 포함)
-    const assistantMessage: ExtendedMessage = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: "",
-      createdAt: new Date(),
-      // 응답한 페르소나 정보 저장
-      respondingPersona: {
-        id: activePersona.id,
-        name: activePersona.persona_title || activePersona.name || '',
-        image: activePersona.image || activePersona.avatar
-      }
-    };
-
-    // 로딩 메시지 숨기고 빈 어시스턴트 메시지 추가
-    setShowLoadingMsg(false);
-    setChatMessages(prev => [...prev, assistantMessage]);
-    setIsStreaming(true);
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // MISO 원본 청크 디코딩
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-        
-        // MISO SSE 메시지 파싱 (줄 단위)
-        let lineEnd;
-        while ((lineEnd = buffer.indexOf('\n')) !== -1) {
-          const rawLine = buffer.slice(0, lineEnd).trim();
-          buffer = buffer.slice(lineEnd + 1);
-          
-          if (!rawLine) continue;
-          
-          // MISO API data: 접두사 처리
-          const dataLine = rawLine.startsWith('data: ') ? rawLine.slice(6) : rawLine;
-          
-          if (!dataLine || dataLine === '[DONE]') continue;
-          
-          try {
-            const payload = JSON.parse(dataLine);
-            
-            // MISO conversation_id 처리
-            if (payload.conversation_id && !misoConversationId) {
-              setMisoConversationId(payload.conversation_id);
-            }
-            
-            // MISO agent_thought 이벤트 처리 - 도구 사용 추적
-            if (payload.event === 'agent_thought') {
-              // tool 필드가 비어있지 않으면 도구 사용 시작
-              if (payload.tool && payload.tool !== '') {
-                isUsingToolRef.current = true;
-                setIsUsingTool(true);
-              } 
-              // tool 필드가 빈 문자열이면 도구 사용 종료
-              else if (payload.tool === '') {
-                isUsingToolRef.current = false;
-                setIsUsingTool(false);
-              }
-            }
-            
-            // MISO 이벤트별 처리 - agent_message만 스트리밍
-            else if (payload.event === 'agent_message' && typeof payload.answer === 'string') {
-              const receivedText = payload.answer;
-              
-              // 빈 answer는 무시
-              if (receivedText === "") continue;
-              
-              // 도구 사용 중이 아닐 때만 메시지 업데이트
-              if (!isUsingToolRef.current) {
-                // 누적된 전체 텍스트인지 델타 텍스트인지 감지하여 처리
-                setChatMessages(prev => {
-                  const updated = [...prev];
-                  const lastIndex = updated.length - 1;
-                  if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && updated[lastIndex].id === assistantMessage.id) {
-                    const currentContent = updated[lastIndex].content;
-                    
-                    // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
-                    if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
-                      updated[lastIndex] = {
-                        ...updated[lastIndex],
-                        content: receivedText,
-                      };
-                    } 
-                    // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
-                    else if (currentContent.startsWith(receivedText)) {
-                      return prev; // 상태 업데이트 없음
-                    }
-                    // 그 외의 경우는 델타 텍스트로 추가
-                    else {
-                      updated[lastIndex] = {
-                        ...updated[lastIndex],
-                        content: currentContent + receivedText,
-                      };
-                    }
-                  }
-                  return updated;
-                });
-                
-                // 스크롤 업데이트
-                scrollToBottom();
-              }
-            }
-            
-            // MISO message_end 이벤트 처리 (스트림 종료)
-            else if (payload.event === 'message_end') {
-              isUsingToolRef.current = false;
-              setIsUsingTool(false); // 메시지 종료 시 도구 사용 상태 초기화
-              return; // 스트림 완료
-            }
-            
-          } catch (parseError) {
-            // JSON 파싱 실패는 무시
-          }
-        }
-      }
-      
-    } catch (streamError) {
-      throw streamError;
-    }
-  };
-
-  // 메시지 전송 함수
+  // 메시지 전송
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+    e.preventDefault()
     
-    if (!userInput.trim() || loading) return;
+    if (!userInput.trim() || loading) return
 
     const newUserMessage: ExtendedMessage = {
       id: Date.now().toString(),
       role: "user",
       content: userInput.trim(),
       createdAt: new Date(),
-      // 멘션된 페르소나 정보 저장
-      mentionedPersonas: extractMentionedPersonas(userInput.trim()),
-    };
+      mentionedPersonas: mentionedPersonas.map(p => p.id),
+    }
 
-    // 꼬리질문인 경우 관계 추적
     if (replyingTo) {
       setRepliedMessages(prev => ({
         ...prev,
         [newUserMessage.id]: replyingTo.id
-      }));
+      }))
     }
 
-    setChatMessages(prev => [...prev, newUserMessage]);
-    setLoading(true);
-    setIsStreaming(false);
-    setShowLoadingMsg(true); // 로딩 메시지 박스 표시
-    setReplyingTo(null); // 꼬리질문 상태 초기화
-    isUsingToolRef.current = false;
-    setIsUsingTool(false); // 도구 사용 상태 초기화
+    setChatMessages(prev => [...prev, newUserMessage])
+    setLoading(true)
+    setShowLoadingMsg(true)
+    setReplyingTo(null)
+    isUsingToolRef.current = false
+    setIsUsingTool(false)
 
     try {
-      // API에 보낼 메시지 생성
-      const apiMessages = [...chatMessages];
+      const apiMessages = [...chatMessages]
       
-      // 꼬리질문인 경우 API 메시지에 메타데이터 추가
       if (replyingTo) {
         apiMessages.push({
           ...newUserMessage,
@@ -447,54 +245,44 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
             isFollowUpQuestion: true,
             originalMessageId: replyingTo.id
           }
-        } as ExtendedMessage);
+        } as ExtendedMessage)
       } else {
-        apiMessages.push(newUserMessage);
+        apiMessages.push(newUserMessage)
       }
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          personaData: {
-            persona_title: activePersona.persona_title || activePersona.name || '',
-            persona_summary: activePersona.persona_summary || activePersona.summary || '',
-            persona_style: activePersona.persona_style || activePersona.persona_character || '',
-            painpoints: activePersona.painpoints || activePersona.painPoint || '',
-            needs: activePersona.needs || activePersona.hiddenNeeds || '',
-            insight: activePersona.insight || '',
-            insight_quote: activePersona.insight_quote || ''
-          },
-          conversationId: misoConversationId
-        }),
-      });
+      const response = await callChatAPI(apiMessages, misoConversationId)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // 어시스턴트 메시지 생성
+      const assistantMessage: ExtendedMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+        respondingPersona: {
+          id: activePersona.id,
+          name: activePersona.persona_title || activePersona.name || '',
+          image: activePersona.image || activePersona.avatar
+        }
       }
 
-      // MISO 스트리밍 처리
-      await processMisoStreaming(response);
+      setShowLoadingMsg(false)
+      setChatMessages(prev => [...prev, assistantMessage])
+
+      await processMisoStreaming(response, assistantMessage, setChatMessages, scrollToBottom)
 
     } catch (error) {
-      setShowLoadingMsg(false);
+      setShowLoadingMsg(false)
       
-      // 기존 어시스턴트 메시지가 있다면 오류 메시지로 업데이트
       setChatMessages(prev => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
+        const updated = [...prev]
+        const lastIndex = updated.length - 1
         
         if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && !updated[lastIndex].content) {
-          // 빈 어시스턴트 메시지를 오류 메시지로 교체
           updated[lastIndex] = {
             ...updated[lastIndex],
             content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
-          };
+          }
         } else {
-          // 새 오류 메시지 추가 (활성 페르소나 정보 포함)
           updated.push({
             id: (Date.now() + 1).toString(),
             role: "assistant",
@@ -505,124 +293,77 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
               name: activePersona.persona_title || activePersona.name || '',
               image: activePersona.image || activePersona.avatar
             }
-          } as ExtendedMessage);
+          } as ExtendedMessage)
         }
         
-        return updated;
-      });
+        return updated
+      })
     } finally {
-      setLoading(false);
-      setIsStreaming(false);
-      setUserInput("");
-      isUsingToolRef.current = false;
-      setIsUsingTool(false); // 도구 사용 상태 초기화
+      setLoading(false)
+      setUserInput("")
+      isUsingToolRef.current = false
+      setIsUsingTool(false)
       
-      // 응답 완료 후 스크롤 및 포커스
       setTimeout(() => {
-        scrollToBottom();
-        focusInput();
-      }, 200);
+        scrollToBottom()
+        focusInput()
+      }, 200)
     }
-  };
+  }
 
   useEffect(() => {
     if (chatMessages.length > 0) {
-      scrollToBottom();
+      scrollToBottom()
     }
-  }, [chatMessages, scrollToBottom]);
-
-
-  // 이전 메시지 찾기 함수
-  const getReplySourceMessage = useCallback((messageId: string) => {
-    if (!repliedMessages[messageId]) return null;
-    return chatMessages.find(msg => msg.id === repliedMessages[messageId]) || null;
-  }, [chatMessages, repliedMessages]);
-
-  // 멘션 관련 핸들러들
-  const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    const newCursorPosition = e.target.selectionStart || 0;
-    
-    setUserInput(newValue);
-    setCursorPosition(newCursorPosition);
-    
-    // 멘션 컨텍스트 확인
-    const mentionContext = findMentionContext(newValue, newCursorPosition);
-    
-    if (mentionContext.isInMention) {
-      setMentionSearchText(mentionContext.searchText);
-      setShowMentionDropdown(true);
-    } else {
-      setShowMentionDropdown(false);
-      setMentionSearchText("");
-    }
-  }, []);
-
-  const handleMentionSelect = useCallback((mention: MentionData) => {
-    if (!inputRef.current) return;
-    
-    const result = insertMention(userInput, cursorPosition, mention);
-    setUserInput(result.newText);
-    setShowMentionDropdown(false);
-    setMentionSearchText("");
-    
-    // 커서 위치 업데이트
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        inputRef.current.setSelectionRange(result.newCursorPosition, result.newCursorPosition);
-      }
-    }, 0);
-  }, [userInput, cursorPosition]);
-
-  const removeMention = useCallback((personaId: string) => {
-    // 특정 페르소나의 멘션을 텍스트에서 제거
-    const mentionPattern = new RegExp(`@\\[[^\\]]*\\]\\(${personaId}\\)`, 'g');
-    const newText = userInput.replace(mentionPattern, '').trim();
-    setUserInput(newText);
-    
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [userInput]);
+  }, [chatMessages, scrollToBottom])
 
   const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // 멘션 드롭다운이 열려있을 때는 기본 키 이벤트 처리를 드롭다운에 맡김
     if (showMentionDropdown && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
-      return;
+      return
     }
     
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault()
       if (userInput.trim() && !loading) {
-        handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+        handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>)
       }
     }
-  }, [showMentionDropdown, userInput, loading]);
+  }, [showMentionDropdown, userInput, loading])
 
-  // 대화 요약 생성 함수
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = handleTextareaChange(e)
+    setUserInput(newValue)
+  }, [handleTextareaChange])
+
+  const handleMentionSelectWrapper = useCallback((mention: MentionData) => {
+    handleMentionSelect(mention, userInput, setUserInput)
+  }, [handleMentionSelect, userInput])
+
+  const handleRemoveMention = useCallback((personaId: string) => {
+    removeMention(personaId, userInput, setUserInput)
+  }, [removeMention, userInput])
+
+  // 대화 요약 생성
   const handleGenerateSummary = useCallback(async () => {
-    if (chatMessages.length <= 1 || isGeneratingSummary) return; // 초기 메시지만 있으면 생성하지 않음
+    if (chatMessages.length <= 1 || isGeneratingSummary) return
     
-    setIsGeneratingSummary(true);
+    setIsGeneratingSummary(true)
     
     try {
-      // 현재 대화 내용 준비 (초기 인사 메시지 제외)
       const conversationContent = chatMessages
-        .slice(1) // 첫 번째 인사 메시지 제외
+        .slice(1)
         .map(msg => `${msg.role === 'user' ? '사용자' : personaData.name}: ${msg.content}`)
-        .join('\n\n');
+        .join('\n\n')
 
-      // Supabase 세션에서 JWT 토큰 가져오기
-      const { createClient } = await import('@supabase/supabase-js');
+      const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      )
       
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        throw new Error('로그인이 필요합니다.');
+        throw new Error('로그인이 필요합니다.')
       }
       
       const response = await fetch('/api/chat/summary', {
@@ -636,488 +377,100 @@ export default function ChatInterface({ personaId, personaData, allPersonas = []
           personaName: personaData.name,
           conversationId: misoConversationId
         }),
-      });
+      })
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '대화 요약 생성에 실패했습니다.');
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || '대화 요약 생성에 실패했습니다.')
       }
       
-      const result = await response.json();
+      const result = await response.json()
       
       if (result.success && result.summaryData) {
-        let finalSummaryData = result.summaryData;
+        let finalSummaryData = result.summaryData
         
-        // 서버에서 파싱에 실패한 경우 클라이언트에서 재시도
         if (result.summaryData.error === 'JSON 파싱 실패' && result.summaryData.raw) {
           try {
-            let cleanedData = result.summaryData.raw.trim();
-            
-            // 마크다운 코드 블록 제거
-            cleanedData = cleanedData.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
-            cleanedData = cleanedData.replace(/^```\s*/, '').replace(/\s*```$/i, '');
-            cleanedData = cleanedData.trim();
+            let cleanedData = result.summaryData.raw.trim()
+            cleanedData = cleanedData.replace(/^```json\s*/i, '').replace(/\s*```$/i, '')
+            cleanedData = cleanedData.replace(/^```\s*/, '').replace(/\s*```$/i, '')
+            cleanedData = cleanedData.trim()
             
             if (cleanedData.startsWith('{') && cleanedData.endsWith('}')) {
-              finalSummaryData = JSON.parse(cleanedData);
+              finalSummaryData = JSON.parse(cleanedData)
             }
           } catch (clientParseError) {
-            console.error('클라이언트 파싱도 실패:', clientParseError);
-            // 파싱 실패 시 원본 에러 정보 유지
+            console.error('클라이언트 파싱도 실패:', clientParseError)
           }
         }
         
-        // 최종 데이터 확인
         if (finalSummaryData && !finalSummaryData.error) {
-          setSummaryData(finalSummaryData);
-          setSummaryModalOpen(true);
+          setSummaryData(finalSummaryData)
+          setSummaryModalOpen(true)
         } else {
-          console.warn('대화 요약 데이터 처리 실패:', finalSummaryData);
-          alert('대화 요약 생성은 완료되었지만 데이터 처리 중 문제가 발생했습니다.');
+          console.warn('대화 요약 데이터 처리 실패:', finalSummaryData)
+          alert('대화 요약 생성은 완료되었지만 데이터 처리 중 문제가 발생했습니다.')
         }
       } else {
-        throw new Error(result.error || '대화 요약 데이터를 처리할 수 없습니다.');
+        throw new Error(result.error || '대화 요약 데이터를 처리할 수 없습니다.')
       }
       
     } catch (error) {
-      console.error('대화 요약 생성 오류:', error);
-      // 오류 토스트나 알림 표시
-      alert(`대화 요약 생성 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('대화 요약 생성 오류:', error)
+      alert(`대화 요약 생성 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
-      setIsGeneratingSummary(false);
+      setIsGeneratingSummary(false)
     }
-  }, [chatMessages, personaData.name, misoConversationId, isGeneratingSummary]);
+  }, [chatMessages, personaData.name, misoConversationId, isGeneratingSummary])
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* CSS 정의 */}
-      <style jsx global>{`
-        .loading-dots {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        
-        .loading-dots div {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background-color: #6366f1;
-          opacity: 0.6;
-        }
-        
-        .loading-dots div:nth-child(1) {
-          animation: dot-fade 1.4s ease-in-out 0s infinite;
-        }
-        
-        .loading-dots div:nth-child(2) {
-          animation: dot-fade 1.4s ease-in-out 0.2s infinite;
-        }
-        
-        .loading-dots div:nth-child(3) {
-          animation: dot-fade 1.4s ease-in-out 0.4s infinite;
-        }
-        
-        @keyframes dot-fade {
-          0%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.2);
-          }
-        }
-        
-        .thinking-text {
-          background: linear-gradient(
-            90deg,
-            #9ca3af 0%,
-            #374151 50%,
-            #9ca3af 100%
-          );
-          background-size: 200% auto;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shimmer 2s linear infinite;
-        }
-        
-        .dark .thinking-text {
-          background: linear-gradient(
-            90deg,
-            #6b7280 0%,
-            #e5e7eb 50%,
-            #6b7280 100%
-          );
-          background-size: 200% auto;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-        
-        @keyframes shimmer {
-          0% {
-            background-position: -200% center;
-          }
-          100% {
-            background-position: 200% center;
-          }
-        }
-      `}</style>
+      <style jsx global>{chatStyles}</style>
       
-      <div className="flex-1 overflow-y-auto py-6 px-4 md:px-6 bg-transparent custom-scrollbar">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <AnimatePresence initial={false}>
-            {chatMessages.map((message, index) => {
-              // 꼬리질문으로 답변한 메시지인지 확인
-              const sourceMessage = message.role === "user" ? getReplySourceMessage(message.id) : null;
-              // 마지막 어시스턴트 메시지이고 스트리밍 중이며 도구 사용 중인지 확인
-              const isLastAssistantMessage = message.role === "assistant" && index === chatMessages.length - 1;
-              const showToolUsing = isLastAssistantMessage && isStreaming && isUsingTool;
-              
-              return (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-6`}
-                >
-                  <div 
-                    className={`
-                      flex max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"} 
-                      items-end gap-3
-                    `}
-                  >
-                    {message.role === "assistant" && (
-                      <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
-                        {(() => {
-                          // 응답한 페르소나 정보 사용 (없으면 기본 페르소나)
-                          const respondingPersona = (message as ExtendedMessage).respondingPersona
-                          const displayPersona = respondingPersona || {
-                            name: personaData.persona_title || personaData.name,
-                            image: personaData.image || personaData.avatar
-                          }
-                          
-                          return displayPersona.image ? (
-                            <Image
-                              src={displayPersona.image}
-                              alt={displayPersona.name}
-                              width={36}
-                              height={36}
-                              className="object-cover w-full h-full"
-                              unoptimized={displayPersona.image.includes('supabase.co')}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                              {displayPersona.name.substring(0, 2)}
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    )}
-                    
-                    <div
-                      className={`
-                        group relative px-4 py-4 rounded-xl text-[15px] 
-                        ${message.role === "user" 
-                          ? "bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800/50" 
-                          : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700"
-                        }
-                      `}
-                    >
-                      {/* 페르소나 이름 표시 (assistant 메시지에만) */}
-                      {message.role === "assistant" && (() => {
-                        const respondingPersona = (message as ExtendedMessage).respondingPersona
-                        const displayName = respondingPersona?.name || personaData.persona_title || personaData.name
-                        
-                        return (
-                          <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                            {displayName}
-                          </div>
-                        )
-                      })()}
-                      
-                      {/* 꼬리질문 배지 - 깔끔한 디자인 */}
-                      {sourceMessage && message.role === "user" && (
-                        <div className="mb-3 text-xs text-blue-600 dark:text-blue-300 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800/40">
-                          <p className="italic font-medium mb-2 flex items-center gap-1.5">
-                            <div className="w-1 h-3 bg-blue-500 rounded-full"></div>
-                            답변에 대한 추가 질문
-                          </p>
-                          <div className="pl-3 border-l-2 border-blue-300 dark:border-blue-600 py-1">
-                            <span className="line-clamp-2 text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                              {sourceMessage.content}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* 도구 사용 중 표시 */}
-                      {showToolUsing && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="mb-2"
-                        >
-                          <span 
-                            className="thinking-text text-xs italic"
-                            style={{ 
-                              fontStyle: 'italic',
-                              transform: 'skew(-12deg)',
-                              display: 'inline-block'
-                            }}
-                          >
-                            thinking...
-                          </span>
-                        </motion.div>
-                      )}
-                      
-                      <MessageContent 
-                        content={message.content}
-                        className="whitespace-pre-wrap leading-relaxed"
-                      />
-                      <div className="mt-1.5 flex justify-end items-center gap-1.5">
-                        <p className={`text-[10px] ${message.role === "user" ? "text-indigo-500 dark:text-indigo-300/80" : "text-zinc-500 dark:text-zinc-400"}`}>
-                          {isClient && message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ''}
-                        </p>
-                      </div>
-                      
-                      {/* 메시지 액션 버튼 - 깔끔한 디자인 */}
-                      {message.role === "assistant" && (
-                        <div className="message-actions absolute -right-[90px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col gap-2">
-                          <button 
-                            onClick={() => handleCopyMessage(message.id, message.content)}
-                            className="text-xs px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
-                          >
-                            <Copy className="h-3 w-3" />
-                            <span className="font-medium">{isCopied === message.id ? "복사됨" : "복사"}</span>
-                          </button>
-                          
-                          <button 
-                            onClick={() => handleReplyMessage(message)}
-                            className="text-xs px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
-                          >
-                            <MessageSquareMore className="h-3 w-3" />
-                            <span className="font-medium">꼬리질문</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+      <ChatMessages
+        chatMessages={chatMessages}
+        personaData={personaData}
+        activePersona={activePersona}
+        isClient={isClient}
+        isStreaming={isStreaming}
+        isUsingTool={isUsingTool}
+        showLoadingMsg={showLoadingMsg}
+        messagesEndRef={messagesEndRef}
+        repliedMessages={repliedMessages}
+        isCopied={isCopied}
+        onCopyMessage={handleCopyMessage}
+        onReplyMessage={handleReplyMessage}
+      />
 
-          {/* 로딩 메시지 박스 */}
-          {showLoadingMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex justify-start mb-4"
-            >
-              <div className="flex flex-row items-end gap-2">
-                <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
-                  {activePersona.image || activePersona.avatar ? (
-                    <Image
-                      src={activePersona.image || activePersona.avatar}
-                      alt={activePersona.persona_title || activePersona.name}
-                      width={36}
-                      height={36}
-                      className="object-cover w-full h-full"
-                      unoptimized={(activePersona.image || activePersona.avatar).includes('supabase.co')}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                      {(activePersona.persona_title || activePersona.name).substring(0, 2)}
-                    </div>
-                  )}
-                </div>
-                <div className="px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
-                  <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                    {activePersona.persona_title || activePersona.name}
-                  </div>
-                  <div className="loading-dots">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
+      <ChatInput
+        userInput={userInput}
+        loading={loading}
+        replyingTo={replyingTo}
+        showMentionDropdown={showMentionDropdown}
+        mentionSearchText={mentionSearchText}
+        mentionedPersonas={mentionedPersonas}
+        allPersonas={allPersonas}
+        inputRef={inputRef}
+        onSubmit={handleSendMessage}
+        onInputChange={handleInputChange}
+        onKeyDown={handleTextareaKeyDown}
+        onMentionSelect={handleMentionSelectWrapper}
+        onMentionDropdownChange={setShowMentionDropdown}
+        onRemoveMention={handleRemoveMention}
+        onCancelReply={cancelReply}
+      />
 
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
+      <SummaryButton
+        chatMessagesLength={chatMessages.length}
+        isGeneratingSummary={isGeneratingSummary}
+        onGenerateSummary={handleGenerateSummary}
+      />
 
-      <div className="flex-shrink-0 p-6 bg-transparent">
-        {/* 꼬리질문 중인 메시지 표시 - 개선된 디자인 */}
-        <AnimatePresence>
-          {replyingTo && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-3xl mx-auto mb-3"
-            >
-              <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/60 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/50 rounded-lg p-3 pr-10 flex items-center relative overflow-hidden backdrop-blur-sm">
-                <div className="flex-shrink-0 w-1 h-6 bg-blue-400 mr-3 rounded-full"></div>
-                <div className="text-xs text-blue-800 dark:text-blue-200 font-medium truncate">
-                  {replyingTo.content.substring(0, 100)}
-                  {replyingTo.content.length > 100 ? '...' : ''}
-                </div>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  onClick={cancelReply}
-                  className="h-6 w-6 rounded-full absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-blue-200/80 dark:hover:bg-blue-800/50 transition-colors"
-                >
-                  <X className="h-3 w-3 text-blue-500 dark:text-blue-300" />
-                  <span className="sr-only">취소</span>
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 멘션된 페르소나 표시 */}
-        <AnimatePresence>
-          {mentionedPersonas.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: 10 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-3xl mx-auto mb-3"
-            >
-              <div className="flex flex-wrap gap-2">
-                {mentionedPersonas.map((persona) => (
-                  <motion.div
-                    key={persona.id}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
-                    className="bg-gradient-to-r from-purple-50/80 to-blue-50/60 dark:from-purple-950/40 dark:to-blue-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-lg px-4 py-2 flex items-center gap-3 relative overflow-hidden backdrop-blur-sm"
-                  >
-                    <div className="flex-shrink-0 w-1 h-5 bg-purple-400 rounded-full"></div>
-                    <div className="text-sm text-purple-800 dark:text-purple-200 font-medium">
-                      @{persona.name}에게 질문 중...
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => removeMention(persona.id)}
-                      className="h-5 w-5 rounded-full hover:bg-purple-200/80 dark:hover:bg-purple-800/50 transition-colors"
-                    >
-                      <X className="h-3 w-3 text-purple-500 dark:text-purple-300" />
-                      <span className="sr-only">멘션 제거</span>
-                    </Button>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-3 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all duration-200">
-            <div className="flex-1 relative">
-              <Textarea
-                ref={inputRef}
-                value={userInput}
-                onChange={handleTextareaChange}
-                placeholder={replyingTo ? "꼬리질문을 입력하세요... (@로 페르소나 멘션)" : "메시지를 입력하세요... (@로 페르소나 멘션)"}
-                disabled={loading}
-                rows={1}
-                className="w-full min-h-[40px] max-h-[200px] resize-none p-0 bg-transparent border-none outline-none focus:ring-0 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100 text-[15px] leading-relaxed caret-zinc-700 dark:caret-zinc-300"
-                onKeyDown={handleTextareaKeyDown}
-                style={{
-                  height: 'auto',
-                  minHeight: '40px',
-                  border: 'none',
-                  boxShadow: 'none'
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 200) + 'px';
-                }}
-              />
-              
-              {/* 멘션 드롭다운 */}
-              <PersonaMentionDropdown
-                open={showMentionDropdown}
-                onSelect={handleMentionSelect}
-                onOpenChange={setShowMentionDropdown}
-                searchText={mentionSearchText}
-                personas={allPersonas}
-                anchorEl={inputRef.current}
-              />
-            </div>
-            <Button 
-              type="submit" 
-              size="icon"
-              disabled={loading || !userInput.trim()}
-              className="h-10 w-10 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 transition-all duration-200 flex-shrink-0 border-0 outline-none focus:ring-0"
-            >
-              <ArrowUp className="h-4 w-4" />
-              <span className="sr-only">전송</span>
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* AI 요약 생성 버튼 */}
-      <AnimatePresence>
-        {chatMessages.length > 1 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute bottom-20 right-4 md:bottom-24 md:right-6 z-10"
-          >
-            <Button
-              onClick={handleGenerateSummary}
-              disabled={isGeneratingSummary || chatMessages.length <= 1}
-              className={`
-                px-4 py-2.5 h-11 rounded-xl bg-blue-500 hover:bg-blue-600 
-                text-white text-sm font-medium shadow-lg 
-                border-0 focus:ring-2 focus:ring-blue-400/50 focus:ring-offset-2
-                transition-all duration-200
-                ${isGeneratingSummary || chatMessages.length <= 1 ? 'opacity-60 cursor-not-allowed bg-blue-400' : ''}
-              `}
-            >
-              {isGeneratingSummary ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  생성 중...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  AI 요약
-                </>
-              )}
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 대화 요약 모달 */}
       <SummaryModal
         isOpen={summaryModalOpen}
         onClose={() => {
-          setSummaryModalOpen(false);
-          setSummaryData(null);
+          setSummaryModalOpen(false)
+          setSummaryData(null)
         }}
         summaryData={summaryData}
         personaName={personaData.name}
