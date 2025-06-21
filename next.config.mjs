@@ -6,6 +6,16 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    // Optimize for React 19
+    optimizePackageImports: ['@radix-ui/react-*'],
+    // Improve build performance
+    turbo: {
+      rules: {
+        '*.js': ['babel-loader'],
+      },
+    },
+  },
   images: {
     // 성능 최적화: 이미지 최적화 활성화
     unoptimized: false,
@@ -33,7 +43,32 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
+    // Fix for intermittent syntax errors with Radix UI and React 19
+    config.module.rules.push({
+      test: /\.m?js$/,
+      resolve: {
+        fullySpecified: false,
+      },
+    })
+    
+    // Optimize chunk splitting to prevent eval issues
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            radixui: {
+              test: /node_modules\/.pnpm\/@radix-ui/,
+              name: 'radix-ui',
+              priority: 10,
+            },
+          },
+        },
+      }
+    }
+    
     config.ignoreWarnings = [
       {
         module: /node_modules\/.pnpm\/@supabase\+realtime-js/,
