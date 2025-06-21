@@ -81,7 +81,7 @@ export function MisoKnowledgeStatusModal({
   // 데이터셋 ID 업데이트 mutation
   const updateDatasetMutation = useMutation({
     mutationFn: async ({ personaId, datasetId }: { personaId: string, datasetId: string | null }) => {
-      console.log('클라이언트에서 보내는 데이터:', { personaId, datasetId, userId: profile?.id })
+      // \ud074\ub77c\uc774\uc5b8\ud2b8\uc5d0\uc11c \ubcf4\ub0b4\ub294 \ub370\uc774\ud130 \ud655\uc778
       
       const response = await fetch('/api/personas/update-dataset', {
         method: 'PUT',

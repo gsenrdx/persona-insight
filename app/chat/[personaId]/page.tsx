@@ -94,7 +94,7 @@ export default function ChatPage({ params }: ChatPageProps) {
         setLoading(false)
       } catch (error) {
         if (isSubscribed) {
-          console.error("데이터 로딩 중 오류 발생:", error)
+          // 데이터 로딩 오류
           notFound()
         }
       }

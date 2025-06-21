@@ -15,8 +15,8 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    // 표준화된 에러 로깅
-    console.error('Page Error:', ErrorUtils.toLogObject(error))
+    // 페이지 에러 로깅
+    // Page Error 발생
     
     // 향후 에러 리포팅 서비스 연동
     // ErrorReporter.report(error, { context: 'page-error', digest: error.digest })

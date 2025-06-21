@@ -242,20 +242,19 @@ export const validateConstants = () => {
 export const debugConstants = () => {
   if (!ENV_CONFIG.IS_DEVELOPMENT) return
   
-  console.group('🔧 Constants Debug Info')
-  console.log('Environment:', ENV_CONFIG.IS_PRODUCTION ? 'Production' : 'Development')
-  console.log('API Base URL:', ENV_CONFIG.API_BASE_URL)
-  console.log('File Upload Limit:', `${FILE_UPLOAD_CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB`)
-  console.log('Default Page Size:', PAGINATION_CONFIG.DEFAULT_PAGE_SIZE)
-  console.log('Max Concurrent Jobs:', WORKFLOW_CONFIG.MAX_CONCURRENT_JOBS)
-  
+  // 개발 모드 상수 검증
   const validationErrors = validateConstants()
-  if (validationErrors.length > 0) {
-    console.warn('Validation Errors:', validationErrors)
-  } else {
-    console.log('✅ All constants validated successfully')
+  
+  // 디버그 정보 반환 (로깅 대신)
+  return {
+    environment: ENV_CONFIG.IS_PRODUCTION ? 'Production' : 'Development',
+    apiBaseUrl: ENV_CONFIG.API_BASE_URL,
+    fileUploadLimit: `${FILE_UPLOAD_CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB`,
+    defaultPageSize: PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
+    maxConcurrentJobs: WORKFLOW_CONFIG.MAX_CONCURRENT_JOBS,
+    validationErrors,
+    isValid: validationErrors.length === 0
   }
-  console.groupEnd()
 }
 
 /**
@@ -317,14 +316,7 @@ if (typeof window !== 'undefined' && ENV_CONFIG.IS_DEVELOPMENT) {
   debugConstants()
 }
 
-// =============================================================================
-// 레거시 호환성 (점진적 마이그레이션용)
-// =============================================================================
-
-/**
- * 기존 코드와의 호환성을 위한 개별 export
- * @deprecated CONSTANTS 또는 개별 모듈을 직접 import하세요
- */
+// 레거시 호환성 - @deprecated
 export const LEGACY_CONSTANTS = {
   // API 엔드포인트 (레거시)
   API_ENDPOINTS: ENDPOINTS,

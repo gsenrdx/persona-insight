@@ -95,7 +95,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Failed to fetch projects:', errorText);
+        // \ud504\ub85c\uc81d\ud2b8 \uac00\uc838\uc624\uae30 \uc2e4\ud328
         throw new Error('프로젝트를 불러올 수 없습니다.');
       }
       
@@ -105,7 +105,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
       }
       setProjects(data || []);
     } catch (error) {
-      console.error('프로젝트 로드 실패:', error);
+      // \ud504\ub85c\uc81d\ud2b8 \ub85c\ub4dc \uc2e4\ud328
       setError('프로젝트 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoadingProjects(false);

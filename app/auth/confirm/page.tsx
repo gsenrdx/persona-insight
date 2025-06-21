@@ -29,7 +29,7 @@ export default function AuthConfirmPage() {
         if (error) {
           setStatus('error')
           setMessage('인증에 실패했습니다. 다시 시도해주세요.')
-          console.error('Auth error:', error)
+          // 인증 에러
           return
         }
 
@@ -39,7 +39,7 @@ export default function AuthConfirmPage() {
       } catch (error) {
         setStatus('error')
         setMessage('인증 중 오류가 발생했습니다.')
-        console.error('Confirmation error:', error)
+        // 확인 에러
       }
     }
 

@@ -111,7 +111,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       // Supabase 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        console.error('No access token available')
+        // 액세스 토큰 없음
         return
       }
 
@@ -126,11 +126,11 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         if (success) {
           setMembers(data)
         } else {
-          console.error('Failed to fetch members:', error)
+          // 멤버 로드 실패
         }
       }
     } catch (error) {
-      console.error('Failed to fetch members:', error)
+      // 멤버 로드 실패
     } finally {
       setLoadingMembers(false)
     }
@@ -144,7 +144,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {
-        console.error('❌ No access token available')
+        // 액세스 토큰 없음
         throw new Error('인증 토큰이 없습니다. 다시 로그인해주세요.')
       }
 
@@ -167,7 +167,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Save error:', errorData)
+        // 저장 오류 발생
         throw new Error(errorData.error || '프로젝트 수정에 실패했습니다')
       }
 
@@ -180,7 +180,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       setEditMode(false)
       toast.success('프로젝트가 수정되었습니다')
     } catch (error) {
-      console.error('💥 Save error:', error)
+      // 저장 중 오류 발생
       toast.error(error instanceof Error ? error.message : '프로젝트 수정에 실패했습니다')
     } finally {
       setLoading(false)

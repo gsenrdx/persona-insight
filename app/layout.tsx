@@ -29,9 +29,11 @@ export default function RootLayout({
 }>) {
   // 프로덕션 환경에서 console 제거
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-    console.log = () => {};
-    console.warn = () => {};
-    console.error = () => {};
+    // 프로덕션에서 콘솔 메시지 비활성화
+    const noop = () => {};
+    console.log = noop;
+    console.warn = noop;
+    console.error = noop;
   }
 
   return (

@@ -110,7 +110,7 @@ const ChatInterface = memo(function ChatInterface({ personaId, personaData, allP
       setIsCopied(messageId)
       setTimeout(() => setIsCopied(null), 2000)
     } catch (err) {
-      console.error('복사 실패:', err)
+      // 복사 실패
     }
   }, [])
 
@@ -426,7 +426,7 @@ const ChatInterface = memo(function ChatInterface({ personaId, personaData, allP
               finalSummaryData = JSON.parse(cleanedData)
             }
           } catch (clientParseError) {
-            console.error('클라이언트 파싱도 실패:', clientParseError)
+            // 클라이언트 파싱도 실패
           }
         }
         
@@ -434,7 +434,7 @@ const ChatInterface = memo(function ChatInterface({ personaId, personaData, allP
           setSummaryData(finalSummaryData)
           setSummaryModalOpen(true)
         } else {
-          console.warn('대화 요약 데이터 처리 실패:', finalSummaryData)
+          // 대화 요약 데이터 처리 실패
           alert('대화 요약 생성은 완료되었지만 데이터 처리 중 문제가 발생했습니다.')
         }
       } else {
@@ -442,7 +442,7 @@ const ChatInterface = memo(function ChatInterface({ personaId, personaData, allP
       }
       
     } catch (error) {
-      console.error('대화 요약 생성 오류:', error)
+      // 대화 요약 생성 오류
       alert(`대화 요약 생성 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setIsGeneratingSummary(false)

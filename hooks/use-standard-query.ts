@@ -86,7 +86,7 @@ export function useStandardQuery<TData, TError = Error>(
     if (result.error) {
       // 표준 에러 로깅
       if (enableErrorLogging) {
-        console.error(`Query Error [${String(queryKey)}]:`, ErrorUtils.toLogObject(result.error))
+        // Query 에러 로깅
       }
 
       // 사용자 친화적 에러 메시지 표시
@@ -147,7 +147,7 @@ export function useStandardMutation<TData, TError = Error, TVariables = void, TC
     onError: (error: TError, variables: TVariables, context: TContext | undefined) => {
       // 표준 에러 로깅
       if (enableErrorLogging) {
-        console.error('Mutation Error:', ErrorUtils.toLogObject(error), { variables })
+        // Mutation 에러 로깅
       }
 
       // 사용자 친화적 에러 메시지 표시
@@ -232,7 +232,7 @@ export function useStandardInfiniteQuery<TData, TError = Error>(
     if (result.error) {
       // 표준 에러 로깅
       if (enableErrorLogging) {
-        console.error(`Infinite Query Error [${String(queryKey)}]:`, ErrorUtils.toLogObject(result.error))
+        // Infinite Query 에러 로깅
       }
 
       // 사용자 친화적 에러 메시지 표시
@@ -296,7 +296,7 @@ export function useErrorHandler() {
      * React Query 에러를 표준 형식으로 처리
      */
     handleQueryError: (error: unknown, context?: string) => {
-      console.error(`Query Error${context ? ` (${context})` : ''}:`, ErrorUtils.toLogObject(error))
+      // Query 에러 처리
       
       const userMessage = ErrorUtils.getUserMessage(error)
       toast({
@@ -310,7 +310,7 @@ export function useErrorHandler() {
      * 일반 에러를 사용자 친화적으로 처리
      */
     handleError: (error: unknown, customMessage?: string) => {
-      console.error('Error:', ErrorUtils.toLogObject(error))
+      // 일반 에러 처리
       
       const userMessage = customMessage || ErrorUtils.getUserMessage(error)
       toast({

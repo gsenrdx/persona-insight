@@ -104,11 +104,11 @@ const serializeJob = async (job: WorkflowJob): Promise<SerializableWorkflowJob> 
     try {
       fileData = await fileToBase64(job.file);
     } catch (error) {
-      console.warn(`파일 직렬화 실패 (${job.fileName}):`, error);
+      // 파일 직렬화 실패
       // 파일 데이터 없이 진행
     }
   } else {
-    console.info(`대용량 파일 localStorage 제외: ${job.fileName} (${job.file.size} bytes)`);
+    // 대용량 파일은 localStorage에서 제외
   }
 
   return {
@@ -181,7 +181,7 @@ const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
 
     // 3. 크기 제한 검사
     if (dataSize > MAX_STORAGE_SIZE) {
-      console.warn(`localStorage 용량 초과 (${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB > ${MAX_STORAGE_SIZE / 1024 / 1024}MB)`);
+      // localStorage 용량 초과 - 완료된 작업 수 줄이기
       
       // 크기 초과 시 완료된 작업을 더 줄임
       const reducedCompletedJobs = completedJobs.slice(0, Math.max(1, MAX_COMPLETED_JOBS / 2));
@@ -192,23 +192,23 @@ const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
       
       if (reducedSize <= MAX_STORAGE_SIZE) {
         localStorage.setItem(STORAGE_KEY, reducedDataString);
-        console.info(`localStorage 저장 완료 (축소됨): ${Math.round(reducedSize / 1024 / 1024 * 100) / 100}MB`);
+        // localStorage 저장 완료 (축소된 크기)
       } else {
-        console.error('localStorage 저장 실패: 용량 초과');
+        // localStorage 저장 실패: 용량 초과
         // 활성 작업만 저장 (최소한의 기능 유지)
         const activeOnlyString = JSON.stringify(await Promise.all(activeJobs.map(serializeJob)));
         if (new Blob([activeOnlyString]).size <= MAX_STORAGE_SIZE) {
           localStorage.setItem(STORAGE_KEY, activeOnlyString);
-          console.info('활성 작업만 localStorage에 저장됨');
+          // 활성 작업만 localStorage에 저장
         }
       }
     } else {
       localStorage.setItem(STORAGE_KEY, dataString);
-      console.debug(`localStorage 저장 완료: ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB`);
+      // localStorage 저장 완료
     }
     
   } catch (error) {
-    console.error('localStorage 저장 중 오류:', error);
+    // localStorage 저장 오류 발생
     
     // 복구 시도: 기본 정보만 저장
     try {
@@ -223,9 +223,9 @@ const saveJobsToStorage = async (jobs: WorkflowJob[]) => {
         }));
       
       localStorage.setItem(STORAGE_KEY + '_backup', JSON.stringify(basicJobs));
-      console.info('기본 정보만 백업 저장됨');
+      // 기본 정보만 백업으로 저장
     } catch (backupError) {
-      console.error('백업 저장도 실패:', backupError);
+      // 백업 저장도 실패
     }
   }
 };

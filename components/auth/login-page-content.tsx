@@ -253,7 +253,7 @@ export default function LoginPageContent() {
         <div className={`insight-orb insight-orb-azure w-72 h-72 animate-giant-float-1 transition-transform duration-300 ${isLogoComplete ? 'pointer-events-none cursor-default' : 'pointer-events-auto cursor-pointer hover:scale-110'}`}
              style={{ top: '5vh', left: '-10vw' }} 
              onClick={() => {
-               console.log('Wave clicked!');
+               // Wave 클릭됨
                handleShapeClick('wave');
              }}></div>
         <div className={`insight-orb insight-orb-blue w-48 h-48 animate-gentle-float-2 transition-transform duration-300 ${logoCompletion.rectangle ? 'opacity-30' : ''} ${isLogoComplete ? 'pointer-events-none cursor-default' : 'pointer-events-auto cursor-pointer hover:scale-110'}`}

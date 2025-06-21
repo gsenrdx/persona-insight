@@ -384,7 +384,7 @@ export const PersonaCriteriaModal = ({
       await syncPersonasTable()
       
     } catch (error) {
-      console.error('페르소나 분류 기준 저장 오류:', error)
+      // 페르소나 분류 기준 저장 오류
       // 에러는 mutation에서 처리됨
     }
   }
@@ -419,7 +419,7 @@ export const PersonaCriteriaModal = ({
           }
         }
       } catch (error) {
-        console.warn('기존 페르소나 조회 실패, 새로 생성합니다:', error)
+        // 기존 페르소나 조회 실패, 새로 생성
       }
 
       const syncData = {
@@ -469,7 +469,7 @@ export const PersonaCriteriaModal = ({
         toast.success(message)
       }
     } catch (error) {
-      console.error('페르소나 테이블 동기화 오류:', error)
+      // 페르소나 테이블 동기화 오류
       toast.error('페르소나 동기화 중 오류가 발생했습니다')
     }
   }
@@ -724,7 +724,7 @@ export const PersonaCriteriaModal = ({
           throw new Error(result.error || '이미지 업로드에 실패했습니다')
         }
       } catch (error) {
-        console.error('이미지 업로드 오류:', error)
+        // 이미지 업로드 오류
         toast.error(error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했습니다')
       } finally {
         setIsUploadingImage(false)
@@ -778,7 +778,7 @@ export const PersonaCriteriaModal = ({
           throw new Error(result.error || '이미지 생성에 실패했습니다')
         }
       } catch (error) {
-        console.error('썸네일 생성 오류:', error)
+        // 썸네일 생성 오류
         toast.error(error instanceof Error ? error.message : '썸네일 생성 중 오류가 발생했습니다')
       } finally {
         setIsGeneratingThumbnail(false)

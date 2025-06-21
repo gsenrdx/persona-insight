@@ -95,7 +95,7 @@ export default function InsightsPage() {
           setLoading(false)
         }
       } catch (error) {
-        console.error('연도 로드 실패:', error)
+        // 연도 로드 실패
         // 오류 시 빈 데이터로 설정하고 로딩 완료
         setAvailableYears([])
         setInsightData({})
@@ -125,7 +125,7 @@ export default function InsightsPage() {
             }
             return { year, data: { intervieweeCount: 0, insights: [] } }
           } catch (err) {
-            console.error(`${year}년 인사이트 로드 실패:`, err)
+            // 인사이트 로드 실패
             return { year, data: { intervieweeCount: 0, insights: [] } }
           }
         })
@@ -143,7 +143,7 @@ export default function InsightsPage() {
         setInsightData(newInsightData)
         
       } catch (error) {
-        console.error('인사이트 데이터 로드 실패:', error)
+        // 인사이트 데이터 로드 실패
         // 오류 시 빈 데이터로 초기화
         const emptyData: InsightData = {}
         availableYears.forEach(year => {
@@ -275,7 +275,7 @@ export default function InsightsPage() {
                 toast.error("해당 프로젝트에 접근할 권한이 없습니다.")
               }
             } catch (error) {
-              console.error('프로젝트 권한 확인 중 오류:', error)
+              // 프로젝트 권한 확인 오류
               toast.error("프로젝트 권한 확인 중 오류가 발생했습니다.")
             }
           } else {
@@ -290,7 +290,7 @@ export default function InsightsPage() {
         toast.error("인터뷰 데이터를 불러오는데 실패했습니다.")
       }
     } catch (error) {
-      console.error('인터뷰 검색 중 오류:', error)
+      // 인터뷰 검색 오류
       toast.error("인터뷰 검색 중 오류가 발생했습니다.")
     }
   }

@@ -137,7 +137,7 @@ export function useCreateProject() {
       }
     },
     onError: (error: ApiError) => {
-      console.error('프로젝트 생성 실패:', error.message)
+      // 프로젝트 생성 실패
     },
   })
 }
@@ -178,7 +178,7 @@ export function useUpdateProject() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('프로젝트 업데이트 실패:', error.message)
+      // 프로젝트 업데이트 실패
     },
   })
 }
@@ -219,7 +219,7 @@ export function useDeleteProject() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('프로젝트 삭제 실패:', error.message)
+      // 프로젝트 삭제 실패
     },
   })
 }
@@ -244,7 +244,7 @@ export function useJoinProject() {
       queryClient.invalidateQueries(queryKeyUtils.invalidateAll('projects'))
     },
     onError: (error: ApiError) => {
-      console.error('프로젝트 참가 실패:', error.message)
+      // 프로젝트 참가 실패
     },
   })
 }
@@ -271,7 +271,7 @@ export function useInviteProjectMember() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('멤버 초대 실패:', error.message)
+      // 멤버 초대 실패
     },
   })
 }

@@ -122,7 +122,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           setLoading(false)
         }
       } catch (error) {
-        console.error('연도 로드 실패:', error)
+        // 연도 로드 실패
         // 오류 시 빈 데이터로 설정하고 로딩 완료
         setAvailableYears([])
         setInsightData({})
@@ -153,7 +153,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
             }
             return { year, data: { intervieweeCount: 0, insights: [] } }
           } catch (err) {
-            console.error(`${year}년 인사이트 로드 실패:`, err)
+            // 인사이트 로드 실패
             return { year, data: { intervieweeCount: 0, insights: [] } }
           }
         })
@@ -171,7 +171,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         setInsightData(newInsightData)
         
       } catch (error) {
-        console.error('인사이트 데이터 로드 실패:', error)
+        // 인사이트 데이터 로드 실패
         setError('인사이트 데이터를 불러오는데 실패했습니다')
         // 오류 시 빈 데이터로 초기화
         const emptyData: InsightApiData = {}
@@ -273,7 +273,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         }
       }
     } catch (error) {
-      console.error('인터뷰 검색 중 오류:', error)
+      // 인터뷰 검색 중 오류
       // 오류 발생 시에도 프로젝트 페이지로 이동
       router.push(`/projects/${project.id}`)
     }

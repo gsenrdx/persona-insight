@@ -1,24 +1,14 @@
 /**
  * MISO Knowledge API 클라이언트
- * 문서 생성, 세그먼트 추가, 상태 확인 등의 API 호출
  */
 
 import type { InterviewTopicData } from './parser'
 
-// 환경 변수
 const MISO_API_URL = process.env.MISO_API_URL || 'https://api.holdings.miso.gs'
 const MISO_KNOWLEDGE_API_KEY = process.env.MISO_KNOWLEDGE_API_KEY
 
-// API 키 존재 여부 확인
-console.log('MISO Knowledge API 설정:', {
-  MISO_API_URL,
-  hasKnowledgeKey: !!MISO_KNOWLEDGE_API_KEY,
-  keyPrefix: MISO_KNOWLEDGE_API_KEY?.substring(0, 10)
-})
 
-/**
- * 새 문서 생성 (세그먼트 없이)
- */
+// 새 문서 생성 (세그먼트 없이)
 export async function createMisoDocumentOnly(
   datasetId: string,
   topicName: string,
@@ -64,7 +54,6 @@ export async function createMisoDocumentOnly(
 
   if (!createDocResponse.ok) {
     const errorText = await createDocResponse.text()
-    console.error('MISO 문서 생성 실패:', errorText)
     throw new Error(`MISO 문서 생성 실패: ${createDocResponse.status} ${createDocResponse.statusText}`)
   }
 
@@ -78,9 +67,7 @@ export async function createMisoDocumentOnly(
   return documentId
 }
 
-/**
- * 문서 상태 확인
- */
+// 문서 상태 확인
 export async function checkDocumentStatus(datasetId: string, documentId: string): Promise<any> {
   if (!MISO_KNOWLEDGE_API_KEY) {
     throw new Error('MISO_KNOWLEDGE_API_KEY 환경 변수가 설정되지 않았습니다')
@@ -102,9 +89,7 @@ export async function checkDocumentStatus(datasetId: string, documentId: string)
   return statusResult.data?.find((doc: any) => doc.id === documentId)
 }
 
-/**
- * 문서에 세그먼트 추가
- */
+// 문서에 세그먼트 추가
 export async function addSegmentsToDocument(
   syncId: string,
   datasetId: string,
@@ -116,8 +101,6 @@ export async function addSegmentsToDocument(
     throw new Error('MISO_KNOWLEDGE_API_KEY 환경 변수가 설정되지 않았습니다')
   }
 
-  console.log(`[${syncId}] ${topicInterviews.length}개 세그먼트 추가 시작`)
-  
   const addSegmentsUrl = `${MISO_API_URL}/ext/v1/datasets/${datasetId}/docs/${documentId}/segments`
   
   const segmentsPayload = {
@@ -143,13 +126,6 @@ export async function addSegmentsToDocument(
 
   if (!addSegmentsResponse.ok) {
     const errorText = await addSegmentsResponse.text()
-    console.error(`[${syncId}] 세그먼트 추가 실패:`, {
-      status: addSegmentsResponse.status,
-      statusText: addSegmentsResponse.statusText,
-      error: errorText
-    })
     throw new Error(`세그먼트 추가 실패: ${addSegmentsResponse.status}`)
-  } else {
-    console.log(`[${syncId}] 세그먼트 추가 완료`)
   }
 }

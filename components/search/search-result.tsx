@@ -104,7 +104,7 @@ export default function SearchResult() {
           // 상위 2개 페르소나만 표시
           setResultPersonas(parsedData.slice(0, 2))
         } catch (error) {
-          console.error("결과 데이터 파싱 실패:", error)
+          // \uacb0\uacfc \ub370\uc774\ud130 \ud30c\uc2f1 \uc2e4\ud328
         }
       }
     } else {

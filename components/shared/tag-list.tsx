@@ -51,7 +51,7 @@ export default function TagList() {
         cachedKeywords = data
         setKeywords(data)
       } catch (error) {
-        console.error("Failed to fetch keywords:", error)
+        // \ud0a4\uc6cc\ub4dc \ub85c\ub4dc \uc2e4\ud328
       } finally {
         setIsLoading(false)
       }

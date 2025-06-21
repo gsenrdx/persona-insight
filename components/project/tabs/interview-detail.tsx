@@ -151,7 +151,7 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Download error:', error)
+      // \ub2e4\uc6b4\ub85c\ub4dc \uc624\ub958 \ubc1c\uc0dd
       alert('파일 다운로드 중 오류가 발생했습니다.')
     }
   }

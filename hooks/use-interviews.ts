@@ -138,7 +138,7 @@ export function useUploadInterviews() {
       queryClient.invalidateQueries(queryKeyUtils.invalidateAll('interviews'))
     },
     onError: (error: ApiError) => {
-      console.error('인터뷰 업로드 실패:', error.message)
+      // 인터뷰 업로드 실패
     },
   })
 }
@@ -175,7 +175,7 @@ export function useRetryInterviewProcessing() {
       queryClient.invalidateQueries(queryKeyUtils.invalidateAll('workflows'))
     },
     onError: (error: ApiError) => {
-      console.error('인터뷰 재처리 실패:', error.message)
+      // 인터뷰 재처리 실패
     },
   })
 }
@@ -211,7 +211,7 @@ export function useDeleteInterview() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('인터뷰 삭제 실패:', error.message)
+      // 인터뷰 삭제 실패
     },
   })
 }
@@ -249,7 +249,7 @@ export function useDeleteMultipleInterviews() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('인터뷰 일괄 삭제 실패:', error.message)
+      // 인터뷰 일괄 삭제 실패
     },
   })
 }
@@ -296,7 +296,7 @@ export function useUpdateInterview() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('인터뷰 업데이트 실패:', error.message)
+      // 인터뷰 업데이트 실패
     },
   })
 }
@@ -332,7 +332,7 @@ export function useCreateExtractionCriteria() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('추출 기준 생성 실패:', error.message)
+      // 추출 기준 생성 실패
     },
   })
 }
@@ -373,7 +373,7 @@ export function useUpdateExtractionCriteria() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('추출 기준 수정 실패:', error.message)
+      // 추출 기준 수정 실패
     },
   })
 }
@@ -404,7 +404,7 @@ export function useDeleteExtractionCriteria() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('추출 기준 삭제 실패:', error.message)
+      // 추출 기준 삭제 실패
     },
   })
 }

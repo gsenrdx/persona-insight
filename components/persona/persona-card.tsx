@@ -55,7 +55,7 @@ export default function PersonaCard({
       router.prefetch(`/chat/${id}`)
       setPrefetchStarted(true)
     } catch (error) {
-      console.error("페이지 프리페치 실패:", error)
+      // \ud398\uc774\uc9c0 \ud504\ub9ac\ud398\uce58 \uc2e4\ud328
     }
   }
   

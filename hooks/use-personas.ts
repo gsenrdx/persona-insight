@@ -172,7 +172,7 @@ export function useCreatePersona() {
       }
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 생성 실패:', error.message)
+      // 페르소나 생성 실패
     },
   })
 }
@@ -213,7 +213,7 @@ export function useUpdatePersona() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 업데이트 실패:', error.message)
+      // 페르소나 업데이트 실패
     },
   })
 }
@@ -254,7 +254,7 @@ export function useDeletePersona() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 삭제 실패:', error.message)
+      // 페르소나 삭제 실패
     },
   })
 }
@@ -286,7 +286,7 @@ export function useSynthesizePersonas() {
       queryClient.invalidateQueries(queryKeyUtils.invalidateAll('personas'))
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 합성 실패:', error.message)
+      // 페르소나 합성 실패
     },
   })
 }
@@ -313,7 +313,7 @@ export function useChatWithPersona() {
       })
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 채팅 실패:', error.message)
+      // 페르소나 채팅 실패
     },
   })
 }
@@ -345,7 +345,7 @@ export function useClonePersona() {
       queryClient.invalidateQueries(queryKeyUtils.invalidateAll('personas'))
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 복제 실패:', error.message)
+      // 페르소나 복제 실패
     },
   })
 }
@@ -389,7 +389,7 @@ export function useUploadPersonaImage() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 이미지 업로드 실패:', error.message)
+      // 페르소나 이미지 업로드 실패
     },
   })
 }
@@ -424,7 +424,7 @@ export function useGeneratePersonaInsights() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('페르소나 인사이트 생성 실패:', error.message)
+      // 페르소나 인사이트 생성 실패
     },
   })
 }
@@ -452,7 +452,7 @@ export function useGenerateChatSummary() {
       )
     },
     onError: (error: ApiError) => {
-      console.error('채팅 요약 생성 실패:', error.message)
+      // 채팅 요약 생성 실패
     },
   })
 }

@@ -15,8 +15,8 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // 중요한 전역 에러 로깅
-    console.error('Global Error:', ErrorUtils.toLogObject(error))
+    // 전역 에러 로깅
+    // Global Error 발생
     
     // 향후 에러 리포팅 서비스 연동 (높은 우선순위)
     // ErrorReporter.report(error, { 
