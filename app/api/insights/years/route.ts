@@ -51,10 +51,15 @@ export async function GET(request: Request) {
     const availableYears = Array.from(yearsSet).sort((a, b) => parseInt(b) - parseInt(a))
 
 
+    // Add cache headers for performance
+    const headers = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+    }
+
     return NextResponse.json({
       years: availableYears,
       totalInterviews: interviews?.length || 0
-    })
+    }, { headers })
 
   } catch (error) {
     return NextResponse.json(

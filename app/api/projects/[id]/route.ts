@@ -96,10 +96,15 @@ export async function GET(
       }, { status: 403 })
     }
 
+    // Add cache headers for performance
+    const headers = {
+      'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300'
+    }
+
     return NextResponse.json({
       data: accessCheck.project,
       success: true
-    })
+    }, { headers })
   } catch (error) {
     // GET API route 오류
     

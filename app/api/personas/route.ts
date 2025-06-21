@@ -22,37 +22,8 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    // Base query setup
-    let baseQuery = supabase
-      .from('personas')
-      .select('*', { count: 'exact' })
-      .eq('company_id', company_id)
-      .eq('active', true)
-
-    // Project filtering
-    if (project_id) {
-      baseQuery = baseQuery.eq('project_id', project_id)
-    } else {
-      baseQuery = baseQuery.is('project_id', null)
-    }
-
-    // Type filtering
-    if (persona_type) {
-      baseQuery = baseQuery.eq('persona_type', persona_type)
-    }
-
-    // Get total count
-    const { count, error: countError } = await baseQuery
-
-    if (countError) {
-      return NextResponse.json({
-        error: "페르소나 개수 조회에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    // Data query with pagination
-    let dataQuery = supabase
+    // Single query with count and data
+    let query = supabase
       .from('personas')
       .select(`
         id,
@@ -67,24 +38,25 @@ export async function GET(request: Request) {
         insight,
         insight_quote,
         created_at
-      `)
+      `, { count: 'exact' })
       .eq('company_id', company_id)
       .eq('active', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    // Re-apply filters
+    // Project filtering
     if (project_id) {
-      dataQuery = dataQuery.eq('project_id', project_id)
+      query = query.eq('project_id', project_id)
     } else {
-      dataQuery = dataQuery.is('project_id', null)
+      query = query.is('project_id', null)
     }
 
+    // Type filtering
     if (persona_type) {
-      dataQuery = dataQuery.eq('persona_type', persona_type)
+      query = query.eq('persona_type', persona_type)
     }
 
-    const { data, error } = await dataQuery
+    const { data, count, error } = await query
 
     if (error) {
       return NextResponse.json({

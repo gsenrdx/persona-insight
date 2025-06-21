@@ -70,6 +70,11 @@ export async function GET(req: NextRequest) {
 
     const datasetsData: MisoDatasetListResponse = await misoResponse.json()
 
+    // Add cache headers for performance
+    const headers = {
+      'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300'
+    }
+
     return NextResponse.json({
       success: true,
       message: '데이터셋 목록을 성공적으로 조회했습니다',
@@ -89,7 +94,7 @@ export async function GET(req: NextRequest) {
         total: datasetsData.total,
         has_more: datasetsData.has_more
       }
-    })
+    }, { headers })
 
   } catch (error: any) {
     return NextResponse.json({

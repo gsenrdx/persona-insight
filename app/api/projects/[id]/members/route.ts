@@ -100,10 +100,15 @@ export async function GET(
         }
       }))
 
+      // Add cache headers for performance
+      const headers = {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
+      }
+
       return NextResponse.json({
         data: transformedMembers,
         success: true
-      })
+      }, { headers })
     }
 
     // RPC 결과를 프론트엔드에서 예상하는 형식으로 변환
@@ -123,10 +128,15 @@ export async function GET(
       }
     }))
 
+    // Add cache headers for performance
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
+    }
+
     return NextResponse.json({
       data: transformedMembers,
       success: true
-    })
+    }, { headers })
 
   } catch (error) {
     // GET /api/projects/[id]/members 오류

@@ -44,19 +44,24 @@ export async function POST(req: NextRequest) {
       }
 
       userId = user.id;
+      
+      // 먼저 user metadata에서 이름 확인 (캐시된 데이터)
+      userName = user.user_metadata?.name || user.user_metadata?.full_name;
+      
+      // metadata에 없으면 DB 조회
+      if (!userName) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', userId)
+          .single();
 
-      // 사용자 프로필에서 이름 조회
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', userId)
-        .single();
+        if (profileError || !profile) {
+          return new Response('사용자 정보를 찾을 수 없습니다.', { status: 400 });
+        }
 
-      if (profileError || !profile) {
-        return new Response('사용자 정보를 찾을 수 없습니다.', { status: 400 });
+        userName = profile.name;
       }
-
-      userName = profile.name;
     } catch (error) {
       return new Response('인증 처리 중 오류가 발생했습니다.', { status: 401 });
     }

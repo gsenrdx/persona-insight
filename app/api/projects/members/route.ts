@@ -14,38 +14,39 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    // 프로젝트 정보 조회
-    const { data: project, error: projectError } = await supabaseAdmin
+    // 단일 쿼리로 프로젝트의 회사 구성원 조회
+    const { data, error } = await supabaseAdmin
       .from('projects')
-      .select('company_id')
+      .select(`
+        id,
+        companies!inner (
+          profiles!inner (
+            id,
+            name,
+            role,
+            avatar_url,
+            is_active
+          )
+        )
+      `)
       .eq('id', project_id)
+      .eq('companies.profiles.is_active', true)
       .single()
 
-    if (projectError || !project) {
+    if (error || !data) {
       return NextResponse.json({
         error: "프로젝트를 찾을 수 없습니다",
         success: false
       }, { status: 404 })
     }
 
-    // 회사 구성원 목록 조회
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, role, avatar_url')
-      .eq('company_id', project.company_id)
-      .eq('is_active', true)
-      .order('name')
-
-    if (error) {
-      // Supabase 조회 오류
-      return NextResponse.json({
-        error: "구성원 목록을 가져오는데 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
+    // 프로필 데이터 추출 및 정렬
+    const profiles = data.companies.profiles.sort((a: any, b: any) => 
+      (a.name || '').localeCompare(b.name || '')
+    )
 
     return NextResponse.json({
-      data,
+      data: profiles,
       success: true
     })
   } catch (error) {

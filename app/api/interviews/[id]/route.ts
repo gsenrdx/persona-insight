@@ -65,10 +65,15 @@ export async function GET(
       created_by_profile: createdByProfile
     }
 
+    // Add cache headers for performance (interview data is immutable)
+    const headers = {
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200'
+    }
+
     return NextResponse.json({
       data: responseData,
       success: true
-    })
+    }, { headers })
   } catch (error) {
     return NextResponse.json({
       error: "인터뷰 데이터를 가져오는데 실패했습니다",

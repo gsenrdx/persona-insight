@@ -28,6 +28,10 @@ export async function GET(request: Request) {
           persona_type,
           persona_title,
           persona_description
+        ),
+        created_by_profile:profiles!created_by(
+          id,
+          name
         )
       `)
       .eq('company_id', company_id)
@@ -49,40 +53,13 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
-    // Collect unique created_by IDs
-    const createdByIds = data
-      ?.filter(interview => interview.created_by)
-      ?.map(interview => interview.created_by)
-      ?.filter((id, index, arr) => arr.indexOf(id) === index)
-
-    let profilesData: { id: string; name: string }[] = []
-    if (createdByIds && createdByIds.length > 0) {
-      // Batch query profiles for performance
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', createdByIds)
-
-      if (!profilesError && profiles) {
-        profilesData = profiles
-      }
-    }
-
-    // Map profile data to interviews
-    const dataWithProfiles = data?.map(interview => ({
-      ...interview,
-      created_by_profile: interview.created_by 
-        ? profilesData.find(profile => profile.id === interview.created_by) || null
-        : null
-    }))
-
     // Add cache headers for performance
     const headers = {
       'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600'
     }
 
     return NextResponse.json({
-      data: dataWithProfiles,
+      data,
       success: true
     }, { headers })
   } catch (error) {

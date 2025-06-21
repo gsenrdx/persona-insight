@@ -31,27 +31,35 @@ export async function GET(req: NextRequest) {
       return new NextResponse('인증에 실패했습니다.', { status: 401 })
     }
 
-    // Get user's company information
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile?.company_id) {
-      return new NextResponse('사용자 정보를 찾을 수 없습니다.', { status: 400 })
-    }
-
-    // Get interview information with company authorization check
+    // Single query to get interview with user's company verification
     const { data: interview, error: interviewError } = await supabase
       .from('interviewees')
-      .select('file_path, company_id')
+      .select(`
+        file_path,
+        company_id,
+        companies!inner (
+          profiles!inner (
+            id
+          )
+        )
+      `)
       .eq('id', intervieweeId)
-      .eq('company_id', profile.company_id)
+      .eq('companies.profiles.id', user.id)
       .single()
 
     if (interviewError || !interview) {
-      return new NextResponse('인터뷰를 찾을 수 없습니다.', { status: 404 })
+      // If not found, it could be due to no access or non-existent interview
+      const { data: interviewExists } = await supabase
+        .from('interviewees')
+        .select('id')
+        .eq('id', intervieweeId)
+        .single()
+      
+      if (!interviewExists) {
+        return new NextResponse('인터뷰를 찾을 수 없습니다.', { status: 404 })
+      }
+      
+      return new NextResponse('인터뷰에 접근할 권한이 없습니다.', { status: 403 })
     }
 
     if (!interview.file_path) {

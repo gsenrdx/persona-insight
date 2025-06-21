@@ -3,9 +3,62 @@ import { supabaseAdmin } from "@/lib/supabase-server"
 
 // 페르소나 생성 로직은 /api/personas/sync로 이관됨
 
-// 권한 확인 함수
+// 권한 확인 함수 (최적화됨 - 단일 쿼리)
 async function checkPermission(companyId: string, userId: string, projectId?: string) {
-  // 사용자 프로필 조회
+  // 프로젝트 권한이 필요한 경우 JOIN으로 한 번에 조회
+  if (projectId) {
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select(`
+        role,
+        company_id,
+        project_members!inner (
+          role,
+          project_id
+        )
+      `)
+      .eq('id', userId)
+      .eq('project_members.project_id', projectId)
+      .single()
+
+    if (error || !data) {
+      // 프로젝트 멤버가 아닌 경우, 프로필만 체크
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role, company_id')
+        .eq('id', userId)
+        .single()
+
+      if (!profile) {
+        return { isAuthorized: false, error: "사용자를 찾을 수 없습니다" }
+      }
+
+      if (profile.company_id !== companyId) {
+        return { isAuthorized: false, error: "회사 접근 권한이 없습니다" }
+      }
+
+      // 회사 관리자는 모든 프로젝트 접근 가능
+      if (profile.role === 'company_admin' || profile.role === 'super_admin') {
+        return { isAuthorized: true, canEdit: true }
+      }
+
+      return { isAuthorized: false, error: "프로젝트 접근 권한이 없습니다" }
+    }
+
+    // 회사 확인
+    if (data.company_id !== companyId) {
+      return { isAuthorized: false, error: "회사 접근 권한이 없습니다" }
+    }
+
+    // 프로젝트 권한 확인
+    const projectRole = data.project_members[0].role
+    const canEdit = projectRole === 'owner' || projectRole === 'admin' || 
+                   data.role === 'company_admin' || data.role === 'super_admin'
+    
+    return { isAuthorized: true, canEdit }
+  }
+
+  // 회사 권한만 필요한 경우
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('role, company_id')
@@ -16,32 +69,10 @@ async function checkPermission(companyId: string, userId: string, projectId?: st
     return { isAuthorized: false, error: "사용자를 찾을 수 없습니다" }
   }
 
-  // 같은 회사 구성원인지 확인
   if (profile.company_id !== companyId) {
     return { isAuthorized: false, error: "회사 접근 권한이 없습니다" }
   }
 
-  // 프로젝트별 설정인 경우 프로젝트 멤버 권한 확인
-  if (projectId) {
-    const { data: membership } = await supabaseAdmin
-      .from('project_members')
-      .select('role')
-      .eq('project_id', projectId)
-      .eq('user_id', userId)
-      .single()
-
-    if (!membership) {
-      return { isAuthorized: false, error: "프로젝트 접근 권한이 없습니다" }
-    }
-
-    // 프로젝트 관리자 또는 회사 관리자만 설정 수정 가능
-    const canEdit = membership.role === 'owner' || membership.role === 'admin' || 
-                   profile.role === 'company_admin' || profile.role === 'super_admin'
-    
-    return { isAuthorized: true, canEdit }
-  }
-
-  // 회사별 설정인 경우 회사 관리자만 수정 가능
   const canEdit = profile.role === 'company_admin' || profile.role === 'super_admin'
   
   return { isAuthorized: true, canEdit }
@@ -83,10 +114,15 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
+    // Add cache headers for performance
+    const headers = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+    }
+
     return NextResponse.json({
       configuration: data,
       success: true
-    })
+    }, { headers })
   } catch (error) {
     
     return NextResponse.json({
