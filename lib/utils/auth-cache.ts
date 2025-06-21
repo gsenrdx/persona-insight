@@ -2,7 +2,6 @@
  * 인증 정보 캐싱 유틸리티 - DB 조회 최소화
  */
 
-import { createClient } from '@supabase/supabase-js'
 
 const CACHE_TTL = 5 * 60 * 1000; // 5분
 const MAX_CACHE_SIZE = 1000;
@@ -75,7 +74,7 @@ function extractUserIdFromToken(token: string): string | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = JSON.parse(atob(parts[1] || ''));
     return payload.sub || null;
   } catch {
     return null;

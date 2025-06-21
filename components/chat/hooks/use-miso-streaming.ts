@@ -71,15 +71,15 @@ export function useMisoStreaming() {
                 setChatMessages(prev => {
                   const updated = [...prev]
                   const lastIndex = updated.length - 1
-                  if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && updated[lastIndex].id === assistantMessage.id) {
-                    const currentContent = updated[lastIndex].content
+                  if (lastIndex >= 0 && updated[lastIndex]?.role === "assistant" && updated[lastIndex]?.id === assistantMessage.id) {
+                    const currentContent = updated[lastIndex]?.content || ''
                     
                     // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
                     if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
                       updated[lastIndex] = {
                         ...updated[lastIndex],
                         content: receivedText,
-                      }
+                      } as ExtendedMessage
                     } 
                     // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
                     else if (currentContent.startsWith(receivedText)) {
@@ -90,7 +90,7 @@ export function useMisoStreaming() {
                       updated[lastIndex] = {
                         ...updated[lastIndex],
                         content: currentContent + receivedText,
-                      }
+                      } as ExtendedMessage
                     }
                   }
                   return updated

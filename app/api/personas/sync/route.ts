@@ -3,19 +3,6 @@ import { supabase } from '@/lib/supabase'
 
 // Sync personas with matrix positions and dataset IDs
 
-interface PersonaData {
-  id?: string // 기존 페르소나 ID (있으면 업데이트, 없으면 생성)
-  persona_type: string
-  persona_title: string
-  persona_description: string
-  thumbnail: string | null
-  matrix_position: {
-    xIndex: number
-    yIndex: number
-    coordinate: string
-  }
-}
-
 // 좌표 범위 계산 함수
 function calculateCoordinateBounds(index: number, segmentCount: number): { min: number, max: number } {
   const segmentSize = 100 / segmentCount
@@ -169,7 +156,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json({ 
       error: '페르소나 동기화 중 오류가 발생했습니다',
       details: error.message,

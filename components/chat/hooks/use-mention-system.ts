@@ -28,7 +28,7 @@ export function useMentionSystem(
     
     // 멘션된 페르소나가 있으면 첫 번째 페르소나를 활성 페르소나로 설정
     if (mentioned.length > 0) {
-      const firstMentionedPersona = allPersonas.find(p => p.id === mentioned[0].id)
+      const firstMentionedPersona = allPersonas.find(p => p.id === mentioned[0]?.id)
       if (firstMentionedPersona) {
         setActivePersona(firstMentionedPersona)
       }

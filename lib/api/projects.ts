@@ -253,7 +253,7 @@ export async function createProject(projectData: CreateProjectData): Promise<Pro
   return response.data
 }
 
-export async function deleteProject(projectId: string, userId: string): Promise<void> {
+export async function deleteProject(projectId: string, _userId: string): Promise<void> {
   await projectsApi.deleteProject('', projectId)
 }
 

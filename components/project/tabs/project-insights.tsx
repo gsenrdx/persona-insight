@@ -198,15 +198,15 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
 
   // selectedYears 초기화
   useEffect(() => {
-    if (selectedYears.length === 0 && availableYears.length > 0) {
+    if (selectedYears.length === 0 && availableYears.length > 0 && availableYears[0]) {
       setSelectedYears([availableYears[0]])
     }
   }, [availableYears, selectedYears.length])
   
   // 현재 표시할 인사이트 (첫 번째 선택된 연도의 것을 표시)
-  const currentYearData = selectedYears.length > 0 
+  const currentYearData = selectedYears.length > 0 && selectedYears[0]
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
-    : (insightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
+    : (availableYears[0] && insightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
 
 
   // 롤링 배너 효과를 위한 인터벌 설정
@@ -404,7 +404,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       {(() => {
         // 인터뷰 데이터가 있는지 먼저 확인
         const hasInterviews = selectedYears.some(year => 
-          insightData[year]?.intervieweeCount > 0
+          insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
         )
         
         // 인사이트 데이터가 있는지 확인
@@ -436,7 +436,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(currentYearData?.insights || []).map((insight, idx) => {
+                  {(currentYearData?.insights || []).map((insight: any, idx: number) => {
                     // 데이터 유효성 검사
                     if (!insight || typeof insight !== 'object') {
                       return null
@@ -481,7 +481,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                               언급 {safeInsight.mentionCount}회
                             </Badge>
                             <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              고객 {new Set(safeInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명
+                              고객 {new Set(safeInsight.quotes.map((q: any) => q?.persona).filter(Boolean)).size}명
                             </Badge>
                           </div>
                         </div>
@@ -508,7 +508,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               <div className="w-full px-4">
                 <div className="flex justify-center items-center">
                   <div className="flex gap-2 overflow-auto pb-1 w-full justify-center">
-                    {(currentYearData?.insights || []).map((insight, idx) => {
+                    {(currentYearData?.insights || []).map((insight: any, idx: number) => {
                       const isSelected = currentInsight === idx
                       return (
                         <Button 
@@ -568,17 +568,17 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
-                              프로젝트 "{project.name}"에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
+                              프로젝트 &quot;{project.name}&quot;에서 공통적으로 강조된 &quot;{safeSelectedInsight.title}&quot;에 대한 분석입니다. 
                               {safeSelectedInsight.summary}
                             </p>
                             <p className="text-sm leading-relaxed">
                               이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
-                              {new Set(safeSelectedInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}" 등이 
+                              {new Set(safeSelectedInsight.quotes.map((q: any) => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
+                              주요 키워드로는 &quot;{safeSelectedInsight.keywords.slice(0, 3).map((k: any) => k?.name).filter(Boolean).join('", "')}&quot; 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
                             <p className="text-sm leading-relaxed">
-                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
+                              특히 &quot;{safeSelectedInsight.keywords[0]?.name}&quot; 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
                               이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
                               {safeSelectedInsight.priority <= 3 ? 
                                 '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
@@ -588,7 +588,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                               }
                             </p>
                             <div>
-                              {safeSelectedInsight.keywords.slice(0, 3).map((keyword, idx) => 
+                              {safeSelectedInsight.keywords.slice(0, 3).map((keyword: any, idx: number) => 
                                 keyword?.name ? (
                                   <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
                                     {keyword.name} ({keyword.weight || 0}%)
@@ -626,7 +626,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                                   label={({ name }) => name}
                                   isAnimationActive={false}
                                 >
-                                  {safeSelectedInsight.keywords.map((_, index) => (
+                                  {safeSelectedInsight.keywords.map((_: any, index: number) => (
                                     <Cell 
                                       key={`cell-${index}`} 
                                       fill={[
@@ -738,7 +738,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
                           <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
                             <div className="flex-grow">
-                              <p className="text-base">"{safeQuote.text}"</p>
+                              <p className="text-base">&quot;{safeQuote.text}&quot;</p>
                             </div>
                             <div className="pt-2 border-t mt-auto">
                               <div className="flex items-center justify-between mt-2">
@@ -774,7 +774,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         (() => {
           // 인터뷰 데이터가 있는지 확인
           const hasInterviews = selectedYears.some(year => 
-            insightData[year]?.intervieweeCount > 0
+            insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
           )
           
 

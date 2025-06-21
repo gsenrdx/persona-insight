@@ -70,7 +70,9 @@ export default function PersonaCard({
     
     // 랜덤 명언 선택
     const randomQuote = designThinkingQuotes[Math.floor(Math.random() * designThinkingQuotes.length)]
-    setCurrentQuote(randomQuote)
+    if (randomQuote) {
+      setCurrentQuote(randomQuote)
+    }
     
     // 아직 프리페치가 시작되지 않았다면 즉시 시작
     if (!prefetchStarted) {
@@ -309,7 +311,7 @@ export default function PersonaCard({
                         "text-xs leading-relaxed text-center italic",
                         isDark ? "text-zinc-300" : "text-zinc-700"
                       )}>
-                        "{currentQuote}"
+                        &quot;{currentQuote}&quot;
                       </p>
                     </div>
                   )}

@@ -66,7 +66,7 @@ export default function PersonaClassificationModal({
         if (!interviewsByPersona[interview.persona_id]) {
           interviewsByPersona[interview.persona_id] = []
         }
-        interviewsByPersona[interview.persona_id].push(interview)
+        interviewsByPersona[interview.persona_id]!.push(interview)
       } else {
         unclassified.push(interview)
       }
@@ -88,7 +88,7 @@ export default function PersonaClassificationModal({
   // 로딩 완료 후 첫 번째 페르소나 또는 미분류를 기본 선택
   useEffect(() => {
     if (isOpen && !personasLoading) {
-      if (classifications.length > 0) {
+      if (classifications.length > 0 && classifications[0]) {
         setSelectedPersonaId(classifications[0].id)
       } else if (unclassifiedInterviews.length > 0) {
         setSelectedPersonaId('unclassified')

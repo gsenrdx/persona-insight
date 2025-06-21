@@ -36,7 +36,7 @@ export class FileStorageService {
       const filePath = `${companyId}/${projectId}/${timestamp}_${sanitizedFileName}`
       
       const fileBuffer = await file.arrayBuffer()
-      const { data, error } = await this.supabase.storage
+      const { error } = await this.supabase.storage
         .from('interview-files')
         .upload(filePath, fileBuffer, {
           contentType: file.type,

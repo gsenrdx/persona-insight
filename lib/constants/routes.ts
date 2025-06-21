@@ -256,7 +256,7 @@ export const createBreadcrumbs = (currentPath: string): Array<{ name: string; hr
   
   // 경로 세그먼트별로 브레드크럼 생성
   let currentHref = ''
-  pathSegments.forEach((segment, index) => {
+  pathSegments.forEach((segment) => {
     currentHref += `/${segment}`
     
     // 세그먼트에 따른 이름 매핑
@@ -279,7 +279,7 @@ export const createBreadcrumbs = (currentPath: string): Array<{ name: string; hr
 /**
  * 라우트 권한 확인 (추후 권한 시스템과 연동)
  */
-export const isRouteAuthorized = (route: string, userRole: string): boolean => {
+export const isRouteAuthorized = (_route: string, _userRole: string): boolean => {
   // 기본적으로 모든 라우트 허용
   // 추후 권한별 라우트 접근 제어 로직 구현
   return true

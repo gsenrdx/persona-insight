@@ -4,11 +4,11 @@ import { supabase } from "@/lib/supabase"
 // Get and delete specific interview by ID
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json({
@@ -83,11 +83,11 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json({

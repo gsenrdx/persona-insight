@@ -102,7 +102,7 @@ export const ErrorUtils = {
     return error instanceof Error && (
       error.name === 'NetworkError' ||
       error.name === 'TimeoutError' ||
-      (error as any).statusCode === 0
+      (error as Error & { statusCode?: number }).statusCode === 0
     )
   },
 
@@ -112,8 +112,8 @@ export const ErrorUtils = {
   isServerError(error: unknown): boolean {
     return error instanceof Error && 
            'statusCode' in error && 
-           typeof (error as any).statusCode === 'number' &&
-           (error as any).statusCode >= 500
+           typeof (error as Error & { statusCode?: number }).statusCode === 'number' &&
+           (error as Error & { statusCode?: number }).statusCode! >= 500
   },
 
   /**
@@ -122,9 +122,9 @@ export const ErrorUtils = {
   isClientError(error: unknown): boolean {
     return error instanceof Error && 
            'statusCode' in error && 
-           typeof (error as any).statusCode === 'number' &&
-           (error as any).statusCode >= 400 && 
-           (error as any).statusCode < 500
+           typeof (error as Error & { statusCode?: number }).statusCode === 'number' &&
+           (error as Error & { statusCode?: number }).statusCode! >= 400 && 
+           (error as Error & { statusCode?: number }).statusCode! < 500
   },
 
   /**
@@ -133,7 +133,7 @@ export const ErrorUtils = {
   getUserMessage(error: unknown): string {
     // API 에러인 경우 상태 코드 기반 메시지 우선
     if (error instanceof Error && 'statusCode' in error) {
-      const statusCode = (error as any).statusCode
+      const statusCode = (error as Error & { statusCode: number }).statusCode
       if (typeof statusCode === 'number') {
         const standardMessage = getErrorMessage(statusCode)
         // 표준 메시지가 아닌 커스텀 메시지가 있다면 그것을 사용
@@ -143,7 +143,7 @@ export const ErrorUtils = {
     
     // 비즈니스 에러 코드가 있는 경우
     if (error instanceof Error && 'code' in error) {
-      const errorCode = (error as any).code
+      const errorCode = (error as Error & { code: string }).code
       if (typeof errorCode === 'string') {
         return getBusinessErrorMessage(errorCode)
       }
@@ -170,9 +170,9 @@ export const ErrorUtils = {
   /**
    * 에러를 로깅용 객체로 변환
    */
-  toLogObject(error: unknown): Record<string, any> {
+  toLogObject(error: unknown): Record<string, unknown> {
     if (error instanceof Error && 'statusCode' in error && 'toJSON' in error) {
-      return (error as any).toJSON()
+      return (error as Error & { toJSON: () => Record<string, unknown> }).toJSON()
     }
     
     if (error instanceof Error) {

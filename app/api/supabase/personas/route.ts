@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       data: personas || []
     })
 
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json({
       error: '페르소나 조회 중 오류가 발생했습니다',
       details: error.message,

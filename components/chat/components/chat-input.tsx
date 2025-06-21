@@ -145,7 +145,6 @@ export function ChatInput({
               onOpenChange={onMentionDropdownChange}
               searchText={mentionSearchText}
               personas={allPersonas}
-              anchorEl={inputRef.current}
             />
           </div>
           <Button 

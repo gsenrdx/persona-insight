@@ -3,9 +3,11 @@ import { supabaseAdmin } from '@/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     // Authorization 헤더에서 사용자 토큰 가져오기
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -30,7 +32,7 @@ export async function GET(
     const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .select('id, visibility, company_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (projectError || !project) {
@@ -45,7 +47,7 @@ export async function GET(
       const { data: membership } = await supabaseAdmin
         .from('project_members')
         .select('id')
-        .eq('project_id', params.id)
+        .eq('project_id', id)
         .eq('user_id', user.id)
         .single()
 
@@ -60,7 +62,7 @@ export async function GET(
     // 프로젝트 멤버 목록을 프로필 정보와 함께 조회 (RPC 함수 사용)
     const { data: members, error: membersError } = await supabaseAdmin
       .rpc('get_project_members_with_profiles', {
-        p_project_id: params.id
+        p_project_id: id
       })
 
     if (membersError) {
@@ -77,7 +79,7 @@ export async function GET(
             avatar_url
           )
         `)
-        .eq('project_id', params.id)
+        .eq('project_id', id)
         .order('created_at', { ascending: true })
 
       if (fallbackError) {
@@ -112,7 +114,7 @@ export async function GET(
     }
 
     // RPC 결과를 프론트엔드에서 예상하는 형식으로 변환
-    const transformedMembers = (members || []).map((member: any) => ({
+    const transformedMembers = (members || []).map((member) => ({
       id: member.id,
       user_id: member.user_id,
       project_id: member.project_id,

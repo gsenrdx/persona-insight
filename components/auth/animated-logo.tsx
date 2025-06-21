@@ -39,7 +39,7 @@ export default function AnimatedLogo() {
 
   // 초기 설정
   useEffect(() => {
-    const initialShapes = LOGO_SHAPES.map((shape, index) => {
+    const initialShapes = LOGO_SHAPES.map((shape) => {
       const randomPos = generateRandomPosition()
       return {
         ...shape,

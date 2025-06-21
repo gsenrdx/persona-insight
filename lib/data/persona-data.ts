@@ -1,4 +1,4 @@
-import { PersonaData, PersonaApiResponse } from "@/types/persona"
+import { PersonaData } from "@/types/persona"
 import { getPersonaTypeInfo } from "@/lib/utils/persona"
 
 /**
@@ -39,7 +39,7 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
     // persona_type으로 정렬
     return data
       .map((persona: PersonaData) => {
-        const typeInfo = getPersonaTypeInfo(persona.persona_type)
+        getPersonaTypeInfo(persona.persona_type)
         
         return {
           id: persona.id,
@@ -109,7 +109,7 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
       return null
     }
 
-    const typeInfo = getPersonaTypeInfo(persona.persona_type)
+    getPersonaTypeInfo(persona.persona_type)
     
     return {
       id: persona.id,
@@ -133,35 +133,6 @@ export async function fetchPersonaById(id: string, company_id?: string, project_
   } catch (error) {
     return null
   }
-}
-
-// 페르소나 데이터에서 키워드 추출
-function extractKeywordsFromPersona(persona: PersonaData): string[] {
-  const keywords: string[] = []
-  
-  const typeInfo = getPersonaTypeInfo(persona.persona_type)
-  keywords.push(typeInfo.subtitle.split(' / ')[0])
-  keywords.push(typeInfo.subtitle.split(' / ')[1])
-  
-  const painpointWords = persona.painpoints
-    .split(',')[0]
-    .trim()
-    .split(' ')
-    .slice(0, 2)
-    .filter(word => word.length > 1)
-  
-  keywords.push(...painpointWords)
-  
-  const needsWords = persona.needs
-    .split(',')[0]
-    .trim()
-    .split(' ')
-    .slice(0, 2)
-    .filter(word => word.length > 1)
-  
-  keywords.push(...needsWords)
-  
-  return [...new Set(keywords)].slice(0, 6)
 }
 
 // 키워드 기능 (비활성화)

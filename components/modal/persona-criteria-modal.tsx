@@ -156,7 +156,7 @@ export const PersonaCriteriaModal = ({
       const personaArray = Object.entries(existingConfig.persona_matrix).map(([key, persona]) => ({
         ...(persona as PersonaMatrixItem),
         // personaType이 없으면 빈 문자열로 처리
-        personaType: (persona as any).personaType || ''
+        personaType: persona.personaType || ''
       }))
       setPersonaTypes(personaArray)
     } else if (open && !existingConfig) {
@@ -324,7 +324,11 @@ export const PersonaCriteriaModal = ({
     const setAxis = axis === 'x' ? setXAxis : setYAxis
     setAxis(prev => {
       const newSegments = [...prev.segments]
-      newSegments[index] = { ...newSegments[index], ...data }
+      newSegments[index] = { 
+        name: data.name ?? newSegments[index]!.name,
+        description: data.description ?? newSegments[index]!.description,
+        is_unclassified: data.is_unclassified ?? newSegments[index]!.is_unclassified
+      }
       return { ...prev, segments: newSegments }
     })
   }
@@ -427,16 +431,16 @@ export const PersonaCriteriaModal = ({
         project_id: projectId,
         x_segments_count: xAxis.segments.length,
         y_segments_count: yAxis.segments.length,
-        criteria_configuration_id: existingConfig?.id, // 기준 설정 ID 추가
+        criteria_configuration_id: existingConfig?.id || undefined, // 기준 설정 ID 추가
         personas: validPersonas.map(p => {
-          const existingPersona = existingPersonasMap.get(p.personaType)
+          const existingPersona = p.personaType ? existingPersonasMap.get(p.personaType) : undefined
           
           return {
             id: existingPersona?.id, // 기존 페르소나 ID 포함
             persona_type: p.personaType,
             persona_title: p.title,
             persona_description: p.description,
-            thumbnail: (p as any).thumbnail || null,
+            thumbnail: p.thumbnail || null,
             matrix_position: {
               xIndex: p.xIndex,
               yIndex: p.yIndex,
@@ -607,8 +611,8 @@ export const PersonaCriteriaModal = ({
           ? {
               title: persona.title,
               description: persona.description,
-              personaType: (persona as any).personaType || '',
-              thumbnail: (persona as any).thumbnail || '',
+              personaType: persona.personaType || '',
+              thumbnail: persona.thumbnail || '',
             }
           : initialPersonaForm
         
@@ -1253,10 +1257,10 @@ export const PersonaCriteriaModal = ({
                                     {/* 메인 콘텐츠 */}
                                     <div className="relative h-full flex flex-col">
                                       {/* 썸네일 캐릭터 이미지 - 배경처럼 우측 하단에 크게 배치 */}
-                                      {(cellPersona as any).thumbnail && (
+                                      {cellPersona.thumbnail && (
                                         <div className="absolute bottom-0 right-0 w-24 h-24 z-0 opacity-30">
                                           <img
-                                            src={(cellPersona as any).thumbnail}
+                                            src={cellPersona.thumbnail}
                                             alt=""
                                             className="w-full h-full object-cover rounded-md"
                                             onError={(e) => {
@@ -1267,9 +1271,9 @@ export const PersonaCriteriaModal = ({
                                       )}
                                       
                                       <div className="flex items-center gap-2 mb-1 relative z-10">
-                                        {(cellPersona as any).personaType && (
+                                        {cellPersona.personaType && (
                                           <span className="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full flex-shrink-0">
-                                            {(cellPersona as any).personaType}
+                                            {cellPersona.personaType}
                                           </span>
                                         )}
                                         <p 
@@ -1403,7 +1407,7 @@ export const PersonaCriteriaModal = ({
                       <Label>구분 개수: {yAxis.segments.length}</Label>
                       <Slider
                         value={[yAxis.segments.length]}
-                        onValueChange={v => !isReadOnly && handleDividerChange('y', v[0])}
+                        onValueChange={v => !isReadOnly && v[0] !== undefined && handleDividerChange('y', v[0])}
                         min={1}
                         max={5}
                         step={1}
@@ -1484,7 +1488,7 @@ export const PersonaCriteriaModal = ({
                       <Label>구분 개수: {xAxis.segments.length}</Label>
                       <Slider
                         value={[xAxis.segments.length]}
-                        onValueChange={v => !isReadOnly && handleDividerChange('x', v[0])}
+                        onValueChange={v => !isReadOnly && v[0] !== undefined && handleDividerChange('x', v[0])}
                         min={1}
                         max={5}
                         step={1}

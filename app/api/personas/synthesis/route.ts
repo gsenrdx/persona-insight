@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { syncInterviewTopicsToPersona } from '@/lib/services/miso'
+import { 
+  PersonaSynthesisInputs, 
+  PersonaSynthesisResponse,
+  PersonaSynthesisOutputs,
+  WorkflowRequest,
+  WorkflowResponse,
+  IntervieweeData
+} from '@/types/workflow'
+import { Persona } from '@/types/project'
 
 export async function POST(req: NextRequest) {
   try {
-    const { selectedInterviewee, personaType, projectId, personaId } = await req.json();
+    const { selectedInterviewee, personaType, projectId, personaId }: PersonaSynthesisInputs = await req.json();
     
     if (!selectedInterviewee || !personaType) {
       return NextResponse.json({ 
@@ -146,12 +155,19 @@ export async function POST(req: NextRequest) {
       selectedPersona = personas[0]; // 첫 번째 페르소나 사용
       
       // thumbnail이 비어있지 않고 데이터가 있으면 "false" (이미 이미지가 있음), 비어있으면 "true" (이미지 생성 필요)
-      activeGenerateImage = (!selectedPersona.thumbnail || selectedPersona.thumbnail === null || selectedPersona.thumbnail.trim() === '') ? "true" : "false";
+      activeGenerateImage = (!selectedPersona?.thumbnail || selectedPersona.thumbnail === null || selectedPersona.thumbnail.trim() === '') ? "true" : "false";
       
     }
 
+    if (!selectedPersona) {
+      return NextResponse.json({
+        error: '페르소나를 선택할 수 없습니다',
+        success: false
+      }, { status: 400 })
+    }
+
     // MISO API 호출을 위한 데이터 준비
-    const requestBody = {
+    const requestBody: WorkflowRequest = {
       inputs: {
         preprocess_type: 'persona',
         selected_interviewee: typeof selectedInterviewee === 'string' 
@@ -216,14 +232,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const synthesisResult = await response.json();
+    const synthesisResult: WorkflowResponse = await response.json();
     
     // 응답에서 outputs 추출 (실제 결과 데이터)
     const outputs = synthesisResult?.data?.outputs || synthesisResult?.outputs;
 
     // outputs가 있으면 personas 테이블 업데이트 또는 생성
     if (outputs && Object.keys(outputs).length > 0) {
-      let insertResult: any = null;
+      let insertResult: Persona[] | null = null;
       try {
         if (isNewPersona) {
           // 동일한 company_id와 persona_type을 가진 페르소나가 있는지 다시 확인
@@ -237,7 +253,7 @@ export async function POST(req: NextRequest) {
 
           if (existingPersona && !checkError) {
             // 이미 존재하는 페르소나가 있으면 업데이트
-            const updateData: any = {
+            const updateData: Partial<Persona> = {
               updated_at: new Date().toISOString()
             };
 
@@ -256,7 +272,7 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            const { data: updateResult, error: updateError } = await supabase
+            const { error: updateError } = await supabase
               .from('personas')
               .update(updateData)
               .eq('id', existingPersona.id)
@@ -308,7 +324,7 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // 기존 페르소나 업데이트
-          const updateData: any = {
+          const updateData: Partial<Database['public']['Tables']['personas']['Update']> = {
             updated_at: new Date().toISOString()
           };
 
@@ -329,7 +345,7 @@ export async function POST(req: NextRequest) {
           }
 
 
-          const { data: updateResult, error: updateError } = await supabase
+          const { error: updateError } = await supabase
             .from('personas')
             .update(updateData)
             .eq('id', selectedPersona.id)
@@ -342,7 +358,7 @@ export async function POST(req: NextRequest) {
 
         // 인터뷰 데이터의 persona_reflected 필드를 true로 업데이트
         if (parsedInterviewee.id) {
-          const { data: interviewUpdateResult, error: interviewUpdateError } = await supabase
+          const { error: interviewUpdateError } = await supabase
             .from('interviewees')
             .update({
               persona_reflected: true,
@@ -389,17 +405,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
+    const responseData: PersonaSynthesisResponse = { 
       success: true,
       data: synthesisResult,
       isNewPersona,
-      outputs: outputs
-    });
+      outputs: outputs as PersonaSynthesisOutputs
+    };
+    
+    return NextResponse.json(responseData);
 
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json({ 
       error: '페르소나 합성 처리 중 오류가 발생했습니다.',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     }, { status: 500 });
   }
 } 

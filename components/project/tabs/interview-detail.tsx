@@ -141,7 +141,7 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="(.+)"/)
         if (filenameMatch) {
-          filename = filenameMatch[1]
+          filename = filenameMatch[1] || 'interview_file'
         }
       }
       
@@ -167,38 +167,38 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
       return null
     }
     
-    const xScore = interview.x_axis[0]
-    const yScore = interview.y_axis[0]
+    const xScore = interview.x_axis[0] as Record<string, number> | undefined
+    const yScore = interview.y_axis[0] as Record<string, number> | undefined
     
     
     // X축 점수: high score 필드 동적 감지
-    const xHighKeys = Object.keys(xScore).filter(key => 
+    const xHighKeys = xScore ? Object.keys(xScore).filter(key => 
       key.includes('high') || key.includes('우측') || key.includes('즉시') || 
       (key.endsWith('_score') && !key.includes('low') && !key.includes('좌측') && !key.includes('루틴'))
-    )
+    ) : []
     
     // Y축 점수: high score 필드 동적 감지  
-    const yHighKeys = Object.keys(yScore).filter(key => 
+    const yHighKeys = yScore ? Object.keys(yScore).filter(key => 
       key.includes('high') || key.includes('상단') || key.includes('속도') || key.includes('경험') ||
       (key.endsWith('_score') && !key.includes('low') && !key.includes('하단') && !key.includes('가성비'))
-    )
+    ) : []
     
     // X축 low score 필드 동적 감지
-    const xLowKeys = Object.keys(xScore).filter(key => 
+    const xLowKeys = xScore ? Object.keys(xScore).filter(key => 
       key.includes('low') || key.includes('좌측') || key.includes('루틴') || 
       (key.endsWith('_score') && !xHighKeys.includes(key))
-    )
+    ) : []
     
     // Y축 low score 필드 동적 감지
-    const yLowKeys = Object.keys(yScore).filter(key => 
+    const yLowKeys = yScore ? Object.keys(yScore).filter(key => 
       key.includes('low') || key.includes('하단') || key.includes('가성비') ||
       (key.endsWith('_score') && !yHighKeys.includes(key))
-    )
+    ) : []
     
-    const xCoordinate = xHighKeys.length > 0 ? (xScore as any)[xHighKeys[0]] : 0
-    const yCoordinate = yHighKeys.length > 0 ? (yScore as any)[yHighKeys[0]] : 0
-    const xLow = xLowKeys.length > 0 ? (xScore as any)[xLowKeys[0]] : 0
-    const yLow = yLowKeys.length > 0 ? (yScore as any)[yLowKeys[0]] : 0
+    const xCoordinate = xHighKeys.length > 0 && xHighKeys[0] && xScore ? xScore[xHighKeys[0]] : 0
+    const yCoordinate = yHighKeys.length > 0 && yHighKeys[0] && yScore ? yScore[yHighKeys[0]] : 0
+    const xLow = xLowKeys.length > 0 && xLowKeys[0] && xScore ? xScore[xLowKeys[0]] : 0
+    const yLow = yLowKeys.length > 0 && yLowKeys[0] && yScore ? yScore[yLowKeys[0]] : 0
     
     
     return { 
@@ -508,7 +508,7 @@ export default function InterviewDetail({ interview, criteriaConfig, onBack, onD
                         <div className="space-y-2">
                           {detail.insight_quote.map((quote: string, idx: number) => (
                             <div key={idx} className="bg-green-50 rounded p-3 border-l-3 border-green-200">
-                              <p className="text-xs text-gray-700 italic">"{quote}"</p>
+                              <p className="text-xs text-gray-700 italic">&quot;{quote}&quot;</p>
                             </div>
                           ))}
                         </div>

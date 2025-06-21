@@ -2,8 +2,10 @@
  * MISO Interview Detail 파싱 유틸리티
  */
 
+import { InterviewDetail, IntervieweeWithDetail } from '@/types/insights'
+
 // interview_detail 문자열을 JSON 배열로 파싱
-export function parseInterviewDetail(interviewDetail: any): any[] | null {
+export function parseInterviewDetail(interviewDetail: unknown): InterviewDetail[] | null {
   if (!interviewDetail) return null
   
   try {
@@ -96,7 +98,7 @@ export interface InterviewTopicData {
 }
 
 // topic별로 인터뷰 데이터 그룹핑
-export function groupInterviewsByTopic(interviews: any[]): Map<string, InterviewTopicData[]> {
+export function groupInterviewsByTopic(interviews: IntervieweeWithDetail[]): Map<string, InterviewTopicData[]> {
   const topicGroups = new Map<string, InterviewTopicData[]>()
 
   interviews.forEach(interview => {
@@ -105,7 +107,7 @@ export function groupInterviewsByTopic(interviews: any[]): Map<string, Interview
     const details = parseInterviewDetail(interview.interview_detail)
     if (!details) return
 
-    details.forEach((topicData: any) => {
+    details.forEach((topicData: InterviewDetail) => {
         if (!topicData.topic_name) return
 
         const topicName = topicData.topic_name.trim()

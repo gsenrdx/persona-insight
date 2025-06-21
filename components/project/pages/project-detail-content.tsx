@@ -96,6 +96,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     }
     
     fetchProject()
+    return undefined
   }, [profile?.id, projectId])
 
   const fetchProject = async (isRetry = false) => {

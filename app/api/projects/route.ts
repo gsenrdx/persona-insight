@@ -1,35 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
-
-// 프로젝트 마스터 권한 확인 함수
-async function checkProjectMaster(projectId: string, userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('master_id, company_id')
-    .eq('id', projectId)
-    .single()
-
-  if (error || !data) {
-    return { isAuthorized: false, error: "프로젝트를 찾을 수 없습니다" }
-  }
-
-  // 프로젝트 마스터이거나 회사 관리자인지 확인
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', userId)
-    .single()
-
-  const isMaster = data.master_id === userId
-  const isCompanyAdmin = profile?.role === 'company_admin' || profile?.role === 'super_admin'
-  const isInSameCompany = profile?.company_id === data.company_id
-
-  return {
-    isAuthorized: isMaster || (isCompanyAdmin && isInSameCompany),
-    isMaster,
-    isCompanyAdmin
-  }
-}
+import { ProjectWithStats, TransformedProject, ProjectWithAggregates, Project, ProjectMember } from "@/types/project"
 
 // 사용자가 소속된 프로젝트 조회 (공개 프로젝트 + 멤버십이 있는 비공개 프로젝트)
 export async function GET(request: Request) {
@@ -55,7 +26,7 @@ export async function GET(request: Request) {
 
     if (!rpcError && rpcData) {
       // RPC 함수 결과를 프론트엔드 형식으로 변환
-      const transformedRpcData = rpcData.map((project: any) => ({
+      const transformedRpcData = rpcData.map((project): TransformedProject => ({
         id: project.project_id,
         name: project.project_name,
         description: project.project_description,
@@ -147,7 +118,7 @@ export async function GET(request: Request) {
       }
 
       // fallback 데이터 변환
-      const transformedFallbackData = (fallbackData || []).map((project: any) => ({
+      const transformedFallbackData = (fallbackData || []).map((project) => ({
         ...project,
         member_count: project.project_members?.[0]?.count || 0,
         interview_count: project.interviewees?.[0]?.count || 0,
@@ -164,8 +135,8 @@ export async function GET(request: Request) {
     }
 
     // 데이터 변환: 멤버십 정보와 통계 정보를 프로젝트 객체에 직접 포함
-    const transformedData = data.map((project: any) => {
-      const membership = project.project_members?.find((pm: any) => pm.user_id === user_id)
+    const transformedData = data.map((project) => {
+      const membership = project.project_members?.find((pm) => pm.user_id === user_id)
       
       // 프로젝트 멤버 수 계산
       const memberCount = project.project_members?.length || 0

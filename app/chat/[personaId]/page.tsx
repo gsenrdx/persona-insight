@@ -2,13 +2,13 @@
 
 import { Suspense, useState, useEffect, use } from "react"
 import { ChatInterface } from "@/components/chat"
-import { fetchPersonaById, fetchPersonas } from "@/lib/data/persona-data"
+import { fetchPersonas } from "@/lib/data/persona-data"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { PersonaSwitcher } from "@/components/persona"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Home, UserPlus, Menu, X } from "lucide-react"
+import { Home, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -32,17 +32,14 @@ interface PersonaForPage {
 }
 
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     personaId: string
-  }
+  }>
 }
 
 export default function ChatPage({ params }: ChatPageProps) {
   // params 객체 unwrap
-  // Next.js runtime indicates params should be unwrapped with React.use().
-  // Casting `params` to `any` to satisfy `use`'s `Usable` type requirement,
-  // and casting the result of `use` to the expected shape.
-  const unwrappedParams = use(params as any) as { personaId: string };
+  const unwrappedParams = use(params);
   const personaId = unwrappedParams.personaId;
   
   const { profile } = useAuth() // 사용자 프로필에서 company_id 가져오기
@@ -50,21 +47,6 @@ export default function ChatPage({ params }: ChatPageProps) {
   const [allPersonas, setAllPersonas] = useState<PersonaForPage[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    // 화면 크기 감지
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    
-    return () => {
-      window.removeEventListener('resize', checkMobile)
-    }
-  }, [])
 
   useEffect(() => {
     let isSubscribed = true;

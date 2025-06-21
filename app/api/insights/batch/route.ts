@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-
-interface KeywordFrequency {
-  [key: string]: number
-}
-
-interface InsightData {
-  title: string
-  summary: string
-  keywords: Array<{ name: string; weight: number }>
-  quotes: Array<{ text: string; persona: string }>
-  mentionCount: number
-  priority: number
-}
+import { 
+  KeywordFrequency, 
+  InsightData, 
+  InterviewDetail, 
+  IntervieweeWithDetail,
+  InsightMapData,
+  InsightResponse,
+  BatchInsightRequest,
+  BatchInsightResponse
+} from "@/types/insights"
 
 // Transform interview data to insights (reusing the existing function)
-function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
+function transformInterviewDataToInsights(interviews: IntervieweeWithDetail[]): InsightData[] {
   
   try {
     if (!interviews || !Array.isArray(interviews) || interviews.length === 0) {
@@ -94,7 +91,7 @@ function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
     const actualPersona = interview.interviewee_fake_name || 
       `${interview.user_type || '고객'}${idx + 1}${interview.user_description ? ` (${interview.user_description.slice(0, 20)}...)` : ''}`
     
-    details.forEach((detail: any, detailIdx: number) => {
+    details.forEach((detail) => {
       const topicName = detail.topic_name?.trim()
       
       if (!topicName) return
@@ -167,7 +164,7 @@ function transformInterviewDataToInsights(interviews: any[]): InsightData[] {
   // 인사이트 최종 처리
   const insights: InsightData[] = []
   
-     insightMap.forEach((insight: any, topicName) => {
+     insightMap.forEach((insight, topicName) => {
      // 키워드 가중치 정규화 및 상위 키워드 선택
      const keywordEntries = Array.from(insight.keywords.entries()) as [string, number][]
      const maxWeight = keywordEntries.length > 0 ? Math.max(...keywordEntries.map(([_, count]) => count)) : 1

@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 // Get specific MISO dataset by ID
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { datasetId: string } }
+  _req: NextRequest,
+  { params }: { params: Promise<{ datasetId: string }> }
 ) {
   try {
-    const { datasetId } = params
+    const { datasetId } = await params
 
     if (!datasetId) {
       return NextResponse.json({

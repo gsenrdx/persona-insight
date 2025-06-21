@@ -290,7 +290,7 @@ export default function SearchResult() {
                           </div>
                           <div className="bg-muted/40 p-4 rounded-xl backdrop-blur-sm mb-4 border border-muted">
                             <p className="text-sm text-foreground/80 italic line-clamp-3">
-                              "{persona.reason || '이 페르소나는 검색 쿼리와 관련이 있습니다.'}"
+                              &quot;{persona.reason || '이 페르소나는 검색 쿼리와 관련이 있습니다.'}&quot;
                             </p>
                           </div>
                         </div>
@@ -386,7 +386,7 @@ export default function SearchResult() {
                     <div className="p-4 rounded-xl bg-primary/10 backdrop-blur-sm border border-primary/20">
                       <h4 className="text-sm font-semibold text-primary mb-2">추천 이유</h4>
                       <p className="text-sm text-foreground/90 leading-relaxed italic">
-                        "{selectedPersona.reason || '이 페르소나는 검색 쿼리와 관련이 있습니다.'}"
+                        &quot;{selectedPersona.reason || '이 페르소나는 검색 쿼리와 관련이 있습니다.'}&quot;
                       </p>
                     </div>
                     

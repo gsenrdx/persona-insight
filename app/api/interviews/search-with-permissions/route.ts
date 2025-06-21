@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     // Check permissions
     if (data.project_id) {
       const hasAccess = data.projects && Array.isArray(data.projects) && data.projects.length > 0 &&
-        data.projects[0].project_members?.some(
+        data.projects[0]?.project_members?.some(
           (member: any) => member.user_id === userId
         )
       

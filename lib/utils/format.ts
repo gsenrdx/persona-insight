@@ -123,7 +123,7 @@ export function bytesToBits(bytes: number): number {
  */
 export function joinWithAnd(items: string[]): string {
   if (items.length === 0) return ''
-  if (items.length === 1) return items[0]
+  if (items.length === 1) return items[0] || ''
   if (items.length === 2) return `${items[0]}과 ${items[1]}`
   
   const lastItem = items[items.length - 1]

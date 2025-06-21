@@ -19,7 +19,7 @@ import { ChatInterfaceProps, ExtendedMessage, SummaryData } from "./types"
 import { MentionData } from "@/lib/utils/mention"
 
 // 성능 최적화: 메모화된 ChatInterface 컴포넌트
-const ChatInterface = memo(function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
+const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasGreetedRef = useRef<boolean>(false)
@@ -303,11 +303,11 @@ const ChatInterface = memo(function ChatInterface({ personaId, personaData, allP
         const updated = [...prev]
         const lastIndex = updated.length - 1
         
-        if (lastIndex >= 0 && updated[lastIndex].role === "assistant" && !updated[lastIndex].content) {
+        if (lastIndex >= 0 && updated[lastIndex]?.role === "assistant" && !updated[lastIndex]?.content) {
           updated[lastIndex] = {
             ...updated[lastIndex],
             content: "죄송합니다, 응답을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
-          }
+          } as ExtendedMessage
         } else {
           updated.push({
             id: (Date.now() + 1).toString(),

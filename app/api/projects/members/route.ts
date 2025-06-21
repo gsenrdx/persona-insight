@@ -41,9 +41,11 @@ export async function GET(request: Request) {
     }
 
     // 프로필 데이터 추출 및 정렬
-    const profiles = data.companies.profiles.sort((a: any, b: any) => 
-      (a.name || '').localeCompare(b.name || '')
-    )
+    const profiles = data.companies && Array.isArray(data.companies) && data.companies[0]?.profiles
+      ? data.companies[0].profiles.sort((a, b) => 
+          (a.name || '').localeCompare(b.name || '')
+        )
+      : []
 
     return NextResponse.json({
       data: profiles,

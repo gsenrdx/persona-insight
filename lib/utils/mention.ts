@@ -112,7 +112,7 @@ export function parseMentions(text: string): ParsedMention[] {
  */
 export function extractMentionedPersonas(text: string): string[] {
   const mentions: string[] = [];
-  text.replace(MENTION_PATTERN, (match, name, id) => {
+  text.replace(MENTION_PATTERN, (match, _name, id) => {
     mentions.push(id);
     return match;
   });

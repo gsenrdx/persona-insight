@@ -83,7 +83,7 @@ export default function PersonaSelectionModal({
 
   // 초기 선택 설정 (personas가 로드되었을 때만)
   useEffect(() => {
-    if (personas.length > 0 && !selectedPersonaId && !recommendedPersonaId) {
+    if (personas.length > 0 && !selectedPersonaId && !recommendedPersonaId && personas[0]) {
       setSelectedPersonaId(personas[0].id)
     }
   }, [personas.length, selectedPersonaId, recommendedPersonaId])
@@ -97,7 +97,7 @@ export default function PersonaSelectionModal({
   const handleClose = () => {
     if (recommendedPersonaId) {
       setSelectedPersonaId(recommendedPersonaId)
-    } else if (personas.length > 0) {
+    } else if (personas.length > 0 && personas[0]) {
       setSelectedPersonaId(personas[0].id)
     }
     onClose()

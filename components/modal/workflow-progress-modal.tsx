@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Clock, 
   CheckCircle2, 
@@ -37,15 +36,8 @@ import {
 } from "lucide-react";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
 import React, { useState, useCallback, useEffect } from "react";
-import { formatDate, formatChatTime } from "@/lib/utils/date";
-import { supabase } from "@/lib/supabase";
+import { formatDate } from "@/lib/utils/date";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { WorkflowProgressModalProps } from "@/types/components";
 
 const statusConfig = {
@@ -452,15 +444,17 @@ const JobDetailPanel = React.memo(({
                     const keys = Object.keys(xData);
                     const values = Object.values(xData) as number[];
                     if (keys.length >= 2 && values.length >= 2) {
-                      const [key1, key2] = keys;
-                      const [val1, val2] = values;
-                      const total = val1 + val2;
-                      const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
+                      const key1 = keys[0];
+                      const key2 = keys[1];
+                      const val1 = values[0];
+                      const val2 = values[1];
+                      const total = (val1 || 0) + (val2 || 0);
+                      const leftPercent = total > 0 ? ((val1 || 0) / total) * 100 : 50;
                       return (
                         <>
                           <div className="w-20 text-right whitespace-nowrap">
-                            <span className="text-xs text-gray-600" title={`${key1.replace('_score', '')} (${val1})`}>
-                              {key1.replace('_score', '')} ({val1})
+                            <span className="text-xs text-gray-600" title={`${key1?.replace('_score', '') || ''} (${val1 || 0})`}>
+                              {key1?.replace('_score', '') || ''} ({val1 || 0})
                             </span>
                           </div>
                           <div className="relative w-16 h-2 bg-gray-200 rounded-full overflow-hidden mx-1">
@@ -474,8 +468,8 @@ const JobDetailPanel = React.memo(({
                             />
                           </div>
                           <div className="w-20 text-left whitespace-nowrap">
-                            <span className="text-xs text-gray-600" title={`${key2.replace('_score', '')} (${val2})`}>
-                              {key2.replace('_score', '')} ({val2})
+                            <span className="text-xs text-gray-600" title={`${key2?.replace('_score', '') || ''} (${val2 || 0})`}>
+                              {key2?.replace('_score', '') || ''} ({val2 || 0})
                             </span>
                           </div>
                         </>
@@ -494,15 +488,17 @@ const JobDetailPanel = React.memo(({
                     const keys = Object.keys(yData);
                     const values = Object.values(yData) as number[];
                     if (keys.length >= 2 && values.length >= 2) {
-                      const [key1, key2] = keys;
-                      const [val1, val2] = values;
-                      const total = val1 + val2;
-                      const leftPercent = total > 0 ? (val1 / total) * 100 : 50;
+                      const key1 = keys[0];
+                      const key2 = keys[1];
+                      const val1 = values[0];
+                      const val2 = values[1];
+                      const total = (val1 || 0) + (val2 || 0);
+                      const leftPercent = total > 0 ? ((val1 || 0) / total) * 100 : 50;
                       return (
                         <>
                           <div className="w-20 text-right whitespace-nowrap">
-                            <span className="text-xs text-gray-600" title={`${key1.replace('_score', '')} (${val1})`}>
-                              {key1.replace('_score', '')} ({val1})
+                            <span className="text-xs text-gray-600" title={`${key1?.replace('_score', '') || ''} (${val1 || 0})`}>
+                              {key1?.replace('_score', '') || ''} ({val1 || 0})
                             </span>
                           </div>
                           <div className="relative w-16 h-2 bg-gray-200 rounded-full overflow-hidden mx-1">
@@ -516,8 +512,8 @@ const JobDetailPanel = React.memo(({
                             />
                           </div>
                           <div className="w-20 text-left whitespace-nowrap">
-                            <span className="text-xs text-gray-600" title={`${key2.replace('_score', '')} (${val2})`}>
-                              {key2.replace('_score', '')} ({val2})
+                            <span className="text-xs text-gray-600" title={`${key2?.replace('_score', '') || ''} (${val2 || 0})`}>
+                              {key2?.replace('_score', '') || ''} ({val2 || 0})
                             </span>
                           </div>
                         </>
@@ -664,7 +660,7 @@ const JobDetailPanel = React.memo(({
                           <div className="space-y-2">
                             {detail.insight_quote.map((quote: string, idx: number) => (
                               <div key={idx} className="bg-green-50 rounded p-3 border-l-3 border-green-200">
-                                <p className="text-xs text-gray-700 italic">"{quote}"</p>
+                                <p className="text-xs text-gray-700 italic">&quot;{quote}&quot;</p>
                               </div>
                             ))}
                           </div>
@@ -822,7 +818,7 @@ export default function WorkflowProgressModal({
                     ].map(tab => (
                       <button
                         key={tab.key}
-                        onClick={() => setSelectedTab(tab.key as any)}
+                        onClick={() => setSelectedTab(tab.key as 'all' | 'active' | 'completed' | 'failed')}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                           selectedTab === tab.key
                             ? 'bg-white text-gray-900 shadow-sm'

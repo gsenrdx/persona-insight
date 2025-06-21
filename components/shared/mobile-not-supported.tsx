@@ -35,7 +35,9 @@ export default function MobileNotSupported() {
 
     // 랜덤 명언 선택
     const randomQuote = customerQuotes[Math.floor(Math.random() * customerQuotes.length)]
-    setCurrentQuote(randomQuote)
+    if (randomQuote) {
+      setCurrentQuote(randomQuote)
+    }
 
     // 초기 체크
     checkIfMobile()
@@ -85,7 +87,7 @@ export default function MobileNotSupported() {
         {currentQuote && (
           <div className="max-w-xs mx-auto">
             <p className="text-sm text-gray-400 dark:text-gray-500 italic leading-relaxed">
-              "{currentQuote}"
+              &quot;{currentQuote}&quot;
             </p>
           </div>
         )}

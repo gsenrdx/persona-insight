@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createDataStreamResponse } from 'ai'
+import { PersonaSearchResult, PersonaSearchInfo } from '@/types/api/personas'
 
 // Search personas using MISO API with Google Sheets data
 export const runtime = 'edge'
@@ -34,16 +34,16 @@ function parseCSV(csvText: string) {
   if (lines.length === 0) return []
 
   // Process headers - convert spaces to underscores
-  const headers = lines[0].split(",").map((header) => header.trim().toLowerCase().replace(/ /g, "_"))
+  const headers = lines[0]?.split(",").map((header) => header.trim().toLowerCase().replace(/ /g, "_")) || []
 
   const result = []
 
   // 데이터 행 처리
   for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue
+    if (!lines[i]?.trim()) continue
 
     // Parse line handling quoted fields
-    const values = parseCSVLine(lines[i])
+    const values = parseCSVLine(lines[i] || "")
 
     // Map headers to values
     const obj: Record<string, string> = {}
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     }
     
     // Format persona information
-    const personaInfos = personas.map((persona: any) => ({
+    const personaInfos = personas.map((persona): PersonaSearchInfo => ({
       row_id: persona.row_id,
       name: persona.name,
       summary: persona.summary || "",
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     
     // Handle API errors
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '')
+      await response.text().catch(() => '')
       return NextResponse.json({ error: "페르소나 검색 중 외부 API 오류가 발생했습니다." }, { status: 500 })
     }
     
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     
     // Enrich parsed personas with detailed information
     const enrichedPersonas = recommendedPersonas.map(persona => {
-      const fullPersona = personas.find((p: any) => p.row_id === persona.personaId)
+      const fullPersona = personas.find((p) => p.row_id === persona.personaId)
       
       if (!fullPersona) return persona
       
@@ -184,9 +184,9 @@ export async function POST(req: Request) {
 }
 
 // Parse persona search results from XML format
-function parsePersonaSearchResults(xmlText: string): any[] {
+function parsePersonaSearchResults(xmlText: string): PersonaSearchResult[] {
   try {
-    const results: any[] = []
+    const results: PersonaSearchResult[] = []
     
     // Extract persona_search_results tag
     const resultsMatch = xmlText.match(/<persona_search_results>([\s\S]*?)<\/persona_search_results>/i)
@@ -197,18 +197,18 @@ function parsePersonaSearchResults(xmlText: string): any[] {
     
     // Extract each persona tag
     const personasContent = resultsMatch[1]
-    const personaMatches = personasContent.matchAll(/<persona>([\s\S]*?)<\/persona>/gi)
+    const personaMatches = personasContent?.matchAll(/<persona>([\s\S]*?)<\/persona>/gi) || []
     
     // Parse each persona
     for (const match of personaMatches) {
       const personaContent = match[1]
       
       // Extract required fields
-      const personaId = extractTagContent(personaContent, "persona_id")
-      const name = extractTagContent(personaContent, "name")
-      const summary = extractTagContent(personaContent, "summary")
-      const relevanceScore = parseInt(extractTagContent(personaContent, "relevance_score") || "0", 10)
-      const reason = extractTagContent(personaContent, "reason")
+      const personaId = extractTagContent(personaContent || "", "persona_id")
+      const name = extractTagContent(personaContent || "", "name")
+      const summary = extractTagContent(personaContent || "", "summary")
+      const relevanceScore = parseInt(extractTagContent(personaContent || "", "relevance_score") || "0", 10)
+      const reason = extractTagContent(personaContent || "", "reason")
       
       // Build result object
       results.push({
@@ -233,5 +233,5 @@ function parsePersonaSearchResults(xmlText: string): any[] {
 // Extract content from XML tag
 function extractTagContent(content: string, tagName: string): string {
   const match = content.match(new RegExp(`<${tagName}>(.*?)<\/${tagName}>`, 's'))
-  return match ? match[1].trim() : ""
+  return match ? match[1]?.trim() || "" : ""
 } 

@@ -1,14 +1,13 @@
 import { apiClient } from './base'
 import { 
   ApiResponse, 
-  PaginatedApiResponse,
   Interview,
   InterviewUploadRequest,
   InterviewListQuery,
   InterviewProcessingResult,
   ExtractionCriteria
 } from '@/types/api'
-import { WorkflowJob, WorkflowStatus } from '@/types/components'
+import { WorkflowJob } from '@/types/components'
 
 /**
  * 인터뷰 관련 API 함수들

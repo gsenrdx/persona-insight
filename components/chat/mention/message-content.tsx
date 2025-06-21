@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo } from "react"
-import { Badge } from "@/components/ui/badge"
 import { parseMentions, type ParsedMention } from "@/lib/utils/mention"
 
 interface MessageContentProps {

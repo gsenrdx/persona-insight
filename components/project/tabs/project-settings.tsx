@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -704,7 +703,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle className="text-red-600 dark:text-red-400">프로젝트 "{project.name}"을(를) 삭제하시겠습니까?</DialogTitle>
+                          <DialogTitle className="text-red-600 dark:text-red-400">프로젝트 &quot;{project.name}&quot;을(를) 삭제하시겠습니까?</DialogTitle>
                           <DialogDescription className="space-y-3">
                             <p>프로젝트와 모든 데이터가 영구적으로 삭제됩니다.</p>
                             <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">

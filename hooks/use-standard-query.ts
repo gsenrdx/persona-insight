@@ -295,7 +295,7 @@ export function useErrorHandler() {
     /**
      * React Query 에러를 표준 형식으로 처리
      */
-    handleQueryError: (error: unknown, context?: string) => {
+    handleQueryError: (error: unknown, _context?: string) => {
       // Query 에러 처리
       
       const userMessage = ErrorUtils.getUserMessage(error)

@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     const output = workflowResult.data?.outputs || workflowResult.outputs || {};
     
     // 요약 결과 구성
-    let summaryData: any = null;
+    let summaryData: { main_topics?: Array<{ subtopics: Array<{ messages: unknown[] }> }> } | null = null;
     
     try {
       // result 필드에서 JSON 데이터 추출
@@ -145,9 +145,9 @@ export async function POST(req: NextRequest) {
               // 토픽 개수 및 구조 검증
               if (summaryData.main_topics && Array.isArray(summaryData.main_topics)) {
                 
-                summaryData.main_topics.forEach((topic: any, index: number) => {
+                summaryData.main_topics.forEach((topic) => {
                   if (topic.subtopics && Array.isArray(topic.subtopics)) {
-                    const totalContentItems = topic.subtopics.reduce((acc: number, subtopic: any) => {
+                    topic.subtopics.reduce((acc, subtopic) => {
                       return acc + (subtopic.content_items ? subtopic.content_items.length : 0);
                     }, 0);
                   }

@@ -61,7 +61,6 @@ export async function POST(req: NextRequest) {
     // Check MISO API configuration
     const misoApiKey = process.env.MISO_KNOWLEDGE_API_KEY
     const misoApiUrl = process.env.MISO_API_URL
-    const misoApiOwnerId = process.env.MISO_API_OWNER_ID
 
     if (!misoApiKey || !misoApiUrl) {
       return NextResponse.json({
@@ -107,7 +106,7 @@ export async function POST(req: NextRequest) {
           throw new Error(`MISO API call failed: ${misoResponse.status}`)
         }
 
-        const docsResponse = await misoResponse.json()
+        await misoResponse.json()
         
         return {
           persona_id: persona.id,

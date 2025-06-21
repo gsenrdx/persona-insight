@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
+import { Command, CommandGroup, CommandList } from "@/components/ui/command"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { User } from "lucide-react"
 import { MentionData } from "@/lib/utils/mention"
 
 interface PersonaMentionDropdownProps {
@@ -19,7 +18,6 @@ interface PersonaMentionDropdownProps {
     image?: string
     persona_summary?: string
   }>
-  anchorEl?: HTMLElement | null
 }
 
 export function PersonaMentionDropdown({
@@ -27,8 +25,7 @@ export function PersonaMentionDropdown({
   onSelect,
   onOpenChange,
   searchText,
-  personas,
-  anchorEl
+  personas
 }: PersonaMentionDropdownProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -58,8 +55,6 @@ export function PersonaMentionDropdown({
       const selectedItem = itemRefs.current[selectedIndex]
       
       if (selectedItem) {
-        const containerRect = container.getBoundingClientRect()
-        const itemRect = selectedItem.getBoundingClientRect()
         const containerScrollTop = container.scrollTop
         
         const itemTop = selectedItem.offsetTop

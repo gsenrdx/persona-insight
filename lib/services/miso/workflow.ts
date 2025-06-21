@@ -5,6 +5,7 @@
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { parseInterviewDetail, type InterviewTopicData } from './parser'
 import { createMisoDocumentOnly, checkDocumentStatus, addSegmentsToDocument } from './api'
+import { InterviewDetail } from '@/types/insights'
 
 // synthesis 시 인터뷰 topic 동기화
 export async function syncInterviewTopicsToPersona(
@@ -52,7 +53,12 @@ export async function syncInterviewTopicsToPersona(
 // Batch process multiple topics to persona
 async function syncBatchTopicsToPersona(
   syncId: string,
-  topicsData: any[],
+  topicsData: Array<{
+    topic_id: string
+    topic_name: string
+    miso_document_id?: string
+    interview_count?: number
+  }>,
   personaId: string,
   personaDatasetId: string,
   companyId: string,
@@ -99,7 +105,14 @@ async function syncBatchTopicsToPersona(
     }, {} as Record<string, string>)
 
     // Process each topic
-    const upsertData: any[] = []
+    const upsertData: Array<{
+      persona_id: string
+      topic_id: string
+      miso_document_id: string
+      document_title: string
+      last_synced_at: string
+      interview_count: number
+    }> = []
     const documentOperations: Promise<void>[] = []
 
     for (const topicName of topicNames) {
@@ -113,7 +126,7 @@ async function syncBatchTopicsToPersona(
         const details = parseInterviewDetail(interview.interview_detail)
         if (!details) continue
 
-        const matchingTopic = details.find((t: any) => t.topic_name === topicName)
+        const matchingTopic = details.find((t: InterviewDetail) => t.topic_name === topicName)
         if (matchingTopic) {
           topicInterviews.push({
             interview_id: interview.id,

@@ -4,13 +4,11 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/shared"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts"
-import { User, ChevronRight, FileText, Check, ChevronDown } from "lucide-react"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { User, FileText, ChevronDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -19,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils/index"
 import { useAuth } from "@/hooks/use-auth"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
@@ -173,15 +170,15 @@ export default function InsightsPage() {
   
   // selectedYears 초기화
   useEffect(() => {
-    if (selectedYears.length === 0 && years.length > 0) {
+    if (selectedYears.length === 0 && years.length > 0 && years[0]) {
       setSelectedYears([years[0]])
     }
   }, [years, selectedYears.length])
   
     // 현재 표시할 인사이트 (첫 번째 선택된 연도의 것을 표시)
-  const currentYearData = selectedYears.length > 0 
+  const currentYearData = selectedYears.length > 0 && selectedYears[0]
     ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
-    : (insightData[years[0]] || { intervieweeCount: 0, insights: [] })
+    : (years[0] && insightData[years[0]] || { intervieweeCount: 0, insights: [] })
 
 
   // 롤링 배너 효과를 위한 인터벌 설정
@@ -235,7 +232,7 @@ export default function InsightsPage() {
   }
   
   // 연도별 인터뷰 수 차트 데이터
-  const yearChartData = selectedYears.map(year => ({
+  selectedYears.map(year => ({
     year,
     count: insightData[year]?.intervieweeCount || 0
   }))
@@ -431,7 +428,7 @@ export default function InsightsPage() {
         {(() => {
           // 인터뷰 데이터가 있는지 먼저 확인
           const hasInterviews = selectedYears.some(year => 
-            insightData[year]?.intervieweeCount > 0
+            insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
           )
           
           // 인사이트 데이터가 있는지 확인
@@ -508,7 +505,7 @@ export default function InsightsPage() {
                               언급 {safeInsight.mentionCount}회
                             </Badge>
                             <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              고객 {new Set(safeInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명
+                              고객 {new Set(safeInsight.quotes.map((q) => q?.persona).filter(Boolean)).size}명
                             </Badge>
                           </div>
                         </div>
@@ -585,17 +582,17 @@ export default function InsightsPage() {
                         <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
-                              최근 고객 인터뷰에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
+                              최근 고객 인터뷰에서 공통적으로 강조된 &quot;{safeSelectedInsight.title}&quot;에 대한 분석입니다. 
                               {safeSelectedInsight.summary}
                             </p>
                             <p className="text-sm leading-relaxed">
                               이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
                               {new Set(safeSelectedInsight.quotes.map(q => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}" 등이 
+                              주요 키워드로는 &quot;{safeSelectedInsight.keywords.slice(0, 3).map(k => k?.name).filter(Boolean).join('", "')}&quot; 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
                             <p className="text-sm leading-relaxed">
-                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
+                              특히 &quot;{safeSelectedInsight.keywords[0]?.name}&quot; 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
                               이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
                               {safeSelectedInsight.priority <= 3 ? 
                                 '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
@@ -756,7 +753,7 @@ export default function InsightsPage() {
                         <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
                           <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
                             <div className="flex-grow">
-                              <p className="text-base">"{safeQuote.text}"</p>
+                              <p className="text-base">&quot;{safeQuote.text}&quot;</p>
                             </div>
                             <div className="pt-2 border-t mt-auto">
                               <div className="flex items-center justify-between mt-2">
@@ -792,7 +789,7 @@ export default function InsightsPage() {
           (() => {
             // 인터뷰 데이터가 있는지 확인
             const hasInterviews = selectedYears.some(year => 
-              insightData[year]?.intervieweeCount > 0
+              insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
             )
 
             if (!hasInterviews) {

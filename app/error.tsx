@@ -4,7 +4,6 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ErrorDisplay } from "@/components/ui/error-display"
-import { ErrorUtils } from "@/lib/errors"
 import { RefreshCw, Home } from "lucide-react"
 
 export default function Error({

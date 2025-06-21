@@ -51,7 +51,7 @@ async function checkPermission(companyId: string, userId: string, projectId?: st
     }
 
     // 프로젝트 권한 확인
-    const projectRole = data.project_members[0].role
+    const projectRole = data.project_members?.[0]?.role
     const canEdit = projectRole === 'owner' || projectRole === 'admin' || 
                    data.role === 'company_admin' || data.role === 'super_admin'
     

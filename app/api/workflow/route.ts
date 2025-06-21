@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createDataStreamResponse } from 'ai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { 
   createSystemPrompt, 
   generateOutputConfig,
@@ -12,114 +11,24 @@ import {
 } from "@/types/persona-criteria"
 import { getFileStorageService } from "@/lib/utils/file"
 import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
-
-// 기본 프롬프트 생성 (설정이 없을 때)
-function generateDefaultPrompt(): string {
-  return `## 출력 예시:
-### x_axis / array[object]
-\`\`\`
-[
-  {
-    "좌측_score": 60,
-    "우측_score": 40
-  }
-]
-\`\`\`
-### y_axis / array[object]
-\`\`\`
-y_axis = [
-  {
-    "하단_score": 80,
-    "상단_score": 20
-  }
-]
-\`\`\`
-또는 단서가 없을 경우:
-x_axis = null  
-y_axis = null
-
-<scoring_guideline>
-1. 근거 기반: 키워드, 맥락, 발언 강도 등 구체적 증거만 사용하고 추론이나 가정은 금지합니다.
-2. 극단 점수: 한쪽 증거만 명확할 때는 우세 90–100, 열세 0–10을 부여합니다.
-3. 상대적 우위: 양측 증거가 존재하면 우세 70–80, 열세 20–30으로 배분합니다. 40–60 점수는 지양하며, 양측이 완전히 동등할 때만 50/50을 사용합니다.
-4. 객체 단위 null: 단서 부재 시 해당 객체 전체를 null로 지정합니다.
-5. 종합 고려: 빈도뿐 아니라 맥락, 강조, 어조를 함께 평가합니다.
-</scoring_guideline>
-
-<x_axis>
-"좌측_score": 좌측 특성에 대한 설명
-
-"우측_score": 우측 특성에 대한 설명
-</x_axis>
-
-<y_axis>
-"하단_score": 하단 특성에 대한 설명
-
-"상단_score": 상단 특성에 대한 설명
-</y_axis>`
-}
-
-// 동적 프롬프트 생성
-function generateDynamicPrompt(config: any): string {
-  const outputConfig = config.output_config
-  const scoringGuidelines = config.scoring_guidelines
-  const xAxis = config.x_axis
-  const yAxis = config.y_axis
-
-  return `## 출력 예시:
-### ${outputConfig.x_axis_variable_name} / array[object]
-\`\`\`
-[
-  {
-    "${outputConfig.x_low_score_field}": 60,
-    "${outputConfig.x_high_score_field}": 40
-  }
-]
-\`\`\`
-### ${outputConfig.y_axis_variable_name} / array[object]
-\`\`\`
-${outputConfig.y_axis_variable_name} = [
-  {
-    "${outputConfig.y_low_score_field}": 80,
-    "${outputConfig.y_high_score_field}": 20
-  }
-]
-\`\`\`
-또는 단서가 없을 경우:
-${outputConfig.x_axis_variable_name} = null  
-${outputConfig.y_axis_variable_name} = null
-
-<scoring_guideline>
-1. 근거 기반: 키워드, 맥락, 발언 강도 등 구체적 증거만 사용하고 추론이나 가정은 금지합니다.
-2. 극단 점수: 한쪽 증거만 명확할 때는 우세 90–100, 열세 0–10을 부여합니다.
-3. 상대적 우위: 양측 증거가 존재하면 우세 70–80, 열세 20–30으로 배분합니다. 40–60 점수는 지양하며, 양측이 완전히 동등할 때만 50/50을 사용합니다.
-4. 객체 단위 null: 단서 부재 시 해당 객체 전체를 null로 지정합니다.
-5. 종합 고려: 빈도뿐 아니라 맥락, 강조, 어조를 함께 평가합니다.
-</scoring_guideline>
-
-<${outputConfig.x_axis_variable_name}>
-"${outputConfig.x_low_score_field}": ${xAxis.low_end_label}${scoringGuidelines.x_axis_low_description ? ` - ${scoringGuidelines.x_axis_low_description}` : ''}
-
-"${outputConfig.x_high_score_field}": ${xAxis.high_end_label}${scoringGuidelines.x_axis_high_description ? ` - ${scoringGuidelines.x_axis_high_description}` : ''}
-</${outputConfig.x_axis_variable_name}>
-
-<${outputConfig.y_axis_variable_name}>
-"${outputConfig.y_low_score_field}": ${yAxis.low_end_label}${scoringGuidelines.y_axis_low_description ? ` - ${scoringGuidelines.y_axis_low_description}` : ''}
-
-"${outputConfig.y_high_score_field}": ${yAxis.high_end_label}${scoringGuidelines.y_axis_high_description ? ` - ${scoringGuidelines.y_axis_high_description}` : ''}
-</${outputConfig.y_axis_variable_name}>`
-}
+import { Database } from "@/types/database"
+import { InterviewDetail } from "@/types/insights"
+import { WorkflowRequest, WorkflowResponse } from "@/types/workflow"
 
 // 성능 최적화: Node.js runtime 사용 (edge runtime 호환성 문제로 인해)
 export const runtime = 'nodejs'
 export const maxDuration = 60 // 시간 제한 60초로 연장
 
+interface AxisScore {
+  [key: string]: number
+}
+
 // 페르소나 매칭 함수
 async function matchPersonaFromScores(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   companyId: string,
-  xAxisScores: any,
-  yAxisScores: any
+  xAxisScores: AxisScore[] | null,
+  yAxisScores: AxisScore[] | null
 ): Promise<{ personaId: string | null, personaDescription: string | null }> {
   try {
     // 점수가 없는 경우
@@ -143,7 +52,7 @@ async function matchPersonaFromScores(
     const xHighKeys = Object.keys(xScores).filter(key => 
       key.includes('high') || key.includes('우측') || key.endsWith('_score') && !key.includes('low') && !key.includes('좌측')
     );
-    if (xHighKeys.length > 0) {
+    if (xHighKeys.length > 0 && xHighKeys[0]) {
       xCoordinate = xScores[xHighKeys[0]] || 0;
     }
 
@@ -151,7 +60,7 @@ async function matchPersonaFromScores(
     const yHighKeys = Object.keys(yScores).filter(key => 
       key.includes('high') || key.includes('상단') || key.endsWith('_score') && !key.includes('low') && !key.includes('하단')
     );
-    if (yHighKeys.length > 0) {
+    if (yHighKeys.length > 0 && yHighKeys[0]) {
       yCoordinate = yScores[yHighKeys[0]] || 0;
     }
 
@@ -187,26 +96,21 @@ async function matchPersonaFromScores(
   }
 }
 
-interface UpstreamLine {
-  /** 서버가 보내는 이벤트 타입 */
-  event?: 'agent_message'
-  /** 누적 전체 답변 스냅샷 */
-  answer?: string
-  /** 기타 필드들 무시 */
-  [key: string]: unknown
-}
-
 /**
  * interview_detail에서 main_topic을 추출하여 main_topics 테이블에 저장
  * 중복된 토픽은 건너뛰기
  */
-async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, companyId: string | null) {
+async function extractAndSaveMainTopics(
+  supabase: SupabaseClient<Database>, 
+  interviewDetail: InterviewDetail[] | string | null, 
+  companyId: string | null
+) {
   if (!companyId || !interviewDetail) {
     return;
   }
 
   try {
-    let parsedDetail: any[] = [];
+    let parsedDetail: InterviewDetail[] = [];
     
     // interview_detail이 문자열인 경우 파싱 시도
     if (typeof interviewDetail === 'string') {
@@ -238,9 +142,9 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
     
     // interview_detail에서 topic_name 추출
     const topicNames = parsedDetail
-      .filter(topic => topic && typeof topic === 'object' && topic.topic_name)
-      .map(topic => topic.topic_name.trim())
-      .filter(name => name.length > 0);
+      .filter((topic: InterviewDetail) => topic && typeof topic === 'object' && topic.topic_name)
+      .map((topic: InterviewDetail) => topic.topic_name?.trim())
+      .filter((name: string | undefined) => name && name.length > 0) as string[];
 
 
     if (topicNames.length === 0) {
@@ -286,14 +190,14 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
           }
         }
       } else {
-        const newTopics = upsertedTopics?.filter(topic => 
+        const newTopics = upsertedTopics?.filter((topic: Database['public']['Tables']['main_topics']['Row']) => 
           topic && typeof topic === 'object'
         ) || [];
         
         // 배치 처리 완료
         
         // 성공한 토픽들 로깅
-        newTopics.forEach(topic => {
+        newTopics.forEach((_topic: Database['public']['Tables']['main_topics']['Row']) => {
           // 토픽 처리됨
         });
       }
@@ -376,7 +280,7 @@ export async function POST(req: NextRequest) {
   }
   
   // 캐시된 사용자 정보 사용
-  const { userId, companyId, userName, companyName, companyInfo } = userProfile;
+  const { userId, companyId, userName } = userProfile;
 
   // 1단계: 파일을 Supabase Storage에 저장
   let fileInfo: { path: string } | null = null;
@@ -402,7 +306,7 @@ export async function POST(req: NextRequest) {
     });
     
     if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
+      await uploadResponse.text();
       return new Response('파일 업로드 중 오류가 발생했습니다.', { status: 500 });
     }
     
@@ -507,7 +411,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2단계: workflow API 호출 (blocking 모드로 변경)
-    const workflowRequestBody = {
+    const workflowRequestBody: WorkflowRequest = {
       inputs: {
         file_input: fileObject,
         preprocess_type: 'interviewee',
@@ -559,7 +463,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 응답 결과 파싱
-    let workflowResult;
+    let workflowResult: WorkflowResponse;
     try {
       workflowResult = await workflowResponse.json();
     } catch (jsonError) {
@@ -567,7 +471,7 @@ export async function POST(req: NextRequest) {
     }
     
     // 실제 API에서 반환될 응답 구조에 따라 파싱 로직 조정
-    const output = workflowResult.data?.outputs || workflowResult.outputs || {}; // data 객체 내부의 outputs를 우선 확인
+    const output = workflowResult.data?.outputs || workflowResult.outputs || {} as Record<string, unknown>; // data 객체 내부의 outputs를 우선 확인
     
     // 분석 결과 구성 (키 이름 수정)
     let analysisResult = {
@@ -601,7 +505,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 데이터 변환 및 검증
-      const intervieweeData = {
+      const intervieweeData: Database['public']['Tables']['interviewees']['Insert'] = {
         session_date: output.session_date || new Date().toISOString().split('T')[0],
         user_type: output.user_type || 'general',
         user_description: matchedPersonaDescription || output.user_description || null,
@@ -649,7 +553,7 @@ export async function POST(req: NextRequest) {
               if (Array.isArray(parsed)) {
                 
                 // 각 topic 구조 검증
-                const validTopics = parsed.filter((item, index) => {
+                const validTopics = parsed.filter((item: unknown) => {
                   const isValid = item && 
                     typeof item === 'object' && 
                     typeof item.topic_name === 'string' &&

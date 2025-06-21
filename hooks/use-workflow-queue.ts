@@ -86,7 +86,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 // Base64를 파일로 변환
 const base64ToFile = (base64: string, fileName: string, fileType: string): File => {
-  const byteCharacters = atob(base64.split(',')[1]);
+  const byteCharacters = atob(base64.split(',')[1] || '');
   const byteNumbers = new Array(byteCharacters.length);
   for (let i = 0; i < byteCharacters.length; i++) {
     byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -438,12 +438,10 @@ export function useWorkflowQueue(): UseWorkflowQueueReturn {
 
       if (!response.ok) {
         let errorMessage = '파일 처리 중 오류가 발생했습니다';
-        let errorDetails = null;
         
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-          errorDetails = errorData.details;
         } catch (parseError) {
           const errorText = await response.text();
           errorMessage = errorText || errorMessage;

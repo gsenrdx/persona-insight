@@ -53,7 +53,7 @@ export async function createMisoDocumentOnly(
   })
 
   if (!createDocResponse.ok) {
-    const errorText = await createDocResponse.text()
+    await createDocResponse.text()
     throw new Error(`MISO 문서 생성 실패: ${createDocResponse.status} ${createDocResponse.statusText}`)
   }
 
@@ -86,12 +86,12 @@ export async function checkDocumentStatus(datasetId: string, documentId: string)
   }
 
   const statusResult = await statusResponse.json()
-  return statusResult.data?.find((doc: any) => doc.id === documentId)
+  return statusResult.data?.find((doc: { id: string }) => doc.id === documentId)
 }
 
 // 문서에 세그먼트 추가
 export async function addSegmentsToDocument(
-  syncId: string,
+  _syncId: string,
   datasetId: string,
   documentId: string,
   topicInterviews: InterviewTopicData[],
@@ -125,7 +125,7 @@ export async function addSegmentsToDocument(
   })
 
   if (!addSegmentsResponse.ok) {
-    const errorText = await addSegmentsResponse.text()
+    await addSegmentsResponse.text()
     throw new Error(`세그먼트 추가 실패: ${addSegmentsResponse.status}`)
   }
 }

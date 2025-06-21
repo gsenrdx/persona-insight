@@ -38,7 +38,7 @@ async function checkProjectAccess(projectId: string, userId: string) {
   const isMaster = data.master_id === userId
   const isCompanyAdmin = profile.role === 'company_admin' || profile.role === 'super_admin'
   const isInSameCompany = profile.company_id === data.company_id
-  const isMember = data.project_members?.some((pm: any) => pm.user_id === userId)
+  const isMember = data.project_members?.some((pm) => pm.user_id === userId)
   
   // 공개 프로젝트: 같은 회사 구성원은 모두 접근 가능
   // 비공개 프로젝트: 멤버, 생성자, 마스터, 회사 관리자만 접근 가능
@@ -51,7 +51,7 @@ async function checkProjectAccess(projectId: string, userId: string) {
   )
 
   // 멤버십 정보를 프로젝트에 포함
-  const membership = data.project_members?.find((pm: any) => pm.user_id === userId)
+  const membership = data.project_members?.find((pm) => pm.user_id === userId)
   const projectData = {
     ...data,
     membership,

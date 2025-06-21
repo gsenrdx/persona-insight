@@ -152,7 +152,7 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
                                                 <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.content}</p>
                                                 <div className="mt-1.5 flex items-start gap-1.5 text-zinc-500 dark:text-zinc-400 italic">
                                                   <Quote className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                                                  <span>"{item.quote}"</span>
+                                                  <span>&quot;{item.quote}&quot;</span>
                                                 </div>
                                               </div>
                                             </Node>
