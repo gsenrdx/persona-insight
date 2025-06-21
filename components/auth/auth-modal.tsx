@@ -15,12 +15,12 @@ interface AuthModalProps {
 export default function AuthModal({ open, onOpenChange, defaultMode = 'login' }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode)
 
-  // 모달이 닫힐 때 로그인 모드로 초기화
+  // 모달이 열릴 때 defaultMode로 초기화
   useEffect(() => {
-    if (!open) {
-      setMode('login')
+    if (open) {
+      setMode(defaultMode)
     }
-  }, [open])
+  }, [open, defaultMode])
 
   const handleSwitchToSignup = () => {
     setMode('signup')
@@ -32,14 +32,14 @@ export default function AuthModal({ open, onOpenChange, defaultMode = 'login' }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-lg p-0">
+      <DialogContent className="w-full max-w-md p-0 overflow-hidden border-0 shadow-xl">
         <VisuallyHidden>
           <DialogTitle>
             {mode === 'login' ? '로그인' : '회원가입'}
           </DialogTitle>
         </VisuallyHidden>
         
-        <div className="p-6">
+        <div className="p-8">
           {mode === 'login' ? (
             <LoginForm 
               onSwitchToSignup={handleSwitchToSignup} 
