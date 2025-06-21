@@ -101,7 +101,7 @@ export async function GET(
       success: true
     })
   } catch (error) {
-    console.error("GET API route error:", error)
+    // GET API route 오류
     
     return NextResponse.json({
       error: "프로젝트 정보를 가져오는데 실패했습니다",
@@ -164,13 +164,7 @@ export async function PUT(
       .select()
 
     if (error) {
-      console.error("❌ Supabase 업데이트 오류:", error)
-      console.error("📊 Error details:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      })
+      // Supabase 업데이트 오류
       return NextResponse.json({
         error: `프로젝트 업데이트에 실패했습니다: ${error.message}`,
         success: false
@@ -189,7 +183,7 @@ export async function PUT(
       success: true
     })
   } catch (error) {
-    console.error("PUT API route error:", error)
+    // PUT API route 오류
     
     return NextResponse.json({
       error: "프로젝트 업데이트에 실패했습니다",
@@ -245,7 +239,7 @@ export async function DELETE(
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
+      // Supabase 업데이트 오류
       return NextResponse.json({
         error: "프로젝트 삭제에 실패했습니다",
         success: false
@@ -264,7 +258,7 @@ export async function DELETE(
       success: true
     })
   } catch (error) {
-    console.error("DELETE API route error:", error)
+    // DELETE API route 오류
     
     return NextResponse.json({
       error: "프로젝트 삭제에 실패했습니다",

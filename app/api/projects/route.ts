@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     }
 
     // RPC 함수 실패 시 기존 방식으로 fallback
-    console.error("RPC 함수 오류:", rpcError)
+    // RPC 함수 오류
     
     // 두 개의 쿼리로 분리: 공개 프로젝트 + 사용자가 멤버인 비공개 프로젝트
     const [publicProjects, privateProjects] = await Promise.all([
@@ -123,7 +123,7 @@ export async function GET(request: Request) {
     const { data, error } = { data: combinedData, error: combinedError }
 
     if (error) {
-      console.error("Supabase 조회 오류:", error)
+      // Supabase 조회 오류
       
       // fallback: 기본 쿼리로 회사의 모든 프로젝트 조회 (멤버십 정보 없이)
       const { data: fallbackData, error: fallbackError } = await supabaseAdmin
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false })
 
       if (fallbackError) {
-        console.error("Fallback 조회도 실패:", fallbackError)
+        // Fallback 조회 실패
         return NextResponse.json({
           error: "프로젝트 데이터를 가져오는데 실패했습니다",
           success: false
@@ -196,7 +196,7 @@ export async function GET(request: Request) {
       success: true
     }, { headers })
   } catch (error) {
-    console.error("API route error:", error)
+    // API route 오류
     
     return NextResponse.json({
       error: "프로젝트 데이터를 가져오는데 실패했습니다",
@@ -277,7 +277,7 @@ export async function POST(request: Request) {
       .single()
 
     if (projectError) {
-      console.error('프로젝트 생성 실패:', projectError)
+      // 프로젝트 생성 실패
       return NextResponse.json({
         error: "프로젝트 생성에 실패했습니다",
         success: false
@@ -295,7 +295,7 @@ export async function POST(request: Request) {
       })
 
     if (memberError) {
-      console.error('프로젝트 멤버 추가 실패:', memberError)
+      // 프로젝트 멤버 추가 실패
       // 프로젝트는 생성되었지만 멤버 추가에 실패한 경우
       // 롤백하지 않고 경고만 로그
     }
@@ -307,7 +307,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('프로젝트 생성 API 오류:', error)
+    // 프로젝트 생성 API 오류
     return NextResponse.json({
       error: "서버 오류가 발생했습니다",
       success: false

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+// CRUD operations for interview data with persona relationships
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -9,7 +11,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
-    // company_id가 필수로 제공되어야 함
+    // company_id is required
     if (!company_id) {
       return NextResponse.json({
         error: "company_id가 필요합니다",
@@ -29,11 +31,11 @@ export async function GET(request: Request) {
         )
       `)
       .eq('company_id', company_id)
-      .eq('personas.active', true) // 활성화된 페르소나만 조인
+      .eq('personas.active', true)
       .order('session_date', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    // 프로젝트 필터링 추가
+    // Project filtering
     if (project_id) {
       query = query.eq('project_id', project_id)
     }
@@ -41,22 +43,21 @@ export async function GET(request: Request) {
     const { data, error } = await query
 
     if (error) {
-      console.error("Supabase 오류:", error)
       return NextResponse.json({
         error: "인터뷰 데이터를 가져오는데 실패했습니다",
         success: false
       }, { status: 500 })
     }
 
-    // 작성자 정보가 있는 인터뷰들의 created_by ID들을 수집
+    // Collect unique created_by IDs
     const createdByIds = data
       ?.filter(interview => interview.created_by)
       ?.map(interview => interview.created_by)
-      ?.filter((id, index, arr) => arr.indexOf(id) === index) // 중복 제거
+      ?.filter((id, index, arr) => arr.indexOf(id) === index)
 
     let profilesData: { id: string; name: string }[] = []
     if (createdByIds && createdByIds.length > 0) {
-      // profiles 테이블에서 작성자 정보 조회 (성능 최적화: 배치 조회)
+      // Batch query profiles for performance
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, name')
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 인터뷰 데이터에 작성자 정보 매핑
+    // Map profile data to interviews
     const dataWithProfiles = data?.map(interview => ({
       ...interview,
       created_by_profile: interview.created_by 
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
         : null
     }))
 
-    // 성능 최적화: 캐시 헤더 추가 (2분간 캐시)
+    // Add cache headers for performance
     const headers = {
       'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600'
     }
@@ -85,8 +86,6 @@ export async function GET(request: Request) {
       success: true
     }, { headers })
   } catch (error) {
-    console.error("API route error:", error)
-    
     return NextResponse.json({
       error: "인터뷰 데이터를 가져오는데 실패했습니다",
       success: false
@@ -94,7 +93,7 @@ export async function GET(request: Request) {
   }
 }
 
-// 새로운 인터뷰 데이터 추가
+// Create new interview
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -105,7 +104,6 @@ export async function POST(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 삽입 오류:", error)
       return NextResponse.json({
         error: "인터뷰 데이터 저장에 실패했습니다",
         success: false
@@ -117,8 +115,6 @@ export async function POST(request: Request) {
       success: true
     }, { status: 201 })
   } catch (error) {
-    console.error("POST API route error:", error)
-    
     return NextResponse.json({
       error: "인터뷰 데이터 저장에 실패했습니다",
       success: false
@@ -126,7 +122,7 @@ export async function POST(request: Request) {
   }
 }
 
-// 특정 인터뷰 데이터 업데이트
+// Update interview data
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
@@ -149,7 +145,6 @@ export async function PUT(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
       return NextResponse.json({
         error: "인터뷰 데이터 업데이트에 실패했습니다",
         success: false
@@ -168,8 +163,6 @@ export async function PUT(request: Request) {
       success: true
     })
   } catch (error) {
-    console.error("PUT API route error:", error)
-    
     return NextResponse.json({
       error: "인터뷰 데이터 업데이트에 실패했습니다",
       success: false

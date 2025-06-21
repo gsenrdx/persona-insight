@@ -202,7 +202,6 @@ interface UpstreamLine {
  */
 async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, companyId: string | null) {
   if (!companyId || !interviewDetail) {
-    console.log('Missing companyId or interviewDetail');
     return;
   }
 
@@ -225,18 +224,15 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
           parsedDetail = JSON.parse(matches[0]);
         }
       } catch (parseError) {
-        console.log('Failed to parse interview_detail string:', parseError);
         return;
       }
     } else if (Array.isArray(interviewDetail)) {
       parsedDetail = interviewDetail;
     } else {
-      console.log('Invalid interview_detail format');
       return;
     }
 
     if (!Array.isArray(parsedDetail) || parsedDetail.length === 0) {
-      console.log('No valid array found in interview_detail');
       return;
     }
     
@@ -246,10 +242,9 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
       .map(topic => topic.topic_name.trim())
       .filter(name => name.length > 0);
 
-    console.log('Extracted topic names:', topicNames);
 
     if (topicNames.length === 0) {
-      console.log('No topic names found');
+      // 토픽 이름 없음
       return;
     }
 
@@ -260,7 +255,7 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
         company_id: companyId,
       }));
 
-      console.log(`배치 처리: ${topicsToInsert.length}개 토픽 upsert 시작`);
+      // 배치 처리 시작
       
       const { data: upsertedTopics, error: batchError } = await supabase
         .from('main_topics')
@@ -271,10 +266,10 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
         .select('*');
 
       if (batchError) {
-        console.error('배치 upsert 오류:', batchError);
+        // 배치 upsert 오류
         
         // 배치 실패 시 개별 처리로 폴백 (안전장치)
-        console.log('개별 처리로 폴백...');
+        // 개별 처리로 폴백
         for (const topicName of topicNames) {
           try {
             await supabase
@@ -287,7 +282,7 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
                 ignoreDuplicates: true 
               });
           } catch (fallbackError) {
-            console.error(`개별 처리 실패 (${topicName}):`, fallbackError);
+            // 개별 처리 실패
           }
         }
       } else {
@@ -295,19 +290,19 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
           topic && typeof topic === 'object'
         ) || [];
         
-        console.log(`배치 처리 완료: ${newTopics.length}개 토픽 처리됨`);
+        // 배치 처리 완료
         
         // 성공한 토픽들 로깅
         newTopics.forEach(topic => {
-          console.log(`처리됨: ${topic.topic_name}`);
+          // 토픽 처리됨
         });
       }
       
     } catch (batchProcessError) {
-      console.error('배치 처리 중 예외:', batchProcessError);
+      // 배치 처리 예외
       
       // 최종 폴백: 기본 개별 처리
-      console.log('기본 개별 처리 실행...');
+      // 기본 개별 처리 실행
       for (const topicName of topicNames) {
         try {
           const { error: fallbackError } = await supabase
@@ -321,16 +316,16 @@ async function extractAndSaveMainTopics(supabase: any, interviewDetail: any, com
             });
           
           if (fallbackError && fallbackError.code !== '23505') {
-            console.error(`최종 폴백 실패 (${topicName}):`, fallbackError);
+            // 최종 폴백 실패
           }
         } catch (finalError) {
-          console.error(`최종 처리 실패 (${topicName}):`, finalError);
+          // 최종 처리 실패
         }
       }
     }
 
   } catch (error) {
-    console.error('Error in extractAndSaveMainTopics:', error);
+    // extractAndSaveMainTopics 에러
   }
 }
 
@@ -374,7 +369,6 @@ export async function POST(req: NextRequest) {
   try {
     userProfile = await getAuthenticatedUserProfile(authorization, supabase);
   } catch (error) {
-    console.error('인증 실패:', error);
     return new Response(
       error instanceof Error ? error.message : '인증 처리 중 오류가 발생했습니다.', 
       { status: 401 }
@@ -390,7 +384,6 @@ export async function POST(req: NextRequest) {
     const fileStorage = getFileStorageService();
     fileInfo = await fileStorage.uploadFile(file, companyId!, projectId);
   } catch (storageError) {
-    console.error('Storage operation failed:', storageError);
     return new Response('파일 저장 시스템 오류가 발생했습니다.', { status: 500 });
   }
 

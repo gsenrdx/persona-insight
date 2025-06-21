@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Check MISO dataset connection status for personas
+
 interface PersonaKnowledgeStatus {
   persona_id: string
   persona_type: string
@@ -21,13 +23,8 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    const requestId = `personas-status-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-    console.log(`=== 페르소나 Knowledge 연동 상태 조회 시작 [${requestId}] ===`)
-    console.log('company_id:', company_id)
-    console.log('project_id:', project_id)
-    console.log('criteria_configuration_id:', criteria_configuration_id)
 
-    // 1. 페르소나 목록 조회
+    // Query personas
     let query = supabase
       .from('personas')
       .select('id, persona_type, persona_title, miso_dataset_id')
@@ -45,7 +42,6 @@ export async function POST(req: NextRequest) {
     const { data: personas, error: personasError } = await query
 
     if (personasError) {
-      console.error(`[${requestId}] 페르소나 조회 오류:`, personasError)
       return NextResponse.json({
         error: '페르소나 조회에 실패했습니다',
         details: personasError.message,
@@ -61,24 +57,21 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    console.log(`[${requestId}] 조회된 페르소나 수: ${personas.length}`)
 
-    // 2. MISO API 설정 확인
+    // Check MISO API configuration
     const misoApiKey = process.env.MISO_KNOWLEDGE_API_KEY
     const misoApiUrl = process.env.MISO_API_URL
     const misoApiOwnerId = process.env.MISO_API_OWNER_ID
 
     if (!misoApiKey || !misoApiUrl) {
-      console.error(`[${requestId}] MISO API 설정 오류`)
       return NextResponse.json({
         error: 'MISO API 설정이 올바르지 않습니다',
         success: false
       }, { status: 500 })
     }
 
-    console.log(`[${requestId}] MISO API 소유자 ID: ${misoApiOwnerId || 'not set'}`)
 
-    // 3. 각 페르소나의 데이터셋 상태 확인
+    // Check dataset status for each persona
     const statusPromises = personas.map(async (persona): Promise<PersonaKnowledgeStatus> => {
       if (!persona.miso_dataset_id) {
         return {
@@ -91,7 +84,7 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        // MISO API로 특정 데이터셋의 문서 목록을 조회하여 데이터셋 존재 여부 확인
+        // Check dataset existence via MISO API
         const misoResponse = await fetch(`${misoApiUrl}/ext/v1/datasets/${persona.miso_dataset_id}/docs`, {
           method: 'GET',
           headers: {
@@ -111,7 +104,7 @@ export async function POST(req: NextRequest) {
               error_message: '데이터셋을 찾을 수 없습니다'
             }
           }
-          throw new Error(`MISO API 호출 실패: ${misoResponse.status}`)
+          throw new Error(`MISO API call failed: ${misoResponse.status}`)
         }
 
         const docsResponse = await misoResponse.json()
@@ -125,7 +118,6 @@ export async function POST(req: NextRequest) {
         }
 
       } catch (error: any) {
-        console.error(`[${requestId}] 페르소나 ${persona.persona_type} 데이터셋 상태 확인 오류:`, error)
         return {
           persona_id: persona.id,
           persona_type: persona.persona_type,
@@ -139,13 +131,6 @@ export async function POST(req: NextRequest) {
 
     const personasStatus = await Promise.all(statusPromises)
 
-    console.log(`=== 페르소나 Knowledge 연동 상태 조회 완료 [${requestId}] ===`)
-    console.log('연동 상태 요약:', {
-      connected: personasStatus.filter(p => p.dataset_status === 'connected').length,
-      not_found: personasStatus.filter(p => p.dataset_status === 'not_found').length,
-      no_dataset: personasStatus.filter(p => p.dataset_status === 'no_dataset').length,
-      error: personasStatus.filter(p => p.dataset_status === 'error').length
-    })
 
     return NextResponse.json({
       success: true,
@@ -159,9 +144,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error: any) {
-    const requestId = `personas-status-error-${Date.now()}`
-    console.error(`페르소나 Knowledge 연동 상태 조회 오류 [${requestId}]:`, error)
-
     return NextResponse.json({
       error: '페르소나 Knowledge 연동 상태 조회 중 오류가 발생했습니다',
       details: error.message,

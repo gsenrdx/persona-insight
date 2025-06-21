@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       .order('name')
 
     if (error) {
-      console.error("Supabase 조회 오류:", error)
+      // Supabase 조회 오류
       return NextResponse.json({
         error: "구성원 목록을 가져오는데 실패했습니다",
         success: false
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       success: true
     })
   } catch (error) {
-    console.error("API route error:", error)
+    // API route 오류
     
     return NextResponse.json({
       error: "구성원 목록을 가져오는데 실패했습니다",

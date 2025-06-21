@@ -64,7 +64,7 @@ export async function GET(
       })
 
     if (membersError) {
-      console.error('Error fetching project members:', membersError)
+      // 프로젝트 멤버 조회 오류
       
       // RPC 함수가 없는 경우 대체 쿼리 실행
       const { data: membersList, error: fallbackError } = await supabaseAdmin
@@ -81,7 +81,7 @@ export async function GET(
         .order('created_at', { ascending: true })
 
       if (fallbackError) {
-        console.error('Fallback query error:', fallbackError)
+        // Fallback 쿼리 오류
         return NextResponse.json({
           error: '멤버 목록을 가져오는데 실패했습니다',
           details: fallbackError.message,
@@ -129,7 +129,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Error in GET /api/projects/[id]/members:', error)
+    // GET /api/projects/[id]/members 오류
     return NextResponse.json({
       error: '서버 오류가 발생했습니다',
       success: false

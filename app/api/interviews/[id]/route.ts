@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+// Get and delete specific interview by ID
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -27,11 +29,10 @@ export async function GET(
         )
       `)
       .eq('id', id)
-      .eq('personas.active', true) // 활성화된 페르소나만 조인 (없으면 null)
+      .eq('personas.active', true)
       .single()
 
     if (error) {
-      console.error("Supabase 오류:", error)
       return NextResponse.json({
         error: "인터뷰 데이터를 가져오는데 실패했습니다",
         success: false
@@ -45,7 +46,7 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // 작성자 정보 조회
+    // Get creator profile information
     let createdByProfile = null
     if (data.created_by) {
       const { data: profile, error: profileError } = await supabase
@@ -69,8 +70,6 @@ export async function GET(
       success: true
     })
   } catch (error) {
-    console.error("API route error:", error)
-    
     return NextResponse.json({
       error: "인터뷰 데이터를 가져오는데 실패했습니다",
       success: false
@@ -98,7 +97,6 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      console.error("Supabase 삭제 오류:", error)
       return NextResponse.json({
         error: "인터뷰 삭제에 실패했습니다",
         success: false
@@ -109,8 +107,6 @@ export async function DELETE(
       success: true
     })
   } catch (error) {
-    console.error("DELETE API route error:", error)
-    
     return NextResponse.json({
       error: "인터뷰 삭제에 실패했습니다",
       success: false

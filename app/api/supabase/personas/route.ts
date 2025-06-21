@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Get personas with filtering by company, active status, and project
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -20,14 +22,14 @@ export async function GET(req: NextRequest) {
       .select('*')
       .eq('company_id', company_id)
 
-    // active 필터 적용
+    // Apply active filter
     if (active === 'true') {
       query = query.eq('active', true)
     } else if (active === 'false') {
       query = query.eq('active', false)
     }
 
-    // project_id 필터 적용
+    // Apply project filter
     if (project_id) {
       query = query.eq('project_id', project_id)
     }
@@ -35,7 +37,6 @@ export async function GET(req: NextRequest) {
     const { data: personas, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
-      console.error('페르소나 조회 오류:', error)
       return NextResponse.json({
         error: '페르소나 조회에 실패했습니다',
         success: false
@@ -48,7 +49,6 @@ export async function GET(req: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('페르소나 조회 처리 중 오류:', error)
     return NextResponse.json({
       error: '페르소나 조회 중 오류가 발생했습니다',
       details: error.message,

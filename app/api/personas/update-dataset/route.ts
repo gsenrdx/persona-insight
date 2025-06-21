@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
 
+// Update persona's MISO dataset ID with proper authorization checks
+
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
     const { persona_id, miso_dataset_id, user_id } = body
 
-    console.log('데이터셋 업데이트 요청:', { persona_id, miso_dataset_id, user_id })
 
     if (!persona_id) {
       return NextResponse.json({
@@ -29,10 +30,8 @@ export async function PUT(request: Request) {
       .eq('id', user_id)
       .single()
 
-    console.log('프로필 조회 결과:', { profile, profileError })
 
     if (profileError) {
-      console.error('프로필 조회 오류:', profileError)
       return NextResponse.json({
         error: `프로필 조회 오류: ${profileError.message}`,
         success: false
@@ -53,10 +52,8 @@ export async function PUT(request: Request) {
       .eq('id', persona_id)
       .single()
 
-    console.log('페르소나 조회 결과:', { persona, personaError })
 
     if (personaError) {
-      console.error('페르소나 조회 오류:', personaError)
       return NextResponse.json({
         error: `페르소나 조회 오류: ${personaError.message}`,
         success: false
@@ -116,7 +113,7 @@ export async function PUT(request: Request) {
       }
     }
 
-    // 데이터셋 ID 업데이트 (null 또는 빈 문자열인 경우 null로 저장)
+    // Update dataset ID - treat empty strings as null
     const datasetId = miso_dataset_id && miso_dataset_id.trim() !== '' ? miso_dataset_id.trim() : null
 
     const { data, error } = await supabaseAdmin
@@ -129,7 +126,6 @@ export async function PUT(request: Request) {
       .select()
 
     if (error) {
-      console.error('데이터셋 ID 업데이트 오류:', error)
       return NextResponse.json({
         error: "데이터셋 ID 업데이트에 실패했습니다",
         success: false
@@ -149,7 +145,6 @@ export async function PUT(request: Request) {
       success: true
     })
   } catch (error) {
-    console.error('데이터셋 ID 업데이트 오류:', error)
     return NextResponse.json({
       error: "데이터셋 ID 업데이트 중 오류가 발생했습니다",
       success: false

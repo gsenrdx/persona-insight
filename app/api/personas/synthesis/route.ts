@@ -368,19 +368,19 @@ export async function POST(req: NextRequest) {
 
           if (currentPersona?.miso_dataset_id) {
             try {
-              console.log(`Topic 동기화 시작: 인터뷰 ${parsedInterviewee.id} → 페르소나 ${finalPersonaId}`);
+              // Topic 동기화 시작
               await syncInterviewTopicsToPersona(
                 parsedInterviewee.id,
                 finalPersonaId,
                 currentPersona.miso_dataset_id
               );
-              console.log(`Topic 동기화 완료: 인터뷰 ${parsedInterviewee.id}`);
+              // Topic 동기화 완료
             } catch (topicSyncError) {
-              console.error('Topic 동기화 실패:', topicSyncError);
+              // Topic 동기화 실패
               // Topic 동기화 실패해도 synthesis 자체는 성공으로 처리
             }
           } else {
-            console.log('페르소나에 miso_dataset_id가 없어 topic 동기화를 건너뜁니다');
+            // miso_dataset_id 없어 topic 동기화 건너뜀
           }
         }
 

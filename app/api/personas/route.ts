@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-// 모든 페르소나 조회 (페이지네이션 적용)
+// CRUD operations for personas with pagination and filtering
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -9,12 +9,12 @@ export async function GET(request: Request) {
     const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
     
-    // 페이지네이션 파라미터
+    // Pagination parameters
     const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100) // 최대 100개
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
     const offset = (page - 1) * limit
 
-    // company_id가 필수로 제공되어야 함
+    // company_id is required
     if (!company_id) {
       return NextResponse.json({
         error: "company_id가 필요합니다",
@@ -22,37 +22,36 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    // 기본 쿼리 설정
+    // Base query setup
     let baseQuery = supabase
       .from('personas')
-      .select('*', { count: 'exact' }) // 전체 개수 포함
+      .select('*', { count: 'exact' })
       .eq('company_id', company_id)
-      .eq('active', true) // 활성화된 페르소나만 조회
+      .eq('active', true)
 
-    // 프로젝트 필터링 추가 (project_id가 있으면 해당 프로젝트, 없으면 회사 레벨)
+    // Project filtering
     if (project_id) {
       baseQuery = baseQuery.eq('project_id', project_id)
     } else {
       baseQuery = baseQuery.is('project_id', null)
     }
 
-    // 특정 타입 필터링
+    // Type filtering
     if (persona_type) {
       baseQuery = baseQuery.eq('persona_type', persona_type)
     }
 
-    // 전체 개수 조회를 위한 쿼리 (데이터 없이 count만)
+    // Get total count
     const { count, error: countError } = await baseQuery
 
     if (countError) {
-      console.error("Count 조회 오류:", countError)
       return NextResponse.json({
         error: "페르소나 개수 조회에 실패했습니다",
         success: false
       }, { status: 500 })
     }
 
-    // 실제 데이터 조회 쿼리
+    // Data query with pagination
     let dataQuery = supabase
       .from('personas')
       .select(`
@@ -72,9 +71,9 @@ export async function GET(request: Request) {
       .eq('company_id', company_id)
       .eq('active', true)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1) // 페이지네이션 적용
+      .range(offset, offset + limit - 1)
 
-    // 필터 재적용
+    // Re-apply filters
     if (project_id) {
       dataQuery = dataQuery.eq('project_id', project_id)
     } else {
@@ -88,19 +87,18 @@ export async function GET(request: Request) {
     const { data, error } = await dataQuery
 
     if (error) {
-      console.error("Supabase 조회 오류:", error)
       return NextResponse.json({
         error: "페르소나 데이터를 가져오는데 실패했습니다",
         success: false
       }, { status: 500 })
     }
 
-    // 페이지네이션 메타데이터 계산
+    // Calculate pagination metadata
     const totalPages = Math.ceil((count || 0) / limit)
     const hasNextPage = page < totalPages
     const hasPreviousPage = page > 1
 
-    // 캐시 헤더 추가 (5분간 캐시)
+    // Add cache headers
     const headers = {
       'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       'X-Total-Count': String(count || 0),
@@ -122,8 +120,6 @@ export async function GET(request: Request) {
       success: true
     }, { headers })
   } catch (error) {
-    console.error("API route error:", error)
-    
     return NextResponse.json({
       error: "페르소나 데이터를 가져오는데 실패했습니다",
       success: false
@@ -131,12 +127,12 @@ export async function GET(request: Request) {
   }
 }
 
-// 새로운 페르소나 추가
+// Create new persona
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     
-    // 필수 필드 검증
+    // Validate required fields
     const requiredFields = [
       'persona_type', 'persona_description', 'persona_summary', 
       'persona_style', 'painpoints', 'needs', 'insight', 'insight_quote'
@@ -151,7 +147,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 동일한 타입이 이미 존재하는지 확인
+    // Check if persona type already exists
     const { data: existingPersona } = await supabase
       .from('personas')
       .select('id')
@@ -171,7 +167,6 @@ export async function POST(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 삽입 오류:", error)
       return NextResponse.json({
         error: "페르소나 데이터 저장에 실패했습니다",
         success: false
@@ -183,8 +178,6 @@ export async function POST(request: Request) {
       success: true
     }, { status: 201 })
   } catch (error) {
-    console.error("POST API route error:", error)
-    
     return NextResponse.json({
       error: "페르소나 데이터 저장에 실패했습니다",
       success: false
@@ -192,7 +185,7 @@ export async function POST(request: Request) {
   }
 }
 
-// 페르소나 업데이트
+// Update persona
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
@@ -215,7 +208,6 @@ export async function PUT(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 업데이트 오류:", error)
       return NextResponse.json({
         error: "페르소나 데이터 업데이트에 실패했습니다",
         success: false
@@ -234,8 +226,6 @@ export async function PUT(request: Request) {
       success: true
     })
   } catch (error) {
-    console.error("PUT API route error:", error)
-    
     return NextResponse.json({
       error: "페르소나 데이터 업데이트에 실패했습니다",
       success: false
@@ -243,7 +233,7 @@ export async function PUT(request: Request) {
   }
 }
 
-// 페르소나 삭제
+// Delete persona
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -263,7 +253,6 @@ export async function DELETE(request: Request) {
       .select()
 
     if (error) {
-      console.error("Supabase 삭제 오류:", error)
       return NextResponse.json({
         error: "페르소나 데이터 삭제에 실패했습니다",
         success: false
@@ -282,8 +271,6 @@ export async function DELETE(request: Request) {
       success: true
     })
   } catch (error) {
-    console.error("DELETE API route error:", error)
-    
     return NextResponse.json({
       error: "페르소나 데이터 삭제에 실패했습니다",
       success: false

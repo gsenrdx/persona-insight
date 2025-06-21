@@ -17,19 +17,7 @@ export async function POST(req: NextRequest) {
 
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
-  // 요청 데이터 로깅
-  console.log('Chat API Request:', {
-    lastUser,
-    personaData: {
-      persona_title: personaData.persona_title || personaData.name || '',
-      persona_summary: personaData.persona_summary || personaData.summary || '',
-      persona_style: personaData.persona_style || personaData.persona_character || '',
-      painpoints: personaData.painpoints || personaData.painPoint || '',
-      needs: personaData.needs || personaData.hiddenNeeds || '',
-      insight: personaData.insight || '',
-      insight_quote: personaData.insight_quote || ''
-    }
-  })
+  // Chat API 요청 데이터
 
   // MISO API 호출
   const upstream = await fetch(
@@ -61,11 +49,7 @@ export async function POST(req: NextRequest) {
 
   if (!upstream.ok || !upstream.body) {
     const err = await upstream.text().catch(() => '')
-    console.error('MISO API Error:', {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      error: err
-    })
+    // MISO API 에러
     return new Response(`외부 API 오류: ${upstream.status} ${err}`, { status: 500 })
   }
 
