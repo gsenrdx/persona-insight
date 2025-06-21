@@ -13,6 +13,7 @@ import { Loader2, AlertOctagon, RefreshCw, SearchX } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/hooks/use-auth"
 import { usePersonas } from '@/hooks/use-personas'
+import SkeletonCardGrid from "@/components/shared/skeleton-card-grid"
 
 // 전역 캐시 제거 - React 상태로만 관리하여 프로젝트 전환 시 자동 새로고침
 
@@ -118,12 +119,7 @@ export default function PersonaCardGrid() {
 
   // 인증 로딩 중일 때
   if (authLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
-        <p className="text-muted-foreground">인증 정보 확인 중...</p>
-      </div>
-    )
+    return <SkeletonCardGrid />
   }
 
   if (error) {
@@ -147,12 +143,7 @@ export default function PersonaCardGrid() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-10 w-10 animate-spin text-primary/70 mb-4" />
-        <p className="text-muted-foreground">페르소나 데이터 로드 중...</p>
-      </div>
-    )
+    return <SkeletonCardGrid />
   }
 
   if (filteredPersonas.length === 0 && !isLoading) {
