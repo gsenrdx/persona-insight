@@ -34,44 +34,42 @@ export async function syncInterviewTopicsToPersona(
       return
     }
 
-    // 각 topic별로 처리
-    for (const topicData of details) {
-      if (!topicData.topic_name) continue
-
-      try {
-        await syncSingleTopicToPersona(
-          syncId,
-          topicData,
-          personaId,
-          personaDatasetId,
-          interview.company_id,
-          interview.project_id
-        )
-      } catch (topicError) {
-        // 하나의 topic 실패해도 다른 topic들은 계속 처리
-      }
-    }
+    // Batch process all topics
+    await syncBatchTopicsToPersona(
+      syncId,
+      details,
+      personaId,
+      personaDatasetId,
+      interview.company_id,
+      interview.project_id
+    )
 
   } catch (error) {
     throw error
   }
 }
 
-// 단일 topic을 페르소나에 동기화
-async function syncSingleTopicToPersona(
+// Batch process multiple topics to persona
+async function syncBatchTopicsToPersona(
   syncId: string,
-  topicData: any,
+  topicsData: any[],
   personaId: string,
   personaDatasetId: string,
   companyId: string,
   projectId: string | null
 ): Promise<void> {
-  const topicName = topicData.topic_name.trim()
+  // Filter valid topics
+  const validTopics = topicsData.filter(t => t.topic_name)
+  if (validTopics.length === 0) return
+
+  // Extract unique topic names
+  const topicNames = [...new Set(validTopics.map(t => t.topic_name.trim()))]
 
   try {
-    const topicId = await getOrCreateTopicId(topicName, companyId, projectId)
+    // Batch fetch/create all topic IDs
+    const topicIdMap = await getOrCreateTopicIds(topicNames, companyId, projectId)
 
-    // 해당 페르소나의 모든 인터뷰에서 동일 topic 데이터 수집
+    // Fetch all interviews for this persona once
     const { data: allInterviews, error: allInterviewsError } = await supabaseAdmin
       .from('interviewees')
       .select('id, interview_detail')
@@ -83,85 +81,130 @@ async function syncSingleTopicToPersona(
       throw allInterviewsError
     }
 
-    const topicInterviews: InterviewTopicData[] = []
-    
-    for (const interview of allInterviews || []) {
-      const details = parseInterviewDetail(interview.interview_detail)
-      if (!details) continue
+    // Batch fetch existing documents
+    const { data: existingDocs, error: docsError } = await supabaseAdmin
+      .from('persona_topic_documents')
+      .select('topic_id, miso_document_id')
+      .eq('persona_id', personaId)
+      .in('topic_id', Object.values(topicIdMap))
 
-      const matchingTopic = details.find((t: any) => t.topic_name === topicName)
-      if (matchingTopic) {
-        topicInterviews.push({
-          interview_id: interview.id,
-          topic_data: matchingTopic
+    if (docsError) {
+      throw docsError
+    }
+
+    // Create a map of existing documents
+    const existingDocsMap = (existingDocs || []).reduce((acc, doc) => {
+      acc[doc.topic_id] = doc.miso_document_id
+      return acc
+    }, {} as Record<string, string>)
+
+    // Process each topic
+    const upsertData: any[] = []
+    const documentOperations: Promise<void>[] = []
+
+    for (const topicName of topicNames) {
+      const topicId = topicIdMap[topicName]
+      if (!topicId) continue
+
+      // Collect all interview data for this topic
+      const topicInterviews: InterviewTopicData[] = []
+      
+      for (const interview of allInterviews || []) {
+        const details = parseInterviewDetail(interview.interview_detail)
+        if (!details) continue
+
+        const matchingTopic = details.find((t: any) => t.topic_name === topicName)
+        if (matchingTopic) {
+          topicInterviews.push({
+            interview_id: interview.id,
+            topic_data: matchingTopic
+          })
+        }
+      }
+
+      if (topicInterviews.length === 0) continue
+
+      // Handle document creation/update
+      const existingDocId = existingDocsMap[topicId]
+      let documentId: string
+
+      if (existingDocId) {
+        // Add segments to existing document
+        documentId = existingDocId
+        documentOperations.push(
+          addSegmentsToDocument(
+            syncId,
+            personaDatasetId,
+            documentId,
+            topicInterviews,
+            topicName
+          )
+        )
+      } else {
+        // Create new document and add segments
+        documentOperations.push(
+          (async () => {
+            const newDocId = await createMisoDocumentOnly(
+              personaDatasetId,
+              topicName,
+              topicInterviews.length
+            )
+            
+            await waitForDocumentIndexingAndAddSegments(
+              syncId,
+              personaDatasetId,
+              newDocId,
+              topicInterviews,
+              topicName
+            )
+
+            // Add to upsert data
+            upsertData.push({
+              persona_id: personaId,
+              topic_id: topicId,
+              miso_document_id: newDocId,
+              document_title: topicName,
+              interview_count: topicInterviews.length,
+              last_synced_at: new Date().toISOString()
+            })
+          })()
+        )
+      }
+
+      // Update existing documents
+      if (existingDocId) {
+        upsertData.push({
+          persona_id: personaId,
+          topic_id: topicId,
+          miso_document_id: existingDocId,
+          document_title: topicName,
+          interview_count: topicInterviews.length,
+          last_synced_at: new Date().toISOString()
         })
       }
     }
 
-    // 기존 문서 확인
-    const { data: existingDoc, error: docSelectError } = await supabaseAdmin
-      .from('persona_topic_documents')
-      .select('miso_document_id')
-      .eq('persona_id', personaId)
-      .eq('topic_id', topicId)
-      .maybeSingle()
+    // Execute all document operations in parallel
+    await Promise.all(documentOperations)
 
-    if (docSelectError) {
-      throw docSelectError
-    }
+    // Batch upsert persona_topic_documents
+    if (upsertData.length > 0) {
+      const { error: upsertError } = await supabaseAdmin
+        .from('persona_topic_documents')
+        .upsert(upsertData, {
+          onConflict: 'persona_id,topic_id'
+        })
 
-    let documentId: string
-
-    if (existingDoc?.miso_document_id) {
-      // 기존 문서에 세그먼트 추가
-      documentId = existingDoc.miso_document_id
-      
-      await addSegmentsToDocument(
-        syncId,
-        personaDatasetId,
-        documentId,
-        topicInterviews,
-        topicName
-      )
-    } else {
-      // 새 문서 생성 (세그먼트 없이)
-      documentId = await createMisoDocumentOnly(
-        personaDatasetId,
-        topicName,
-        topicInterviews.length
-      )
-      
-      await waitForDocumentIndexingAndAddSegments(
-        syncId,
-        personaDatasetId,
-        documentId,
-        topicInterviews,
-        topicName
-      )
-    }
-
-    // persona_topic_documents 테이블 업데이트
-    const { error: upsertError } = await supabaseAdmin
-      .from('persona_topic_documents')
-      .upsert({
-        persona_id: personaId,
-        topic_id: topicId,
-        miso_document_id: documentId,
-        document_title: topicName,
-        interview_count: topicInterviews.length,
-        last_synced_at: new Date().toISOString()
-      }, {
-        onConflict: 'persona_id,topic_id'
-      })
-
-    if (upsertError) {
-      throw upsertError
+      if (upsertError) {
+        throw upsertError
+      }
     }
 
   } catch (error) {
     throw error
   }
 }
+
 
 // 문서 인덱싱 완료 대기 후 세그먼트 추가
 async function waitForDocumentIndexingAndAddSegments(
@@ -198,49 +241,63 @@ async function waitForDocumentIndexingAndAddSegments(
   await addSegmentsToDocument(syncId, datasetId, documentId, topicInterviews, topicName)
 }
 
-// Topic ID 조회/생성
-export async function getOrCreateTopicId(
-  topicName: string, 
+// Batch get or create topic IDs
+async function getOrCreateTopicIds(
+  topicNames: string[],
   companyId: string,
   projectId?: string | null
-): Promise<string> {
+): Promise<Record<string, string>> {
   try {
-    const { data: existingTopic, error: selectError } = await supabaseAdmin
+    // Fetch existing topics
+    const { data: existingTopics, error: selectError } = await supabaseAdmin
       .from('main_topics')
-      .select('id')
-      .eq('topic_name', topicName.trim())
+      .select('id, topic_name')
+      .in('topic_name', topicNames)
       .eq('company_id', companyId)
-      .maybeSingle()
 
     if (selectError) {
       throw selectError
     }
 
-    if (existingTopic) {
-      return existingTopic.id
+    // Create map of existing topics
+    const topicIdMap: Record<string, string> = {}
+    const existingTopicNames = new Set<string>()
+    
+    for (const topic of existingTopics || []) {
+      topicIdMap[topic.topic_name] = topic.id
+      existingTopicNames.add(topic.topic_name)
     }
 
-    const { data: newTopic, error: insertError } = await supabaseAdmin
-      .from('main_topics')
-      .insert({
-        topic_name: topicName.trim(),
+    // Find topics that need to be created
+    const topicsToCreate = topicNames.filter(name => !existingTopicNames.has(name))
+
+    // Batch create new topics
+    if (topicsToCreate.length > 0) {
+      const newTopicsData = topicsToCreate.map(topicName => ({
+        topic_name: topicName,
         company_id: companyId,
         project_id: projectId
-      })
-      .select('id')
-      .single()
+      }))
 
-    if (insertError) {
-      throw insertError
+      const { data: newTopics, error: insertError } = await supabaseAdmin
+        .from('main_topics')
+        .insert(newTopicsData)
+        .select('id, topic_name')
+
+      if (insertError) {
+        throw insertError
+      }
+
+      // Add new topics to map
+      for (const topic of newTopics || []) {
+        topicIdMap[topic.topic_name] = topic.id
+      }
     }
 
-    if (!newTopic) {
-      throw new Error('Topic 생성 후 ID를 받지 못했습니다')
-    }
-
-    return newTopic.id
+    return topicIdMap
 
   } catch (error) {
     throw error
   }
 }
+

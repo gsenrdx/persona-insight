@@ -24,25 +24,6 @@ function calculateCoordinateBounds(index: number, segmentCount: number): { min: 
   return { min, max }
 }
 
-// Get existing MISO dataset ID for persona
-async function getPersonaDatasetId(persona: PersonaData): Promise<string | null> {
-  if (persona.id) {
-    const { data: existingPersona, error: personaError } = await supabase
-      .from('personas')
-      .select('miso_dataset_id')
-      .eq('id', persona.id)
-      .single()
-
-    if (personaError) {
-      return null
-    } else if (existingPersona?.miso_dataset_id) {
-      return existingPersona.miso_dataset_id
-    }
-  }
-
-  return null
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { company_id, project_id, personas, criteria_configuration_id, x_segments_count, y_segments_count } = await req.json()
@@ -54,17 +35,34 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
+    // Separate existing and new personas
+    const existingPersonas = personas.filter(p => p.id)
+    const newPersonas = personas.filter(p => !p.id)
 
-    // Process each persona
-    const upsertOperations = personas.map(async (persona: PersonaData) => {
-      // Get existing MISO dataset ID if available
-      let personaDatasetId: string | null = null
-      try {
-        personaDatasetId = await getPersonaDatasetId(persona)
-      } catch (error: any) {
-        // Ignore dataset retrieval errors
+    // Batch fetch all existing personas data
+    let existingPersonasData: Record<string, any> = {}
+    if (existingPersonas.length > 0) {
+      const existingIds = existingPersonas.map(p => p.id!)
+      const { data: existingData, error: fetchError } = await supabase
+        .from('personas')
+        .select('id, persona_summary, persona_style, painpoints, needs, insight, insight_quote, miso_dataset_id')
+        .in('id', existingIds)
+      
+      if (fetchError) {
+        throw fetchError
       }
+      
+      // Create a map for quick lookup
+      existingPersonasData = (existingData || []).reduce((acc, persona) => {
+        acc[persona.id] = persona
+        return acc
+      }, {} as Record<string, any>)
+    }
 
+    // Prepare batch update data
+    const updateData = existingPersonas.map(persona => {
+      const existing = existingPersonasData[persona.id!] || {}
+      
       // Calculate coordinate bounds if segment counts provided
       let xBounds, yBounds
       if (x_segments_count && y_segments_count) {
@@ -72,7 +70,8 @@ export async function POST(req: NextRequest) {
         yBounds = calculateCoordinateBounds(persona.matrix_position.yIndex, y_segments_count)
       }
 
-      const personaData = {
+      return {
+        id: persona.id!,
         company_id,
         project_id: project_id || null,
         persona_type: persona.persona_type,
@@ -83,74 +82,90 @@ export async function POST(req: NextRequest) {
         ...(xBounds && { x_min: xBounds.min, x_max: xBounds.max }),
         ...(yBounds && { y_min: yBounds.min, y_max: yBounds.max }),
         ...(criteria_configuration_id && { criteria_configuration_id }),
-        ...(personaDatasetId && { miso_dataset_id: personaDatasetId }),
         active: true,
-        updated_at: new Date().toISOString()
-      }
-
-      if (persona.id) {
-        // Update existing persona
-        const { data: existing } = await supabase
-          .from('personas')
-          .select('persona_summary, persona_style, painpoints, needs, insight, insight_quote, miso_dataset_id')
-          .eq('id', persona.id)
-          .single()
-        
-        const { data: updateResult, error } = await supabase
-          .from('personas')
-          .update({
-            ...personaData,
-            // AI 생성 필드들은 기존 값 보존
-            persona_summary: existing?.persona_summary || '',
-            persona_style: existing?.persona_style || '',
-            painpoints: existing?.painpoints || '',
-            needs: existing?.needs || '',
-            insight: existing?.insight || '',
-            insight_quote: existing?.insight_quote || '',
-            miso_dataset_id: existing?.miso_dataset_id || personaDatasetId
-          })
-          .eq('id', persona.id)
-          .select()
-
-        if (error) {
-          throw error
-        }
-      } else {
-        // Create new persona
-        const { data: insertResult, error } = await supabase
-          .from('personas')
-          .insert([{
-            ...personaData,
-            // 새로 생성하는 경우 AI 필드들은 빈 값
-            persona_summary: '',
-            persona_style: '',
-            painpoints: '',
-            needs: '',
-            insight: '',
-            insight_quote: '',
-            miso_dataset_id: personaDatasetId,
-            created_at: new Date().toISOString()
-          }])
-          .select()
-
-        if (error) {
-          throw error
-        }
+        updated_at: new Date().toISOString(),
+        // AI 생성 필드들은 기존 값 보존
+        persona_summary: existing.persona_summary || '',
+        persona_style: existing.persona_style || '',
+        painpoints: existing.painpoints || '',
+        needs: existing.needs || '',
+        insight: existing.insight || '',
+        insight_quote: existing.insight_quote || '',
+        miso_dataset_id: existing.miso_dataset_id || null
       }
     })
 
-    // Execute all upsert operations
-    await Promise.all(upsertOperations)
+    // Prepare batch insert data
+    const insertData = newPersonas.map(persona => {
+      // Calculate coordinate bounds if segment counts provided
+      let xBounds, yBounds
+      if (x_segments_count && y_segments_count) {
+        xBounds = calculateCoordinateBounds(persona.matrix_position.xIndex, x_segments_count)
+        yBounds = calculateCoordinateBounds(persona.matrix_position.yIndex, y_segments_count)
+      }
 
-    const created = personas.filter(p => !p.id).length
-    const updated = personas.filter(p => p.id).length
+      return {
+        company_id,
+        project_id: project_id || null,
+        persona_type: persona.persona_type,
+        persona_title: persona.persona_title,
+        persona_description: persona.persona_description,
+        thumbnail: persona.thumbnail,
+        matrix_position: persona.matrix_position,
+        ...(xBounds && { x_min: xBounds.min, x_max: xBounds.max }),
+        ...(yBounds && { y_min: yBounds.min, y_max: yBounds.max }),
+        ...(criteria_configuration_id && { criteria_configuration_id }),
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        // 새로 생성하는 경우 AI 필드들은 빈 값
+        persona_summary: '',
+        persona_style: '',
+        painpoints: '',
+        needs: '',
+        insight: '',
+        insight_quote: '',
+        miso_dataset_id: null
+      }
+    })
+
+    // Execute batch operations
+    const operations = []
+
+    // Batch update existing personas
+    if (updateData.length > 0) {
+      const updatePromise = supabase
+        .from('personas')
+        .upsert(updateData, { onConflict: 'id' })
+        .select()
+      operations.push(updatePromise)
+    }
+
+    // Batch insert new personas
+    if (insertData.length > 0) {
+      const insertPromise = supabase
+        .from('personas')
+        .insert(insertData)
+        .select()
+      operations.push(insertPromise)
+    }
+
+    // Execute all operations
+    const results = await Promise.all(operations)
+    
+    // Check for errors
+    for (const result of results) {
+      if (result.error) {
+        throw result.error
+      }
+    }
 
     return NextResponse.json({ 
       success: true,
       message: '페르소나 동기화가 완료되었습니다',
       summary: {
-        created,
-        updated
+        created: newPersonas.length,
+        updated: existingPersonas.length
       }
     })
 

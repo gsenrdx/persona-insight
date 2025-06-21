@@ -18,6 +18,5 @@ export {
 
 // Workflow management
 export { 
-  syncInterviewTopicsToPersona, 
-  getOrCreateTopicId 
+  syncInterviewTopicsToPersona
 } from './workflow'

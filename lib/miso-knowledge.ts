@@ -8,6 +8,5 @@ export {
   parseInterviewDetail,
   groupInterviewsByTopic,
   syncInterviewTopicsToPersona,
-  getOrCreateTopicId,
   type InterviewTopicData
 } from './services/miso'

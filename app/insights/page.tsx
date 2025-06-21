@@ -115,32 +115,39 @@ export default function InsightsPage() {
     async function loadInsights() {
       try {
         setLoading(true)
-                
-        const yearDataPromises = availableYears.map(async (year) => {
-          try {
-            const response = await fetch(`/api/insights?company_id=${profile?.company_id}&year=${year}`)
-            if (response.ok) {
-              const data = await response.json()
-              return { year, data }
+        
+        // Batch API 호출로 모든 연도 데이터를 한 번에 가져오기
+        const response = await fetch('/api/insights/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            company_id: profile?.company_id,
+            years: availableYears
+          })
+        })
+        
+        if (response.ok) {
+          const { results } = await response.json()
+          const newInsightData: InsightData = {}
+          
+          Object.entries(results).forEach(([year, data]: [string, any]) => {
+            newInsightData[year] = {
+              intervieweeCount: data.intervieweeCount || 0,
+              insights: data.insights || []
             }
-            return { year, data: { intervieweeCount: 0, insights: [] } }
-          } catch (err) {
-            // 인사이트 로드 실패
-            return { year, data: { intervieweeCount: 0, insights: [] } }
-          }
-        })
-        
-        const yearResults = await Promise.all(yearDataPromises)
-        const newInsightData: InsightData = {}
-        
-        yearResults.forEach(({ year, data }) => {
-          newInsightData[year] = {
-            intervieweeCount: data.intervieweeCount || 0,
-            insights: data.insights || []
-          }
-        })
-        
-        setInsightData(newInsightData)
+          })
+          
+          setInsightData(newInsightData)
+        } else {
+          // 오류 시 빈 데이터로 초기화
+          const emptyData: InsightData = {}
+          availableYears.forEach(year => {
+            emptyData[year] = { intervieweeCount: 0, insights: [] }
+          })
+          setInsightData(emptyData)
+        }
         
       } catch (error) {
         // 인사이트 데이터 로드 실패
@@ -251,46 +258,38 @@ export default function InsightsPage() {
   // persona 이름으로 인터뷰 찾기 및 상세보기로 이동 (회사 전체 검색)
   const handleViewInterview = async (personaName: string) => {
     try {
-      // 회사 전체 인터뷰에서 persona 이름으로 검색
-      const response = await fetch(`/api/interviews?company_id=${profile?.company_id}`)
-      if (response.ok) {
-        const { data } = await response.json()
-        // interviewee_fake_name 또는 personas.persona_title과 매칭
-        const interview = data?.find((item: any) => 
-          item.interviewee_fake_name === personaName || 
-          item.personas?.persona_title === personaName ||
-          item.personas?.persona_type === personaName
-        )
-        
-        if (interview) {
-          // 해당 인터뷰의 프로젝트에 대한 접근 권한 확인
-          if (interview.project_id) {
-            try {
-              const projectResponse = await fetch(`/api/projects/${interview.project_id}?user_id=${profile?.id}`)
-              if (projectResponse.ok) {
-                // 권한이 있으면 프로젝트 페이지로 이동
-                router.push(`/projects/${interview.project_id}?interview=${interview.id}`)
-              } else {
-                // 권한이 없으면 토스트 메시지
-                toast.error("해당 프로젝트에 접근할 권한이 없습니다.")
-              }
-            } catch (error) {
-              // 프로젝트 권한 확인 오류
-              toast.error("프로젝트 권한 확인 중 오류가 발생했습니다.")
-            }
-          } else {
-            // 프로젝트가 없는 경우 (회사 레벨 인터뷰)
-            toast.info("해당 인터뷰는 특정 프로젝트에 속하지 않습니다.")
-          }
-        } else {
-          // 인터뷰를 찾지 못한 경우
-          toast.error("해당 인터뷰를 찾을 수 없습니다.")
-        }
-      } else {
-        toast.error("인터뷰 데이터를 불러오는데 실패했습니다.")
+      // 단일 API 호출로 인터뷰 검색과 권한 확인을 동시에 수행
+      const response = await fetch(
+        `/api/interviews/search-with-permissions?company_id=${profile?.company_id}&user_id=${profile?.id}&persona_name=${encodeURIComponent(personaName)}`
+      )
+      
+      if (!response.ok) {
+        toast.error("인터뷰 검색 중 오류가 발생했습니다.")
+        return
       }
+
+      const result = await response.json()
+      
+      if (!result.found) {
+        toast.error(result.message || "해당 인터뷰를 찾을 수 없습니다.")
+        return
+      }
+      
+      if (!result.hasAccess) {
+        toast.error(result.message || "해당 프로젝트에 접근할 권한이 없습니다.")
+        return
+      }
+      
+      const interview = result.interview
+      if (interview.project_id) {
+        // 권한이 있으면 프로젝트 페이지로 이동
+        router.push(`/projects/${interview.project_id}?interview=${interview.id}`)
+      } else {
+        // 프로젝트가 없는 경우 (회사 레벨 인터뷰)
+        toast.info("해당 인터뷰는 특정 프로젝트에 속하지 않습니다.")
+      }
+      
     } catch (error) {
-      // 인터뷰 검색 오류
       toast.error("인터뷰 검색 중 오류가 발생했습니다.")
     }
   }

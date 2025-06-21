@@ -144,31 +144,40 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         setLoading(true)
         setError(null)
         
-        const yearDataPromises = availableYears.map(async (year) => {
-          try {
-            const response = await fetch(`/api/insights?company_id=${profile?.company_id}&project_id=${project.id}&year=${year}`)
-            if (response.ok) {
-              const data = await response.json()
-              return { year, data }
+        // Batch API 호출로 모든 연도 데이터를 한 번에 가져오기
+        const response = await fetch('/api/insights/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            company_id: profile?.company_id,
+            project_id: project.id,
+            years: availableYears
+          })
+        })
+        
+        if (response.ok) {
+          const { results } = await response.json()
+          const newInsightData: InsightApiData = {}
+          
+          Object.entries(results).forEach(([year, data]: [string, any]) => {
+            newInsightData[year] = {
+              intervieweeCount: data.intervieweeCount || 0,
+              insights: data.insights || []
             }
-            return { year, data: { intervieweeCount: 0, insights: [] } }
-          } catch (err) {
-            // 인사이트 로드 실패
-            return { year, data: { intervieweeCount: 0, insights: [] } }
-          }
-        })
-        
-        const yearResults = await Promise.all(yearDataPromises)
-        const newInsightData: InsightApiData = {}
-        
-        yearResults.forEach(({ year, data }) => {
-          newInsightData[year] = {
-            intervieweeCount: data.intervieweeCount || 0,
-            insights: data.insights || []
-          }
-        })
-        
-        setInsightData(newInsightData)
+          })
+          
+          setInsightData(newInsightData)
+        } else {
+          setError('인사이트 데이터를 불러오는데 실패했습니다')
+          // 오류 시 빈 데이터로 초기화
+          const emptyData: InsightApiData = {}
+          availableYears.forEach(year => {
+            emptyData[year] = { intervieweeCount: 0, insights: [] }
+          })
+          setInsightData(emptyData)
+        }
         
       } catch (error) {
         // 인사이트 데이터 로드 실패
