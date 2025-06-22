@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Settings, FileText, BarChart3, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
+import { useProject } from '@/hooks/use-projects'
 import { toast } from 'sonner'
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
@@ -19,19 +20,6 @@ interface ProjectDetailContentProps {
   projectId: string
 }
 
-interface Project {
-  id: string
-  name: string
-  description: string
-  company_id: string
-  created_by: string
-  visibility: 'public' | 'private'
-  join_method: 'open' | 'invite_only' | 'password'
-  created_at: string
-  member_count?: number
-  interview_count?: number
-  persona_count?: number
-}
 
 const NavLink = ({ active, onClick, icon: Icon, children }: any) => (
   <button
@@ -62,11 +50,8 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { profile } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: project, isLoading, error, isError, refetch } = useProject(projectId)
   const [activeView, setActiveView] = useState('interviews')
-  const [retryCount, setRetryCount] = useState(0)
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {
@@ -75,99 +60,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       setActiveView('interviews')
     }
   }, [searchParams])
-
-  useEffect(() => {
-    if (!projectId) {
-      setError('프로젝트 ID가 없습니다')
-      setLoading(false)
-      return
-    }
-    
-    if (!profile?.id) {
-      // 프로필이 로딩 중일 수 있으므로 잠시 기다림
-      const timer = setTimeout(() => {
-        if (!profile?.id) {
-          setError('사용자 인증 정보가 없습니다. 다시 로그인해주세요.')
-          setLoading(false)
-        }
-      }, 5000) // 5초 후 타임아웃
-      
-      return () => clearTimeout(timer)
-    }
-    
-    fetchProject()
-    return undefined
-  }, [profile?.id, projectId])
-
-  const fetchProject = async (isRetry = false) => {
-    try {
-      setLoading(true)
-      if (!isRetry) {
-        setError(null)
-      }
-
-      if (!profile?.id) {
-        throw new Error('사용자 인증 정보가 없습니다')
-      }
-
-
-      // 타임아웃이 있는 fetch 함수
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
-
-      const response = await fetch(`/api/projects/${projectId}?user_id=${profile.id}&t=${Date.now()}`, {
-        signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
-      
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        
-        // 403 에러인 경우 권한 문제
-        if (response.status === 403) {
-          throw new Error('프로젝트에 접근할 권한이 없습니다')
-        }
-        
-        throw new Error(errorData.error || `서버 오류 (${response.status})`)
-      }
-      
-      const { data, success, error } = await response.json()
-      
-      if (!success) {
-        throw new Error(error || '알 수 없는 오류가 발생했습니다')
-      }
-      
-      if (!data) {
-        throw new Error('프로젝트 데이터가 없습니다')
-      }
-      
-      setProject(data)
-      setRetryCount(0) // 성공 시 재시도 카운트 리셋
-    } catch (err) {
-      
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError('요청 시간이 초과되었습니다. 다시 시도해주세요.')
-      } else {
-        const errorMessage = err instanceof Error ? err.message : '프로젝트를 불러오는 중 오류가 발생했습니다'
-        setError(errorMessage)
-        
-        // 자동 재시도 (최대 2번)
-        if (retryCount < 2 && !isRetry) {
-          setRetryCount(prev => prev + 1)
-          setTimeout(() => fetchProject(true), 2000 + retryCount * 1000) // 점진적 지연
-          return
-        }
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleViewChange = (view: string) => {
     setActiveView(view)
@@ -188,14 +80,14 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       case 'insights':
         return <ProjectInsights project={project} />
       case 'settings':
-        return <ProjectSettings project={project} onProjectUpdate={setProject} />
+        return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
       default:
         return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
     }
   }
 
   // 로딩 중에도 기본 레이아웃을 보여주되, 각 탭 컴포넌트에서 자체 로딩 처리
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50/50">
         {/* 헤더 스켈레톤 */}
@@ -245,7 +137,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     )
   }
 
-  if (error || !project) {
+  if (isError || !project) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="container mx-auto px-4 py-8">
@@ -255,19 +147,15 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
             </div>
             <h2 className="text-xl font-semibold text-red-600 mb-4">프로젝트 로딩 실패</h2>
             <p className="text-slate-600 mb-6 text-sm leading-relaxed">
-              {error || '프로젝트를 찾을 수 없습니다.'}
+              {error?.message || '프로젝트를 찾을 수 없습니다.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button 
                 variant="outline" 
-                onClick={() => {
-                  setError(null)
-                  setRetryCount(0)
-                  fetchProject()
-                }}
-                disabled={loading}
+                onClick={() => refetch()}
+                disabled={isLoading}
               >
-                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 다시 시도
               </Button>
               <Button 

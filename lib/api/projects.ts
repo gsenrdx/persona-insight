@@ -43,10 +43,12 @@ export const projectsApi = {
    */
   async getProject(
     token: string,
-    projectId: string
+    projectId: string,
+    userId?: string
   ): Promise<ApiResponse<ProjectWithMembership>> {
+    const queryParams = userId ? `?user_id=${userId}` : ''
     return apiClient.authenticatedRequest<ProjectWithMembership>(
-      `/api/projects/${projectId}`,
+      `/api/projects/${projectId}${queryParams}`,
       token
     )
   },

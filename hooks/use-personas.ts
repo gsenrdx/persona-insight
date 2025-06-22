@@ -17,7 +17,7 @@ import { PersonaData } from '@/types/persona'
 /**
  * 페르소나 목록 조회
  */
-export function usePersonas(query: PersonaListQuery = {}) {
+export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: boolean }) {
   const { user } = useAuth()
   
   return useQuery({
@@ -34,9 +34,10 @@ export function usePersonas(query: PersonaListQuery = {}) {
       const response = await personasApi.getPersonas(session.access_token, query)
       return extractApiData(response)
     },
-    enabled: !!user && (!!query.companyId || !!query.projectId),
-    staleTime: 2 * 60 * 1000, // 2분간 fresh 상태 유지
+    enabled: options?.enabled !== undefined ? options.enabled : (!!user && (!!query.companyId || !!query.projectId)),
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지 (중복 호출 방지)
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 자동 재요청 비활성화
   })
 }
 

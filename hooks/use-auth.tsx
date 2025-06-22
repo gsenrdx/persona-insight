@@ -3,6 +3,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/query-client'
+import { queryKeys } from '@/lib/query-keys'
+import { projectService } from '@/lib/api/projects'
 
 interface Profile {
   id: string
@@ -134,6 +137,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (mounted) {
               setProfile(profileData)
               setError(null)
+              
+              // 프로젝트 데이터 프리페칭
+              if (profileData.company_id && session) {
+                const fetchProjectsForPrefetch = async () => {
+                  const response = await projectService.getProjects(
+                    session.access_token,
+                    { companyId: profileData.company_id, userId: profileData.id }
+                  )
+                  return response.data
+                }
+                
+                queryClient.prefetchQuery({
+                  queryKey: queryKeys.projects.byCompanyAndUser(profileData.company_id, profileData.id),
+                  queryFn: fetchProjectsForPrefetch,
+                  staleTime: 5 * 60 * 1000, // 5분
+                })
+              }
             }
           } catch (err) {
             if (mounted) {
@@ -169,6 +189,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (mounted) {
                   setProfile(profileData)
                   setError(null)
+                  
+                  // 프로젝트 데이터 프리페칭
+                  if (profileData.company_id && session) {
+                    const fetchProjectsForPrefetch = async () => {
+                      const response = await projectService.getProjects(
+                        session.access_token,
+                        { companyId: profileData.company_id, userId: profileData.id }
+                      )
+                      return response.data
+                    }
+                    
+                    queryClient.prefetchQuery({
+                      queryKey: queryKeys.projects.byCompanyAndUser(profileData.company_id, profileData.id),
+                      queryFn: fetchProjectsForPrefetch,
+                      staleTime: 5 * 60 * 1000, // 5분
+                    })
+                  }
                 }
               } else {
                 setUser(null)

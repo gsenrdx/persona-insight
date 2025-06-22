@@ -19,7 +19,7 @@ import {
 /**
  * 프로젝트 목록 조회 (새로운 API 사용)
  */
-export function useProjects(query: ProjectListQuery = {}) {
+export function useProjects(query: ProjectListQuery = {}, options?: { enabled?: boolean; staleTime?: number; refetchOnMount?: boolean }) {
   const { user } = useAuth()
   
   return useQuery({
@@ -33,9 +33,10 @@ export function useProjects(query: ProjectListQuery = {}) {
       const response = await projectsApi.getProjects(session.access_token, query)
       return extractApiData(response)
     },
-    enabled: !!user && (!!query.companyId || !!query.userId),
-    staleTime: 1 * 60 * 1000, // 1분간 fresh 상태 유지
+    enabled: options?.enabled !== undefined ? options.enabled : (!!user && (!!query.companyId || !!query.userId)),
+    staleTime: options?.staleTime ?? 1 * 60 * 1000, // 1분간 fresh 상태 유지
     gcTime: 5 * 60 * 1000, // 5분간 캐시 유지
+    refetchOnMount: options?.refetchOnMount ?? true,
   })
 }
 
@@ -51,7 +52,7 @@ export function useProject(projectId: string) {
       if (!user) throw new Error('로그인이 필요합니다')
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
-      const response = await projectsApi.getProject(session.access_token, projectId)
+      const response = await projectsApi.getProject(session.access_token, projectId, user.id)
       return extractApiData(response)
     },
     enabled: !!user && !!projectId,
