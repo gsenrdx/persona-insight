@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -62,17 +65,25 @@
   },
   "devDependencies": {
     "@tanstack/react-query-devtools": "^5.80.10",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^8.34.1",
     "@typescript-eslint/parser": "^8.34.1",
+    "@vitejs/plugin-react": "^4.5.2",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.4",
     "eslint-config-prettier": "^10.1.5",
+    "happy-dom": "^18.0.1",
+    "jsdom": "^26.1.0",
     "postcss": "^8",
     "prettier": "^3.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
