@@ -22,14 +22,16 @@ export default function PersonaCardGrid() {
   const [filteredPersonas, setFilteredPersonas] = useState<PersonaCardData[]>([])
   const searchParams = useSearchParams()
 
-  // 새로운 usePersonas 훅 사용
+  // 새로운 usePersonas 훅 사용 - company_id가 있을 때만 실행
   const { 
     data: rawPersonas = [], 
     isLoading, 
     error,
     refetch 
   } = usePersonas({
-    companyId: profile?.company_id || undefined
+    companyId: profile?.company_id
+  }, {
+    enabled: !!profile?.company_id && !authLoading // 인증 로딩이 완료되고 company_id가 있을 때만 실행
   })
 
   // PersonaData를 PersonaCardData로 변환

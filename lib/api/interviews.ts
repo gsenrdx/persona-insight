@@ -22,7 +22,8 @@ export const interviewsApi = {
   ): Promise<ApiResponse<Interview[]>> {
     const searchParams = new URLSearchParams()
     
-    if (query.projectId) searchParams.set('projectId', query.projectId)
+    if (query.companyId) searchParams.set('company_id', query.companyId)
+    if (query.projectId) searchParams.set('project_id', query.projectId)
     if (query.status) searchParams.set('status', query.status)
     if (query.page) searchParams.set('page', query.page.toString())
     if (query.limit) searchParams.set('limit', query.limit.toString())

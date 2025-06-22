@@ -34,6 +34,9 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils/index'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
+import { projectsApi } from '@/lib/api'
 
 interface Project {
   id: string
@@ -93,47 +96,23 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
   })
   const [loading, setLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [members, setMembers] = useState<ProjectMember[]>([])
-  const [loadingMembers, setLoadingMembers] = useState(true)
 
   const canEdit = profile?.id === project.created_by
   const canDelete = profile?.id === project.created_by
 
-  // 멤버 목록 가져오기
-  useEffect(() => {
-    fetchMembers()
-  }, [project.id])
-
-  const fetchMembers = async () => {
-    try {
-      setLoadingMembers(true)
-      // Supabase 토큰 가져오기
+  // 멤버 목록 가져오기 - TanStack Query 사용
+  const { data: members = [], isLoading: loadingMembers } = useQuery({
+    queryKey: queryKeys.projects.member(project.id),
+    queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        // 액세스 토큰 없음
-        return
-      }
-
-      const response = await fetch(`/api/projects/${project.id}/members`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
+      if (!session?.access_token) throw new Error('인증 토큰이 없습니다')
       
-      if (response.ok) {
-        const { data, success, error } = await response.json()
-        if (success) {
-          setMembers(data)
-        } else {
-          // 멤버 로드 실패
-        }
-      }
-    } catch (error) {
-      // 멤버 로드 실패
-    } finally {
-      setLoadingMembers(false)
-    }
-  }
+      const response = await projectsApi.getProjectMembers(session.access_token, project.id)
+      return response.data || []
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시 유지
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 보관
+  })
 
   const handleSave = async () => {
     try {

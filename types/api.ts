@@ -196,6 +196,7 @@ export interface InterviewUploadRequest {
 }
 
 export interface InterviewListQuery {
+  companyId?: string
   projectId?: string
   status?: 'pending' | 'processing' | 'completed' | 'failed'
   page?: number

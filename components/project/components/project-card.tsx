@@ -6,6 +6,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileText, MoreHorizontal, Lock, Crown, UserCheck, Eye, Settings, UserPlus } from "lucide-react"
 import { ProjectWithMembership } from '@/types'
 import { useAuth } from '@/hooks/use-auth'
+import { queryClient } from '@/lib/query-client'
+import { queryKeys } from '@/lib/query-keys'
+import { projectsApi as projectService } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 
 interface ProjectCardProps {
   project: ProjectWithMembership
@@ -138,10 +142,33 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect }: ProjectCard
 
   const teamMembers = getTeamMembers()
 
+  // 프로젝트 카드 hover 시 프리페칭
+  const handleMouseEnter = async () => {
+    // 프로젝트 상세 정보 프리페치
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token && profile?.id) {
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.projects.detail(project.id),
+        queryFn: () => projectService.getProject(session.access_token, project.id, profile.id),
+        staleTime: 5 * 60 * 1000,
+      })
+
+      // 프로젝트 멤버 정보 프리페치
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.projects.member(project.id),
+        queryFn: () => projectService.getProjectMembers(session.access_token, project.id),
+        staleTime: 5 * 60 * 1000,
+      })
+
+      // 인터뷰 데이터는 프로젝트 상세 페이지에서 필요할 때만 로드
+    }
+  }
+
   return (
     <Card
       className="bg-white hover:shadow-lg transition-shadow duration-300 h-full flex flex-col cursor-pointer group"
       onClick={() => onSelect(project)}
+      onMouseEnter={handleMouseEnter}
     >
       <CardContent className="p-4 flex-grow">
         <div className="flex items-start justify-between mb-2">

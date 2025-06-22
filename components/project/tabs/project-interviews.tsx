@@ -36,6 +36,8 @@ const WorkflowProgressModal = dynamic(() => import('@/components/modal').then(mo
 })
 import { useWorkflowQueue, WorkflowJob } from '@/hooks/use-workflow-queue'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 
 interface Project {
   id: string
@@ -58,6 +60,7 @@ interface ProjectInterviewsProps {
 
 export default function ProjectInterviews({ project, selectedInterviewId }: ProjectInterviewsProps) {
   const { profile } = useAuth()
+  const queryClient = useQueryClient()
   const [interviews, setInterviews] = useState<IntervieweeData[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -66,7 +69,6 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
   const [offset, setOffset] = useState(0)
   const limit = 20
   const [selectedInterview, setSelectedInterview] = useState<IntervieweeData | null>(null)
-  const [criteriaConfig, setCriteriaConfig] = useState<any>(null)
   const [personaSynthesizing, setPersonaSynthesizing] = useState<string[]>([])
   const [showPersonaModal, setShowPersonaModal] = useState(false)
   const [selectedInterviewForPersona, setSelectedInterviewForPersona] = useState<IntervieweeData | null>(null)
@@ -92,38 +94,109 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
   } = useWorkflowQueue()
 
   useEffect(() => {
-    if (profile?.company_id && project?.id) {
-      fetchInterviews()
+    let abortController = new AbortController()
+    
+    const loadInterviews = async () => {
+      if (!profile?.company_id || !project?.id) return
+      
+      try {
+        setLoading(true)
+        setError(null)
+        setOffset(0)
+        setHasMore(true)
+        
+        // 캐시된 데이터 먼저 확인
+        const cachedKey = queryKeys.interviews.byProject(project.id, { limit: 20 })
+        const cachedData = queryClient.getQueryData(cachedKey)
+        
+        if (cachedData && Array.isArray(cachedData)) {
+          setInterviews(cachedData.slice(0, limit))
+          setHasMore(cachedData.length === 20)
+          setOffset(Math.min(cachedData.length, limit))
+          setLoading(false)
+          return
+        }
+        
+        const response = await fetch(
+          `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=0`,
+          { signal: abortController.signal }
+        )
+        
+        if (!response.ok) {
+          throw new Error('데이터를 가져오는데 실패했습니다')
+        }
+        
+        const { data, success, error } = await response.json()
+        if (!success) {
+          throw new Error(error || '데이터를 가져오는데 실패했습니다')
+        }
+        
+        if (!abortController.signal.aborted) {
+          setInterviews(data || [])
+          setHasMore((data || []).length === limit)
+          setOffset((data || []).length)
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setError(err.message)
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setLoading(false)
+        }
+      }
     }
-  }, [profile?.company_id, project?.id])
+    
+    loadInterviews()
+    
+    return () => {
+      abortController.abort()
+    }
+  }, [profile?.company_id, project?.id, limit, queryClient])
 
   // 무한 스크롤 처리
   useEffect(() => {
+    let scrollAbortController: AbortController | null = null
+    
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop >=
         document.documentElement.offsetHeight - 1000 // 하단 1000px 전에 로드
       ) {
         if (hasMore && !loading && !loadingMore) {
-          fetchInterviews(true)
+          if (scrollAbortController) {
+            scrollAbortController.abort()
+          }
+          scrollAbortController = new AbortController()
+          fetchInterviews(true, scrollAbortController.signal)
         }
       }
     }
 
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (scrollAbortController) {
+        scrollAbortController.abort()
+      }
+    }
   }, [hasMore, loading, loadingMore, offset])
 
-  useEffect(() => {
-    if (profile?.company_id) {
-      fetchCriteriaConfig()
-    }
-  }, [profile?.company_id])
+  // Persona criteria는 필요할 때만 로드 (현재는 사용하지 않음)
 
   // 워크플로우 완료 시 인터뷰 목록 새로고침
   useEffect(() => {
+    let refreshAbortController: AbortController | null = null
+    
     if (completedJobs.length > 0) {
-      fetchInterviews()
+      refreshAbortController = new AbortController()
+      fetchInterviews(false, refreshAbortController.signal)
+    }
+    
+    return () => {
+      if (refreshAbortController) {
+        refreshAbortController.abort()
+      }
     }
   }, [completedJobs.length])
 
@@ -139,16 +212,11 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
     }
   }, [selectedInterviewId, interviews])
 
-  const fetchInterviews = async (loadMore = false) => {
+  const fetchInterviews = async (loadMore = false, signal?: AbortSignal) => {
     try {
       if (loadMore) {
         setLoadingMore(true)
-      } else {
-        setLoading(true)
-        setOffset(0)
-        setHasMore(true)
       }
-      setError(null)
       
       if (!profile?.company_id || !project?.id) {
         setError('회사 또는 프로젝트 정보를 찾을 수 없습니다')
@@ -156,7 +224,22 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       }
 
       const currentOffset = loadMore ? offset : 0
-      const response = await fetch(`/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`)
+      
+      // 캐시된 데이터 먼저 확인
+      const cachedKey = queryKeys.interviews.byProject(project.id, { limit, offset: currentOffset })
+      const cachedData = queryClient.getQueryData(cachedKey)
+      
+      if (cachedData && !loadMore) {
+        setInterviews(cachedData as IntervieweeData[])
+        setHasMore((cachedData as IntervieweeData[]).length === limit)
+        setOffset((cachedData as IntervieweeData[]).length)
+        return
+      }
+      
+      const response = await fetch(
+        `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`,
+        { signal }
+      )
       
       if (!response.ok) {
         throw new Error('데이터를 가져오는데 실패했습니다')
@@ -166,6 +249,9 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       if (!success) {
         throw new Error(error || '데이터를 가져오는데 실패했습니다')
       }
+      
+      if (signal?.aborted) return
+      
       const newInterviews = data || []
       
       if (loadMore) {
@@ -179,29 +265,16 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       setOffset(currentOffset + newInterviews.length)
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다')
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError(err.message)
+      }
     } finally {
-      setLoading(false)
-      setLoadingMore(false)
+      if (!signal?.aborted) {
+        setLoadingMore(false)
+      }
     }
   }
 
-  const fetchCriteriaConfig = async () => {
-    try {
-      if (!profile?.company_id) return
-      
-      const response = await fetch(`/api/personas/criteria?company_id=${profile.company_id}`)
-      
-      if (response.ok) {
-        const { configuration, success } = await response.json()
-        if (success && configuration) {
-          setCriteriaConfig(configuration)
-        }
-      }
-    } catch (err) {
-      // 페르소나 기준 설정 로드 실패 처리
-    }
-  }
 
 
   const getTypeIcon = (userType: string) => {
@@ -443,7 +516,6 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
     return (
       <InterviewDetail
         interview={selectedInterview}
-        criteriaConfig={criteriaConfig}
         onBack={handleBackToList}
         onDelete={handleDeleteInterview}
       />

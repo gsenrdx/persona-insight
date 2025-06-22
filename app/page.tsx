@@ -6,6 +6,7 @@ import { TagList, SkeletonCardGrid, Navigation } from "@/components/shared"
 import AuthGuard from "@/components/auth/auth-guard"
 import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
+import { PagePrefetch } from "./page-prefetch"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
   const params = await searchParams
@@ -14,6 +15,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   return (
     <AuthGuard>
     <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
+      {/* 프로젝트 데이터 프리페칭 */}
+      <PagePrefetch />
       {/* 배경 장식 요소 */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
       <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />

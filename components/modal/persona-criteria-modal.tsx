@@ -113,6 +113,9 @@ export const PersonaCriteriaModal = ({
     queryFn: () => fetchPersonaCriteria(profile?.company_id!, projectId),
     enabled: !!profile?.company_id && open,
     staleTime: 5 * 60 * 1000, // 5분
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재요청 방지
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 재요청 방지
   })
 
   // 초기 축 설정
