@@ -54,6 +54,7 @@ export interface IntervieweeData {
   personas?: PersonaInfo | null
   profiles?: ProfileInfo | null
   created_by_profile?: ProfileInfo | null
+  note_count?: number
 }
 
 export interface IntervieweeApiResponse {

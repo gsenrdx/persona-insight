@@ -236,9 +236,11 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
           <Skeleton className="h-10 w-36 rounded-lg" />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 rounded-lg" />
+            <div key={i} className="border-b border-gray-100 last:border-b-0">
+              <Skeleton className="h-16 w-full" />
+            </div>
           ))}
         </div>
       </div>
@@ -318,13 +320,13 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {interviews.map((interview) => (
               <motion.div
                 key={interview.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
               >
                 <InterviewCard
                   interview={interview}

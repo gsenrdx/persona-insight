@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         created_by_profile:profiles!interviews_created_by_fkey(id, name),
-        persona:personas!interviews_persona_id_fkey(id, persona_type, persona_title)
+        persona:personas!interviews_persona_id_fkey(id, persona_type, persona_title),
+        interview_notes(id, is_deleted)
       `)
       .eq('company_id', companyId)
       .order('interview_date', { ascending: false })
@@ -78,8 +79,15 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // 메모 수 계산하여 추가 (삭제되지 않은 메모만 카운트)
+    const interviewsWithNoteCount = interviews?.map(interview => ({
+      ...interview,
+      note_count: interview.interview_notes?.filter(note => !note.is_deleted).length || 0,
+      interview_notes: undefined // 실제 메모 데이터는 제거하고 카운트만 전달
+    })) || []
+
     return NextResponse.json({
-      data: interviews || [],
+      data: interviewsWithNoteCount,
       success: true
     })
   } catch (error) {

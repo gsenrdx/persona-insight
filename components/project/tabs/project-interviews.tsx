@@ -597,20 +597,28 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
                   </div>
                   
                   {/* 메타정보 */}
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                    <span className="font-medium">
-                      {interview.created_by === profile?.id 
-                        ? profile?.name || '나'
-                        : interview.created_by_profile?.name || '팀원'
-                      }
-                    </span>
-                    <span>|</span>
-                    <span>
-                      {new Date(interview.created_at || '').toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </span>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {interview.created_by === profile?.id 
+                          ? profile?.name || '나'
+                          : interview.created_by_profile?.name || '팀원'
+                        }
+                      </span>
+                      <span>|</span>
+                      <span>
+                        {new Date(interview.created_at || '').toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    {interview.note_count > 0 && (
+                      <div className="flex items-center gap-1 text-gray-400">
+                        <MessageSquare className="w-3 h-3" />
+                        <span className="text-xs">{interview.note_count}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* 요약 */}

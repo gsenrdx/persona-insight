@@ -2,9 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { Interview } from '@/types/interview'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, MessageSquare, Lightbulb } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
 
@@ -26,46 +25,43 @@ export default function InterviewDetail({ interview, onBack }: InterviewDetailPr
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* 고정 헤더 영역 */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-200 bg-white">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="hover:bg-gray-100"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          뒤로가기
-        </Button>
-        <h1 className="text-lg font-semibold text-gray-900">
-          인터뷰 상세보기
-        </h1>
-        {interview.title && (
-          <span className="text-sm text-gray-500">
-            • {interview.title}
-          </span>
-        )}
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* 헤더 영역 */}
+      <div className="bg-white border-b border-gray-100">
+        {/* Breadcrumb */}
+        <div className="px-6 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-1.5 text-sm">
+            <button
+              onClick={onBack}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              인터뷰 관리
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-gray-700 font-medium">
+              {interview.title || '제목 없음'}
+            </span>
+          </div>
+        </div>
+        
       </div>
       
       {/* 탭 콘텐츠 */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
         {/* 탭 네비게이션 */}
-        <div className="bg-white border-b border-gray-200">
+        <div className="bg-white">
           <div className="px-6">
-            <TabsList className="h-12 bg-transparent p-0 border-b-0">
+            <TabsList className="h-11 bg-transparent p-0 gap-6">
               <TabsTrigger 
                 value="insights"
-                className="data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4"
+                className="h-11 px-0 pb-0 pt-0 rounded-none border-b-2 data-[state=active]:border-gray-900 data-[state=inactive]:border-transparent data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-500 hover:text-gray-700 transition-colors text-sm font-medium bg-transparent shadow-none"
               >
-                <Lightbulb className="w-4 h-4 mr-2" />
                 인사이트
               </TabsTrigger>
               <TabsTrigger 
                 value="script" 
-                className="data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4"
+                className="h-11 px-0 pb-0 pt-0 rounded-none border-b-2 data-[state=active]:border-gray-900 data-[state=inactive]:border-transparent data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-500 hover:text-gray-700 transition-colors text-sm font-medium bg-transparent shadow-none"
               >
-                <MessageSquare className="w-4 h-4 mr-2" />
                 대화 스크립트
               </TabsTrigger>
             </TabsList>

@@ -3,7 +3,7 @@
 import { Interview } from '@/types/interview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, User, Star, Hash, Target, Users } from 'lucide-react'
+import { Calendar, User, Star } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -126,66 +126,6 @@ export default function InterviewSummarySidebar({ interview }: InterviewSummaryS
             </div>
           )}
 
-          {/* 인사이트 통계 */}
-          {(interview?.primary_pain_points?.length > 0 || interview?.primary_needs?.length > 0) && (
-            <div className="pt-4 border-t border-gray-100">
-              <h4 className="text-xs font-semibold text-gray-700 mb-3">인사이트 통계</h4>
-              <div className="space-y-2">
-                {interview?.primary_pain_points?.length > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-red-50">
-                    <div className="flex items-center gap-2">
-                      <Target className="w-3.5 h-3.5 text-red-600" />
-                      <span className="text-xs font-medium text-red-700">Primary Pain Points</span>
-                    </div>
-                    <Badge variant="destructive" className="text-xs h-5 px-1.5">
-                      {interview.primary_pain_points.length}
-                    </Badge>
-                  </div>
-                )}
-                {interview?.primary_needs?.length > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-700">Primary Needs</span>
-                    </div>
-                    <Badge className="text-xs h-5 px-1.5">
-                      {interview.primary_needs.length}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 메타데이터 */}
-          <div className="pt-4 border-t border-gray-100">
-            <h4 className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <Hash className="w-3.5 h-3.5" />
-              기본 정보
-            </h4>
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs text-gray-500">제목</p>
-                <p className="text-xs font-medium text-gray-900">
-                  {interview?.title || '제목 없음'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">작성자</p>
-                <p className="text-xs font-medium text-gray-900">
-                  {interview?.created_by_profile?.name || '알 수 없음'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">생성일</p>
-                <p className="text-xs font-medium text-gray-900">
-                  {interview?.created_at 
-                    ? format(new Date(interview.created_at), 'yyyy년 M월 d일', { locale: ko })
-                    : '날짜 정보 없음'}
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* 페르소나 정보 */}
           {interview?.persona && (

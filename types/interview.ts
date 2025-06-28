@@ -88,6 +88,7 @@ export interface Interview {
     persona_type: string;
     persona_title: string | null;
   };
+  note_count?: number;
 }
 
 // 인터뷰 목록 필터

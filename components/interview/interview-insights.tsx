@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Interview, InsightItem } from '@/types/interview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import InterviewSummarySidebar from './interview-summary-sidebar'
-import { Lightbulb, AlertCircle, HelpCircle, Target } from 'lucide-react'
+import { Lightbulb, AlertCircle, HelpCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface InterviewInsightsProps {
   interview: Interview
@@ -12,11 +14,22 @@ interface InterviewInsightsProps {
 
 export default function InterviewInsights({ interview, onEvidenceClick }: InterviewInsightsProps) {
   const { key_takeaways, primary_pain_points, primary_needs, hmw_questions } = interview
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const handleEvidenceClick = (evidence: number[]) => {
     if (onEvidenceClick) {
       onEvidenceClick(evidence)
     }
+  }
+
+  const toggleExpanded = (itemId: string) => {
+    const newExpanded = new Set(expandedItems)
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId)
+    } else {
+      newExpanded.add(itemId)
+    }
+    setExpandedItems(newExpanded)
   }
 
   // 근거 문장들을 가져오는 함수
@@ -32,35 +45,43 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
 
   const renderInsightItem = (item: InsightItem, type: 'pain' | 'need', index: number) => {
     const evidenceSentences = getEvidenceSentences(item.evidence)
+    const itemId = `${type}-${index}`
+    const isExpanded = expandedItems.has(itemId)
     
     return (
       <div 
-        key={`${type}-${index}`}
-        className="pl-4 py-2"
+        key={itemId}
+        className="group"
       >
-        <p className="text-sm text-gray-800 leading-relaxed mb-2">
-          {item.description}
-        </p>
-        
-        {/* 근거 문장들 - 더 심플하게 */}
-        {evidenceSentences.length > 0 && (
-          <div className="space-y-1">
-            {evidenceSentences.slice(0, 2).map((sentence, idx) => (
-              <p 
-                key={`evidence-${idx}`}
-                className="text-xs text-gray-500 leading-relaxed pl-3 italic"
-              >
-                "{sentence.cleaned_sentence}"
-              </p>
-            ))}
-            {evidenceSentences.length > 2 && (
-              <button
-                onClick={() => handleEvidenceClick(item.evidence)}
-                className="text-xs text-gray-400 hover:text-gray-600 pl-3"
-              >
-                +{evidenceSentences.length - 2}개 더 보기
-              </button>
+        <div 
+          className="pl-4 py-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+          onClick={() => toggleExpanded(itemId)}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm text-gray-800 leading-relaxed flex-1">
+              {item.description}
+            </p>
+            {evidenceSentences.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-gray-600">
+                <span>{evidenceSentences.length}</span>
+                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </div>
             )}
+          </div>
+        </div>
+        
+        {/* 근거 문장들 - 토글 가능 */}
+        {evidenceSentences.length > 0 && isExpanded && (
+          <div className="ml-4 pl-4 border-l-2 border-gray-100 mt-2 space-y-2">
+            {evidenceSentences.map((sentence, idx) => (
+              <div 
+                key={`evidence-${idx}`}
+                className="text-xs text-gray-600 bg-gray-50 rounded-md p-3"
+              >
+                {sentence.speaker === 'question' && <span className="text-gray-400 mr-2">Q.</span>}
+                <span className="italic">{sentence.cleaned_sentence}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
