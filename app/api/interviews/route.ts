@@ -1,202 +1,133 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
-import { Database } from "@/types/database"
-import { Interviewee, Persona } from "@/types/project"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { getAuthenticatedUserProfile } from '@/lib/utils/auth-cache'
+import { Database } from '@/types/database'
+import { Interview } from '@/types/interview'
 
-type Profile = Database['public']['Tables']['profiles']['Row']
+const supabase = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-interface EnrichedInterviewee extends Interviewee {
-  personas: Pick<Persona, 'id' | 'persona_type' | 'persona_title' | 'persona_description' | 'active'> | null
-  created_by_profile: Pick<Profile, 'id' | 'name'> | null
-}
+// CRUD operations for interview data
 
-// CRUD operations for interview data with persona relationships
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
-
-    // company_id is required
-    if (!company_id) {
-      return NextResponse.json({
-        error: "company_id가 필요합니다",
-        success: false
-      }, { status: 400 })
+    const category = searchParams.get('category') // painpoint, needs, all
+    const searchTerm = searchParams.get('search')
+    
+    // 인증 처리 - 두 가지 방법 지원
+    let companyId: string
+    const urlCompanyId = searchParams.get('company_id')
+    const authorization = request.headers.get('authorization')
+    
+    if (authorization) {
+      // Authorization 헤더가 있으면 사용
+      const { companyId: authCompanyId } = await getAuthenticatedUserProfile(authorization, supabase)
+      companyId = authCompanyId
+    } else if (urlCompanyId) {
+      // URL 파라미터로 company_id가 전달되면 사용 (레거시 지원)
+      companyId = urlCompanyId
+    } else {
+      return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 })
     }
 
-    // 먼저 인터뷰 데이터만 가져오기
+    // 기본 쿼리
     let query = supabase
-      .from('interviewees')
-      .select('*')
-      .eq('company_id', company_id)
-      .order('session_date', { ascending: false })
+      .from('interviews')
+      .select(`
+        *,
+        created_by_profile:profiles!interviews_created_by_fkey(id, name),
+        persona:personas!interviews_persona_id_fkey(id, persona_type, persona_title)
+      `)
+      .eq('company_id', companyId)
+      .order('interview_date', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    // Project filtering
+    // 프로젝트 필터링
     if (project_id) {
       query = query.eq('project_id', project_id)
+    }
+
+    // 카테고리 필터링 - 새로운 스키마에 맞게 수정
+    // cleaned_script 배열에서 category 필드를 확인
+    if (category && category !== 'all') {
+      // JSONB 배열에서 특정 category를 포함하는 레코드 필터링
+      query = query.filter('cleaned_script', 'cs', { any: [{ category }] })
+    }
+
+    // 검색어 필터링 (cleaned_script에서 검색)
+    if (searchTerm) {
+      query = query.textSearch('cleaned_script', searchTerm, {
+        type: 'websearch',
+        config: 'korean'
+      })
     }
 
     const { data: interviews, error } = await query
 
     if (error) {
       return NextResponse.json({
-        error: "인터뷰 데이터를 가져오는데 실패했습니다",
+        error: '인터뷰 데이터를 가져오는데 실패했습니다',
         details: error.message,
         success: false
       }, { status: 500 })
     }
 
-    // 페르소나와 프로필 데이터 별도 조회
-    let enrichedData = interviews
-
-    if (interviews && interviews.length > 0) {
-      // persona_ids 수집
-      const personaIds = interviews
-        .filter(i => i.persona_id)
-        .map(i => i.persona_id)
-        .filter((id, index, self) => self.indexOf(id) === index)
-
-      // created_by ids 수집
-      const createdByIds = interviews
-        .filter(i => i.created_by)
-        .map(i => i.created_by)
-        .filter((id, index, self) => self.indexOf(id) === index)
-
-      // 페르소나 데이터 조회
-      let personasMap: Record<string, Pick<Persona, 'id' | 'persona_type' | 'persona_title' | 'persona_description' | 'active'>> = {}
-      if (personaIds.length > 0) {
-        const { data: personas } = await supabase
-          .from('personas')
-          .select('id, persona_type, persona_title, persona_description, active')
-          .in('id', personaIds)
-          .eq('active', true)
-
-        if (personas) {
-          personasMap = personas.reduce((acc, p) => {
-            acc[p.id] = p
-            return acc
-          }, {} as typeof personasMap)
-        }
-      }
-
-      // 프로필 데이터 조회
-      let profilesMap: Record<string, Pick<Profile, 'id' | 'name'>> = {}
-      if (createdByIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', createdByIds)
-
-        if (profiles) {
-          profilesMap = profiles.reduce((acc, p) => {
-            acc[p.id] = p
-            return acc
-          }, {} as typeof profilesMap)
-        }
-      }
-
-      // 데이터 결합
-      enrichedData = interviews.map((interview): EnrichedInterviewee => ({
-        ...interview,
-        personas: interview.persona_id ? personasMap[interview.persona_id] || null : null,
-        created_by_profile: interview.created_by ? profilesMap[interview.created_by] || null : null
-      }))
-    }
-
-    // Add cache headers for performance
-    const headers = {
-      'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600'
-    }
-
     return NextResponse.json({
-      data: enrichedData,
-      success: true
-    }, { headers })
-  } catch (error) {
-    return NextResponse.json({
-      error: "인터뷰 데이터를 가져오는데 실패했습니다",
-      success: false
-    }, { status: 500 })
-  }
-}
-
-// Create new interview
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    
-    const { data, error } = await supabase
-      .from('interviewees')
-      .insert([body])
-      .select()
-
-    if (error) {
-      return NextResponse.json({
-        error: "인터뷰 데이터 저장에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      data: data[0],
-      success: true
-    }, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({
-      error: "인터뷰 데이터 저장에 실패했습니다",
-      success: false
-    }, { status: 500 })
-  }
-}
-
-// Update interview data
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json()
-    const { id, ...updateData } = body
-    
-    if (!id) {
-      return NextResponse.json({
-        error: "ID가 필요합니다",
-        success: false
-      }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('interviewees')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-
-    if (error) {
-      return NextResponse.json({
-        error: "인터뷰 데이터 업데이트에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json({
-        error: "해당 ID의 데이터를 찾을 수 없습니다",
-        success: false
-      }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      data: data[0],
+      data: interviews || [],
       success: true
     })
   } catch (error) {
     return NextResponse.json({
-      error: "인터뷰 데이터 업데이트에 실패했습니다",
+      error: '인터뷰 데이터를 가져오는데 실패했습니다',
+      success: false
+    }, { status: 500 })
+  }
+}
+
+// 새 인터뷰 생성 - workflow에서 호출됨
+export async function POST(request: NextRequest) {
+  try {
+    const authorization = request.headers.get('authorization')
+    if (!authorization) {
+      return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 })
+    }
+
+    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabase)
+    const body = await request.json()
+    
+    const { data, error } = await supabase
+      .from('interviews')
+      .insert([{
+        ...body,
+        company_id: companyId,
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({
+        error: '인터뷰 데이터 저장에 실패했습니다',
+        details: error.message,
+        success: false
+      }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      data,
+      success: true
+    }, { status: 201 })
+  } catch (error) {
+    return NextResponse.json({
+      error: '인터뷰 데이터 저장에 실패했습니다',
       success: false
     }, { status: 500 })
   }

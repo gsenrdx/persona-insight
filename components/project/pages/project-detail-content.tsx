@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from "next/link"
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Settings, FileText, BarChart3, Loader2 } from "lucide-react"
+import { ArrowLeft, Settings, FileText, BarChart3, Loader2, Shield, ChevronUp } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject } from '@/hooks/use-projects'
 import { toast } from 'sonner'
@@ -13,8 +13,10 @@ import UserMenu from "@/components/auth/user-menu"
 import CompanyBranding from "@/components/auth/company-branding"
 import { Navigation } from "@/components/shared"
 import ProjectSettings from '@/components/project/tabs/project-settings'
-import ProjectInterviews from '@/components/project/tabs/project-interviews'
+import ProjectInterviews from '@/components/project/tabs/project-interviews-new'
 import ProjectInsights from '@/components/project/tabs/project-insights'
+import { MaskingTest } from '@/components/test/masking-test'
+import { cn } from '@/lib/utils'
 
 interface ProjectDetailContentProps {
   projectId: string
@@ -52,6 +54,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const searchParams = useSearchParams()
   const { data: project, isLoading, error, isError, refetch } = useProject(projectId)
   const [activeView, setActiveView] = useState('interviews')
+  const [showScrollTop, setShowScrollTop] = useState(false)
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {
@@ -60,6 +63,20 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       setActiveView('interviews')
     }
   }, [searchParams])
+
+  // 스크롤 이벤트 핸들러
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const handleViewChange = (view: string) => {
     setActiveView(view)
@@ -81,6 +98,8 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         return <ProjectInsights project={project} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
+      case 'masking-test':
+        return <MaskingTest projectId={project.id} />
       default:
         return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
     }
@@ -114,6 +133,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
             </div>
             <nav className="p-4">
               <div className="space-y-1">
+                <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
@@ -175,7 +195,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   return (
     <div className="min-h-screen bg-slate-50/50">
       {/* 헤더 */}
-      <header className="bg-white border-b border-slate-200">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -197,8 +217,8 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       <div className="flex">
         {/* Sidebar */}
         <aside 
-          className="w-64 bg-white border-r border-slate-200 min-h-[calc(100vh-73px)]"
-          style={{ pointerEvents: 'auto', zIndex: 10, position: 'relative' }}
+          className="w-64 bg-white border-r border-slate-200 fixed left-0 top-[73px] h-[calc(100vh-73px)] overflow-y-auto"
+          style={{ pointerEvents: 'auto', zIndex: 10 }}
         >
           <div className="p-4 border-b border-slate-200">
             <div className="flex items-center gap-4">
@@ -241,17 +261,39 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
               >
                 프로젝트 설정
               </NavLink>
+              
+              <NavLink 
+                active={activeView === 'masking-test'} 
+                onClick={() => handleViewChange('masking-test')} 
+                icon={Shield}
+              >
+                마스킹 테스트
+              </NavLink>
             </div>
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 bg-white">
-          <div className="p-6">
+        <main className="flex-1 bg-white ml-64">
+          <div className="p-6 h-full">
             {renderContent()}
           </div>
         </main>
       </div>
+      
+      {/* 맨 위로 이동 버튼 */}
+      <button
+        onClick={scrollToTop}
+        className={cn(
+          "fixed bottom-8 right-8 p-3 bg-white rounded-full shadow-lg border border-gray-200",
+          "hover:shadow-xl hover:border-gray-300 transition-all duration-200",
+          "flex items-center justify-center z-50",
+          showScrollTop ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+        )}
+        aria-label="맨 위로 이동"
+      >
+        <ChevronUp className="w-5 h-5 text-gray-600" />
+      </button>
     </div>
   )
 }

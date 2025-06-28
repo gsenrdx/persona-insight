@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder, FolderOpen, Loader2 } from "lucide-react";
+import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder, FolderOpen, Loader2, Shield, FileText, Type } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Select, 
@@ -67,8 +67,10 @@ const SUGGESTED_CRITERIA = [
 ];
 
 export default function AddInterviewModal({ open, onClose, onComplete, onOpenChange, onFilesSubmit, projectId }: AddInterviewModalProps) {
-  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드
+  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드 또는 텍스트 입력
   const [files, setFiles] = useState<File[]>([]);
+  const [textInput, setTextInput] = useState(''); // 직접 입력한 텍스트
+  const [inputMode, setInputMode] = useState<'file' | 'text'>('file'); // 입력 모드
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractionCriteria, setExtractionCriteria] = useState<ExtractionCriteria[]>(DEFAULT_CRITERIA);
@@ -76,6 +78,8 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
   const [newCriteriaDescription, setNewCriteriaDescription] = useState('');
   const [editingCriteria, setEditingCriteria] = useState<string | null>(null);
   const [showFileList, setShowFileList] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false); // 파일 처리 중 상태
+  const [isSubmitting, setIsSubmitting] = useState(false); // 제출 중 상태
   
   // 프로젝트 관련 상태
   const [projects, setProjects] = useState<any[]>([]);
@@ -85,8 +89,23 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { profile } = useAuth();
 
+  // 파일을 텍스트로 읽는 함수
+  const readFileAsText = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        resolve(text);
+      };
+      reader.onerror = (e) => {
+        reject(new Error('파일을 읽을 수 없습니다.'));
+      };
+      reader.readAsText(file);
+    });
+  };
+
   // 프로젝트 목록 가져오기
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     if (!profile?.company_id || !profile?.id) return;
     
     try {
@@ -110,7 +129,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, [profile?.company_id, profile?.id]);
 
   // 모달이 열릴 때 프로젝트 목록 가져오기
   useEffect(() => {
@@ -123,7 +142,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
         fetchProjects();
       }
     }
-  }, [open, profile?.company_id, profile?.id, projectId]);
+  }, [open, profile?.company_id, profile?.id, projectId, fetchProjects]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -287,12 +306,16 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
       setError(null);
       setCurrentStep(1);
     } else if (currentStep === 1) {
-      if (files.length === 0) {
+      if (inputMode === 'file' && files.length === 0) {
         setError("분석할 파일을 먼저 선택해주세요");
         return;
       }
+      if (inputMode === 'text' && !textInput.trim()) {
+        setError("분석할 텍스트를 입력해주세요");
+        return;
+      }
       setError(null);
-      // 파일 업로드 후 바로 제출
+      // 제출
       handleSubmit();
     }
   };
@@ -305,19 +328,47 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
   };
 
   const handleSubmit = async () => {
-    if (files.length === 0) {
-      setError("분석할 파일을 먼저 선택해주세요");
-      return;
-    }
-    
     if (!selectedProjectId) {
       setError("프로젝트를 선택해주세요");
       return;
     }
     
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
+      let textToSubmit = '';
+      
+      if (inputMode === 'file') {
+        if (files.length === 0) {
+          setError("분석할 파일을 먼저 선택해주세요");
+          return;
+        }
+        
+        // 파일을 텍스트로 변환
+        setIsProcessingFile(true);
+        try {
+          const fileTexts = await Promise.all(files.map(file => readFileAsText(file)));
+          textToSubmit = fileTexts.join('\n\n---\n\n'); // 여러 파일을 구분자로 연결
+        } catch (error) {
+          setError("파일을 읽는 중 오류가 발생했습니다.");
+          setIsProcessingFile(false);
+          return;
+        }
+        setIsProcessingFile(false);
+      } else {
+        // 텍스트 모드
+        if (!textInput.trim()) {
+          setError("분석할 텍스트를 입력해주세요");
+          return;
+        }
+        textToSubmit = textInput;
+      }
+      
+      // 텍스트를 API로 전송
       if (onFilesSubmit) {
-        await onFilesSubmit(files, extractionCriteria, selectedProjectId);
+        // onFilesSubmit을 텍스트 전송용으로 활용 (extractionCriteria 제거)
+        await onFilesSubmit(textToSubmit, selectedProjectId);
       }
       
       // 성공적으로 완료되면 onComplete 호출
@@ -329,8 +380,11 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
       handleModalClose(false);
     } catch (error) {
       // 에러가 발생하면 모달을 닫지 않고 에러 메시지 표시
-      const errorMessage = error instanceof Error ? error.message : "파일 업로드 중 오류가 발생했습니다. 다시 시도해주세요.";
+      const errorMessage = error instanceof Error ? error.message : "분석 중 오류가 발생했습니다. 다시 시도해주세요.";
       setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+      setIsProcessingFile(false);
     }
   };
 
@@ -338,11 +392,15 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
     if (!newOpen) {
       setCurrentStep(projectId ? 1 : 0); // projectId가 있으면 파일 업로드 단계로 리셋
       setFiles([]);
+      setTextInput('');
+      setInputMode('file');
       setExtractionCriteria(DEFAULT_CRITERIA);
       setNewCriteriaName('');
       setNewCriteriaDescription('');
       setEditingCriteria(null);
       setShowFileList(false);
+      setIsProcessingFile(false);
+      setIsSubmitting(false);
       if (!projectId) {
         setSelectedProjectId('');
       }
@@ -462,7 +520,7 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
     </div>
   );
 
-  // 1단계: 파일 업로드
+  // 1단계: 파일 업로드 또는 텍스트 입력
   const FileUploadStep = () => (
     <div className="space-y-6">
       <div className="text-center space-y-3">
@@ -470,52 +528,120 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
           <Folder className="h-6 w-6 text-blue-600" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">분석할 파일을 선택해주세요</h3>
-          <p className="text-sm text-gray-600 mt-1">인터뷰 내용이 담긴 파일을 업로드해주세요</p>
+          <h3 className="text-lg font-semibold text-gray-900">인터뷰 내용을 입력해주세요</h3>
+          <p className="text-sm text-gray-600 mt-1">파일을 업로드하거나 텍스트를 직접 입력할 수 있습니다</p>
         </div>
       </div>
       
-      <div
-        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
-          isDragging 
-            ? 'border-blue-400 bg-blue-50' 
-            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
-        }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          multiple
-          accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
-        />
-        
-        <div className="space-y-4">
-          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
+      {/* 탭 선택 */}
+      <div className="flex bg-gray-100 rounded-lg p-1">
+        <button
+          type="button"
+          onClick={() => setInputMode('file')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
+            inputMode === 'file'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <FileUp className="h-4 w-4" />
+          <span className="text-sm font-medium">파일 업로드</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setInputMode('text')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
+            inputMode === 'text'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Type className="h-4 w-4" />
+          <span className="text-sm font-medium">텍스트 입력</span>
+        </button>
+      </div>
+      
+      {/* 파일 업로드 모드 */}
+      {inputMode === 'file' ? (
+        <>
+          <div
+            className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
+              isDragging 
+                ? 'border-blue-400 bg-blue-50' 
+                : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              multiple
+              accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
+            />
+            
+            <div className="space-y-4">
+              <Upload className="h-8 w-8 text-gray-400 mx-auto" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">
+                  파일을 드래그하거나 선택해주세요
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleUploadClick}
+                  size="sm"
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  파일 선택
+                </Button>
+                <p className="text-xs text-gray-500">
+                  텍스트 파일 · 최대 10MB
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <FilesSummary />
+        </>
+      ) : (
+        /* 텍스트 입력 모드 */
+        <>
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">
-              파일을 드래그하거나 선택해주세요
-            </p>
-            <Button
-              type="button"
-              onClick={handleUploadClick}
-              size="sm"
-              className="bg-gray-900 hover:bg-gray-800 text-white"
-            >
-              파일 선택
-            </Button>
-            <p className="text-xs text-gray-500">
-              PDF, Word, Excel, 텍스트 파일 · 최대 10MB
+            <Label htmlFor="interview-text">인터뷰 내용</Label>
+            <Textarea
+              id="interview-text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="인터뷰 내용을 여기에 입력하세요..."
+              className="min-h-[300px] resize-none font-mono text-sm"
+            />
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-gray-500">
+                질문과 답변을 구분하여 입력하면 더 정확한 분석이 가능합니다
+              </p>
+              <p className="text-xs text-gray-500">
+                {textInput.length} 글자
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* 개인정보 보호 안내 */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+        <div className="flex items-start gap-2">
+          <Shield className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-blue-900">개인정보 자동 보호</p>
+            <p className="text-xs text-blue-700">
+              업로드된 파일의 이름, 전화번호, 이메일 등 개인정보가 자동으로 마스킹되어 안전하게 저장됩니다.
             </p>
           </div>
         </div>
       </div>
-      
-      <FilesSummary />
     </div>
   );
 
@@ -784,16 +910,25 @@ export default function AddInterviewModal({ open, onClose, onComplete, onOpenCha
               onClick={handleNextStep}
               disabled={
                 (currentStep === 0 && !projectId && !selectedProjectId) ||
-                (currentStep === 1 && files.length === 0)
+                (currentStep === 1 && ((inputMode === 'file' && files.length === 0) || (inputMode === 'text' && !textInput.trim()))) ||
+                isProcessingFile ||
+                isSubmitting
               }
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {currentStep === 1 ? (
-                <>
-                  <Sparkles className="h-3 w-3 mr-2" />
-                  분석 시작
-                </>
+                isProcessingFile || isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    {isProcessingFile ? '처리 중...' : '분석 중...'}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-2" />
+                    분석 시작
+                  </>
+                )
               ) : (
                 <>
                   다음

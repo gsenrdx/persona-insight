@@ -39,6 +39,61 @@ export type Database = {
         }
         Relationships: []
       }
+      interviews: {
+        Row: {
+          id: string
+          company_id: string
+          project_id: string | null
+          raw_text: string | null
+          cleaned_script: Json | null
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          project_id?: string | null
+          raw_text?: string | null
+          cleaned_script?: Json | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          project_id?: string | null
+          raw_text?: string | null
+          cleaned_script?: Json | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       interviewees: {
         Row: {
           company_id: string
@@ -53,11 +108,12 @@ export type Database = {
           persona_id: string | null
           persona_reflected: boolean | null
           project_id: string | null
-          session_date: string
+          raw_text: string | null
+          session_date: string | null
           thumbnail: string | null
           updated_at: string | null
           user_description: string | null
-          user_type: string
+          user_type: string | null
           x_axis: Json | null
           y_axis: Json | null
         }
@@ -74,6 +130,7 @@ export type Database = {
           persona_id?: string | null
           persona_reflected?: boolean | null
           project_id?: string | null
+          raw_text?: string | null
           session_date: string
           thumbnail?: string | null
           updated_at?: string | null
@@ -95,6 +152,7 @@ export type Database = {
           persona_id?: string | null
           persona_reflected?: boolean | null
           project_id?: string | null
+          raw_text?: string | null
           session_date?: string
           thumbnail?: string | null
           updated_at?: string | null

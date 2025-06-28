@@ -115,7 +115,7 @@ export interface WorkflowJob {
 export interface AddInterviewModalProps extends BaseModalProps {
   onClose?: () => void
   onComplete?: () => void
-  onFilesSubmit?: (files: File[], criteria: ExtractionCriteria[], projectId?: string) => void | Promise<void>
+  onFilesSubmit?: (textOrFiles: string | File[], projectId?: string) => void | Promise<void>
   projectId?: string
 }
 

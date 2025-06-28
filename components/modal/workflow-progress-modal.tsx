@@ -32,7 +32,8 @@ import {
   Battery,
   TrendingUp,
   Brain,
-  Eye
+  Eye,
+  Shield
 } from "lucide-react";
 import { WorkflowJob, WorkflowStatus } from "@/hooks/use-workflow-queue";
 import React, { useState, useCallback, useEffect } from "react";
@@ -214,6 +215,10 @@ const JobCard = React.memo(({
         <div className="flex items-center gap-2">
           <File className="h-3 w-3 text-gray-500 flex-shrink-0" />
           <span className="text-xs font-medium text-gray-900 truncate">{job.fileName}</span>
+          {/* 마스킹 표시 */}
+          {job.fileName.includes('[') && job.fileName.includes(']') && (
+            <Shield className="h-3 w-3 text-blue-500 flex-shrink-0" title="개인정보 마스킹됨" />
+          )}
         </div>
         
         <div className="flex items-center gap-2">

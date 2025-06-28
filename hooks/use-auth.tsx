@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/query-client'
 import { queryKeys } from '@/lib/query-keys'
-import { projectService } from '@/lib/api/projects'
+import { projectsApi } from '@/lib/api/projects'
 
 interface Profile {
   id: string
@@ -28,6 +28,7 @@ interface Profile {
 interface AuthContextType {
   user: User | null
   profile: Profile | null
+  session: any | null
   loading: boolean
   error: string | null
   signOut: () => Promise<void>
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [session, setSession] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -95,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 상태 초기화
       setUser(null)
       setProfile(null)
+      setSession(null)
       
       // localStorage의 workflow queue 데이터 정리
       localStorage.removeItem('workflow_queue_jobs')
@@ -132,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           setUser(session.user)
+          setSession(session)
           try {
             const profileData = await fetchProfile(session.user.id)
             if (mounted) {
@@ -141,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // 프로젝트 데이터 프리페칭
               if (profileData.company_id && session) {
                 const fetchProjectsForPrefetch = async () => {
-                  const response = await projectService.getProjects(
+                  const response = await projectsApi.getProjects(
                     session.access_token,
                     { companyId: profileData.company_id, userId: profileData.id }
                   )
@@ -165,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUser(null)
           setProfile(null)
+          setSession(null)
         }
 
         // 인증 상태 변화 리스너 등록
@@ -175,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // SIGNED_OUT 이벤트 처리
             if (event === 'SIGNED_OUT') {
               setUser(null)
+              setSession(null)
               setProfile(null)
               setError(null)
               // localStorage 정리
@@ -185,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               if (session?.user) {
                 setUser(session.user)
+                setSession(session)
                 const profileData = await fetchProfile(session.user.id)
                 if (mounted) {
                   setProfile(profileData)
@@ -210,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } else {
                 setUser(null)
                 setProfile(null)
+                setSession(null)
                 setError(null)
                 // localStorage 정리
                 localStorage.removeItem('workflow_queue_jobs')
@@ -248,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     profile,
+    session,
     loading,
     error,
     signOut,

@@ -59,7 +59,7 @@ interface ProjectInterviewsProps {
 }
 
 export default function ProjectInterviews({ project, selectedInterviewId }: ProjectInterviewsProps) {
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const queryClient = useQueryClient()
   const [interviews, setInterviews] = useState<IntervieweeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -238,7 +238,12 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       
       const response = await fetch(
         `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=${limit}&offset=${currentOffset}`,
-        { signal }
+        { 
+          signal,
+          headers: {
+            'Authorization': session?.access_token ? `Bearer ${session.access_token}` : ''
+          }
+        }
       )
       
       if (!response.ok) {
@@ -835,12 +840,50 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         onOpenChange={setShowAddInterviewModal}
         onClose={() => setShowAddInterviewModal(false)}
         onComplete={handleAddInterviewComplete}
-        onFilesSubmit={(files, criteria, projectId) => {
+        onFilesSubmit={async (textOrFiles, criteria, projectId) => {
           // 현재 프로젝트 ID로 설정
           const targetProjectId = project?.id || projectId;
-          addJobs(files, targetProjectId!, criteria);
-          if (files.length > 0) {
-            setIsProgressModalOpen(true);
+          
+          if (typeof textOrFiles === 'string') {
+            // 텍스트 직접 제출
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.access_token) {
+                throw new Error('인증 정보를 찾을 수 없습니다.');
+              }
+              
+              const response = await fetch('/api/workflow', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  text: textOrFiles,
+                  projectId: targetProjectId
+                })
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || errorData.error || '분석 중 오류가 발생했습니다.');
+              }
+              
+              const result = await response.json();
+              toast.success('인터뷰 분석이 완료되었습니다.');
+              
+              // 인터뷰 목록 새로고침
+              await fetchInterviews();
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : '분석 중 오류가 발생했습니다.');
+              throw error; // 모달이 열려 있도록 에러를 다시 throw
+            }
+          } else {
+            // 기존 파일 처리 방식 (호환성 유지)
+            addJobs(textOrFiles, targetProjectId!, criteria);
+            if (textOrFiles.length > 0) {
+              setIsProgressModalOpen(true);
+            }
           }
         }}
         projectId={project?.id}
