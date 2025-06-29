@@ -8,9 +8,7 @@ import { useProjects, useCreateProject, CreateProjectData } from '@/hooks/use-pr
 import { ProjectWithMembership } from '@/types'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
-import UserMenu from "@/components/auth/user-menu"
-import CompanyBranding from "@/components/auth/company-branding"
-import { Navigation } from "@/components/shared"
+import { AppLayout } from "@/components/layout/app-layout"
 import { PersonaCriteriaModal } from '@/components/modal'
 import { ProjectHeader } from '../sections/project-header'
 import { ProjectGrid } from '../sections/project-grid'
@@ -158,27 +156,8 @@ export function ProjectPageContent() {
   }
 
   return (
-    <>
-      {/* 헤더 */}
-      <header className="container mx-auto px-4 py-8 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex flex-col gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-baseline">
-                <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-                <CompanyBranding />
-              </div>
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Navigation />
-            <UserMenu />
-          </div>
-        </div>
-      </header>
-
-      {/* 메인 컨텐츠 */}
-      <main className="container mx-auto px-4 py-8 relative z-10">
+    <AppLayout>
+      <div className="container mx-auto px-4 py-8">
         <ProjectHeader
           projectCount={filteredProjects.length}
           onShowPersonaCriteria={() => setShowPersonaCriteriaModal(true)}
@@ -198,7 +177,7 @@ export function ProjectPageContent() {
           onSelectProject={handleSelectProject}
           onCreateProject={() => setShowCreateForm(true)}
         />
-      </main>
+      </div>
 
       {/* 프로젝트 생성 다이얼로그 */}
       {profile?.company_id && profile?.id && (
@@ -216,6 +195,6 @@ export function ProjectPageContent() {
         open={showPersonaCriteriaModal}
         onOpenChange={setShowPersonaCriteriaModal}
       />
-    </>
+    </AppLayout>
   )
 }

@@ -3,20 +3,21 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils/index"
+import { motion } from "framer-motion"
 
 const navigationItems = [
   {
-    name: "페르소나 대화",
+    name: "페르소나",
     href: "/",
     description: "고객과 실시간 대화"
   },
   {
-    name: "연간 인사이트 분석", 
+    name: "인사이트", 
     href: "/insights",
-    description: "종합 데이터 분석"
+    description: "연간 데이터 분석"
   },
   {
-    name: "프로젝트 관리",
+    name: "프로젝트",
     href: "/projects",
     description: "프로젝트 및 인터뷰 관리"
   }
@@ -26,7 +27,7 @@ export function Navigation() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex items-center">
+    <nav className="flex items-center gap-1">
       {navigationItems.map((item) => {
         const isActive = pathname === item.href || 
           (item.href !== "/" && pathname.startsWith(item.href))
@@ -36,18 +37,28 @@ export function Navigation() {
             key={item.href}
             href={item.href}
             className={cn(
-              "px-4 py-3 text-sm font-medium transition-colors",
+              "relative px-4 py-2 text-sm font-medium rounded-lg transition-all",
+              "hover:bg-gray-100 dark:hover:bg-gray-800",
               isActive 
-                ? "text-foreground font-semibold" 
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-gray-900 dark:text-gray-100" 
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
             )}
           >
-            <span className={cn(
-              isActive && "underline decoration-2 decoration-foreground underline-offset-4"
-            )}>{item.name}</span>
+            {item.name}
+            {isActive && (
+              <motion.div
+                layoutId="navigation-indicator"
+                className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600"
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30
+                }}
+              />
+            )}
           </Link>
         )
       })}
     </nav>
   )
-} 
+}

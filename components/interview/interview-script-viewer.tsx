@@ -5,7 +5,6 @@ import { CleanedScriptItem } from '@/types/interview'
 import { Interview } from '@/types/interview'
 import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import InterviewSummarySidebar from './interview-summary-sidebar'
 import { useInterviewNotes } from '@/hooks/use-interview-notes'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -114,31 +113,26 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   }
 
   return (
-    <div className={cn("flex h-full bg-gray-50 overflow-auto", className)}>
-      {/* 왼쪽 사이드바 - 인터뷰 요약 */}
-      {interview && <InterviewSummarySidebar interview={interview} />}
-
+    <div className={cn("h-full overflow-auto bg-white", className)}>
       {/* 메인 콘텐츠 영역 */}
-      <div className="flex-1 bg-white relative overflow-hidden">
+      <div className="relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
-          {/* 헤더 영역 */}
-          <div className="border-b border-gray-100 px-8 py-3 bg-gray-50/50 sticky top-0 z-10">
+          {/* 헤더 영역 - 제목과 검색 바 */}
+          <div className="px-8 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">대화 스크립트</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Interview Script</p>
+                <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
+                <p className="text-xs text-gray-500 mt-1">Interview Script</p>
               </div>
-              
-              {/* 검색 바 - 우측 배치 */}
-              <div className="relative">
+              <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-56 pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
+                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
                 />
               </div>
             </div>
@@ -146,7 +140,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
 
           {/* 스크립트 내용 */}
           <div className="flex-1 overflow-y-auto" ref={scriptContainerRef}>
-            <div className="mx-auto px-8 py-8" style={{ maxWidth: (notes.length > 0 || editingMemoId) ? '1600px' : '1024px' }}>
+            <div className="mx-auto px-8 py-6" style={{ maxWidth: (notes.length > 0 || editingMemoId) ? '1600px' : '1024px' }}>
             {filteredScript.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-400 text-sm">
@@ -154,7 +148,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {filteredScript.map((item, index) => {
                   const scriptId = item.id.join('-')
                   const memo = memosByScriptId[scriptId]
@@ -164,41 +158,34 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                   return (
                     <div
                       key={scriptId}
-                      className="relative flex gap-12"
+                      className="relative flex gap-8"
                     >
                       {/* 왼쪽 화자 표시 영역 */}
-                      <div className="w-20 flex-shrink-0 pt-1">
-                        <div className="flex items-center justify-center">
-                          {!isConsecutiveSameSpeaker && (
-                            <span className={cn(
-                              "text-xs font-medium px-2 py-0.5 rounded",
-                              item.speaker === 'question' 
-                                ? "bg-gray-100 text-gray-600" 
-                                : "bg-blue-50 text-blue-600"
-                            )}>
-                              {item.speaker === 'question' ? 'Q' : 'A'}
-                            </span>
-                          )}
-                        </div>
+                      <div className="w-12 flex-shrink-0 pt-0.5">
+                        {!isConsecutiveSameSpeaker && (
+                          <span className={cn(
+                            "text-xs font-medium",
+                            item.speaker === 'question' 
+                              ? "text-gray-500" 
+                              : "text-blue-600"
+                          )}>
+                            {item.speaker === 'question' ? 'Q.' : 'A.'}
+                          </span>
+                        )}
                       </div>
                       
                       {/* 스크립트 내용 */}
-                      <div className={cn(
-                        "flex-1 relative group",
-                        isConsecutiveSameSpeaker && "pl-4 border-l-2", // 인용구일 때 더 많은 여백
-                        isConsecutiveSameSpeaker && item.speaker === 'question' && "border-gray-200",
-                        isConsecutiveSameSpeaker && item.speaker !== 'question' && "border-blue-200"
-                      )}>
+                      <div className="flex-1 relative group">
                         {/* 카테고리 라벨 */}
                         {item.category && (
-                          <div className="mb-2">
+                          <div className="mb-1">
                             <span className={cn(
-                              "text-xs font-medium px-2 py-0.5 rounded-full",
+                              "text-xs",
                               item.category === 'painpoint' 
-                                ? "bg-red-100 text-red-600" 
-                                : "bg-blue-100 text-blue-600"
+                                ? "text-red-600" 
+                                : "text-blue-600"
                             )}>
-                              {item.category === 'painpoint' ? 'Pain Point' : 'Need'}
+                              • {item.category === 'painpoint' ? 'Pain Point' : 'Need'}
                             </span>
                           </div>
                         )}
@@ -208,27 +195,25 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                           <div 
                             data-script-id={scriptId}
                             className={cn(
-                              "text-[15px] leading-relaxed select-text inline", // inline으로 변경
+                              "text-sm leading-relaxed select-text",
                               item.speaker === 'question' 
-                                ? "text-gray-600 font-medium" 
-                                : "text-gray-800",
-                              memo && "border-b-2 border-yellow-300" // 메모가 있으면 언더라인 효과
+                                ? "text-gray-600" 
+                                : "text-gray-700",
+                              memo && "bg-yellow-50 px-2 py-1 rounded border-l-2 border-yellow-300"
                             )}
                           >
                             {highlightText(item.cleaned_sentence, item.category || undefined)}
                           </div>
                           
-                          {/* 호버 시 메모 추가 버튼 - 텍스트 끝에 위치 */}
+                          {/* 호버 시 메모 추가 버튼 */}
                           {!memo && !editingMemoId && (
-                            <span className="inline-block ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                              <button
-                                onClick={() => setEditingMemoId(scriptId)}
-                                className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-                                title="댓글 추가"
-                              >
-                                <MessageSquare className="w-4 h-4 text-gray-400" />
-                              </button>
-                            </span>
+                            <button
+                              onClick={() => setEditingMemoId(scriptId)}
+                              className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                              title="메모 추가"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>

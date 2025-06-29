@@ -1,944 +1,397 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useState, useRef, useCallback } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AddInterviewModalProps } from "@/types/components";
+import { toast } from "sonner";
+import { X, Upload, FileText, Plus, Loader2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Upload, FileUp, File, X, Check, AlertCircle, CheckCircle2, Plus, Settings, Sparkles, ArrowRight, ArrowLeft, Edit3, Folder, FolderOpen, Loader2, Shield, FileText, Type } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { ExtractionCriteria, AddInterviewModalProps } from "@/types/components";
+import { cn } from "@/lib/utils";
+import { SUPPORTED_FILE_EXTENSIONS, MAX_FILE_SIZE_MB, getFileTypeDescription } from "@/lib/constants/file-upload";
+import { preprocessFileOnClient } from "@/lib/utils/client-file-parser";
 
-// 10MB 크기 제한 (바이트 단위)
-const MAX_FILE_SIZE = 10 * 1024 * 1024; 
-
-// 지원하는 파일 형식
-const SUPPORTED_FILE_TYPES = [
-  'text/plain', 'text/markdown', 'text/mdx', 'text/x-markdown',
-  'application/pdf', 'text/html', 
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv',
-  'message/rfc822', 'application/vnd.ms-outlook',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint',
-  'application/xml', 'application/epub+zip'
-];
-
-// 지원하는 파일 확장자
-const SUPPORTED_FILE_EXTENSIONS = [
-  '.txt', '.md', '.mdx', '.markdown', '.pdf', '.html', 
-  '.xlsx', '.xls', '.docx', '.csv', '.eml', '.msg', 
-  '.pptx', '.ppt', '.xml', '.epub'
-];
-
-// 기본 추출 기준
-const DEFAULT_CRITERIA: ExtractionCriteria[] = [
-  { 
-    id: 'painpoint', 
-    name: '페인포인트', 
-    description: '사용자가 겪는 문제와 불편함',
-    isDefault: true 
-  },
-  { 
-    id: 'needs', 
-    name: '니즈', 
-    description: '사용자가 원하는 것들',
-    isDefault: true 
-  }
-];
-
-// 추천 기준 예시
-const SUGGESTED_CRITERIA = [
-  { name: '사용자 경험', description: '전반적인 사용 경험과 만족도' },
-  { name: '개선사항', description: '더 나아질 수 있는 부분들' },
-  { name: '선호도', description: '좋아하는 기능이나 특성' },
-  { name: '불편사항', description: '구체적인 불편함과 장애요소' },
-  { name: '기대사항', description: '앞으로 바라는 점들' },
-  { name: '사용 패턴', description: '이용 방식과 습관' }
-];
-
-export default function AddInterviewModal({ open, onClose, onComplete, onOpenChange, onFilesSubmit, projectId }: AddInterviewModalProps) {
-  const [currentStep, setCurrentStep] = useState(0); // 0: 프로젝트 선택, 1: 파일 업로드 또는 텍스트 입력
-  const [files, setFiles] = useState<File[]>([]);
-  const [textInput, setTextInput] = useState(''); // 직접 입력한 텍스트
-  const [inputMode, setInputMode] = useState<'file' | 'text'>('file'); // 입력 모드
+export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, projectId }: AddInterviewModalProps) {
+  const [interviews, setInterviews] = useState<{id: string; type: 'file' | 'text'; name: string; content: File | string; title: string;}[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [extractionCriteria, setExtractionCriteria] = useState<ExtractionCriteria[]>(DEFAULT_CRITERIA);
-  const [newCriteriaName, setNewCriteriaName] = useState('');
-  const [newCriteriaDescription, setNewCriteriaDescription] = useState('');
-  const [editingCriteria, setEditingCriteria] = useState<string | null>(null);
-  const [showFileList, setShowFileList] = useState(false);
-  const [isProcessingFile, setIsProcessingFile] = useState(false); // 파일 처리 중 상태
-  const [isSubmitting, setIsSubmitting] = useState(false); // 제출 중 상태
-  
-  // 프로젝트 관련 상태
-  const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInput, setTextInput] = useState('');
+  const [textTitle, setTextTitle] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { profile } = useAuth();
 
-  // 파일을 텍스트로 읽는 함수
-  const readFileAsText = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        resolve(text);
-      };
-      reader.onerror = (e) => {
-        reject(new Error('파일을 읽을 수 없습니다.'));
-      };
-      reader.readAsText(file);
+  // 파일 처리
+  const processFiles = useCallback((files: FileList) => {
+    const validFiles: File[] = [];
+    
+    Array.from(files).forEach(file => {
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        toast.error(`${file.name}: 파일이 너무 큽니다 (최대 ${MAX_FILE_SIZE_MB}MB)`);
+        return;
+      }
+      validFiles.push(file);
     });
+
+    if (validFiles.length > 0) {
+      const newInterviews = validFiles.map(file => ({
+        id: `${Date.now()}-${Math.random()}`,
+        type: 'file' as const,
+        name: file.name,
+        content: file,
+        title: "" // 사용자가 직접 입력하도록 빈 문자열로 설정
+      }));
+      
+      setInterviews(prev => [...prev, ...newInterviews]);
+      toast.info('파일이 추가되었습니다. 각 인터뷰의 제목을 입력해주세요.');
+    }
+  }, []);
+
+  // 파일 선택 처리
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    processFiles(files);
+    if (e.target) e.target.value = '';
   };
 
-  // 프로젝트 목록 가져오기
-  const fetchProjects = useCallback(async () => {
-    if (!profile?.company_id || !profile?.id) return;
-    
-    try {
-      setLoadingProjects(true);
-      const response = await fetch(`/api/projects?company_id=${profile.company_id}&user_id=${profile.id}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        // \ud504\ub85c\uc81d\ud2b8 \uac00\uc838\uc624\uae30 \uc2e4\ud328
-        throw new Error('프로젝트를 불러올 수 없습니다.');
-      }
-      
-      const { data, success, error } = await response.json();
-      if (!success) {
-        throw new Error(error || '프로젝트를 불러올 수 없습니다.');
-      }
-      setProjects(data || []);
-    } catch (error) {
-      // \ud504\ub85c\uc81d\ud2b8 \ub85c\ub4dc \uc2e4\ud328
-      setError('프로젝트 목록을 불러오는데 실패했습니다.');
-    } finally {
-      setLoadingProjects(false);
-    }
-  }, [profile?.company_id, profile?.id]);
-
-  // 모달이 열릴 때 프로젝트 목록 가져오기
-  useEffect(() => {
-    if (open && profile?.company_id && profile?.id) {
-      if (projectId) {
-        // projectId가 있으면 프로젝트 선택 단계 건너뛰기
-        setSelectedProjectId(projectId);
-        setCurrentStep(1); // 파일 업로드 단계로 바로 이동
-      } else {
-        fetchProjects();
-      }
-    }
-  }, [open, profile?.company_id, profile?.id, projectId, fetchProjects]);
-
-  const handleDragOver = (e: React.DragEvent) => {
+  // 드래그 이벤트 처리
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
+    e.stopPropagation();
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  }, []);
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  
-  // 파일 유효성 검사 함수
-  const validateFile = (file: File): string | null => {
-    if (file.size > MAX_FILE_SIZE) {
-      return `파일이 너무 커요 (최대 10MB)`;
-    }
-    
-    const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
-    if (!SUPPORTED_FILE_TYPES.includes(file.type) && 
-        !SUPPORTED_FILE_EXTENSIONS.some(ext => fileExtension === ext)) {
-      return `지원하지 않는 파일 형식이에요`;
-    }
-    
-    if (file.size === 0) {
-      return `빈 파일은 업로드할 수 없어요`;
-    }
-    
-    return null;
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      const validFiles: File[] = [];
-      const errors: string[] = [];
-      
-      droppedFiles.forEach(file => {
-        const validationError = validateFile(file);
-        if (validationError) {
-          errors.push(`${file.name}: ${validationError}`);
-        } else {
-          validFiles.push(file);
-        }
-      });
-      
-      if (errors.length > 0) {
-        setError(errors.join('\n'));
-      } else {
-        setError(null);
-      }
-      
-      if (validFiles.length > 0) {
-        setFiles(prev => [...prev, ...validFiles]);
-      }
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processFiles(files);
     }
-  };
+  }, [processFiles]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selectedFiles = Array.from(e.target.files);
-      const validFiles: File[] = [];
-      const errors: string[] = [];
-      
-      selectedFiles.forEach(file => {
-        const validationError = validateFile(file);
-        if (validationError) {
-          errors.push(`${file.name}: ${validationError}`);
-        } else {
-          validFiles.push(file);
-        }
-      });
-      
-      if (errors.length > 0) {
-        setError(errors.join('\n'));
-      } else {
-        setError(null);
-      }
-      
-      if (validFiles.length > 0) {
-        setFiles(prev => [...prev, ...validFiles]);
-      }
-    }
-    
-    if (e.target) {
-      e.target.value = '';
-    }
-  };
-
-  const handleRemoveFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-    setError(null);
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleAddCriteria = (suggestedCriteria?: { name: string; description: string }) => {
-    const nameToAdd = suggestedCriteria?.name || newCriteriaName.trim();
-    const descriptionToAdd = suggestedCriteria?.description || newCriteriaDescription.trim();
-    
-    if (!nameToAdd) {
-      setError('기준 이름을 입력해주세요');
+  // 텍스트 추가
+  const handleAddText = () => {
+    if (!textInput.trim()) {
+      toast.error('내용을 입력해주세요');
       return;
     }
     
-    const isDuplicate = extractionCriteria.some(
-      criteria => criteria.name.toLowerCase() === nameToAdd.toLowerCase()
-    );
+    const defaultTitle = textTitle.trim() || `텍스트 입력 ${new Date().toLocaleDateString()}`;
     
-    if (isDuplicate) {
-      setError('이미 추가된 기준이에요');
-      return;
-    }
-    
-    const newCriteria: ExtractionCriteria = {
-      id: `custom-${Date.now()}`,
-      name: nameToAdd,
-      description: descriptionToAdd || `${nameToAdd}에 대한 내용을 분석해요`,
-      isDefault: false
+    const newInterview = {
+      id: `${Date.now()}-${Math.random()}`,
+      type: 'text' as const,
+      name: defaultTitle,
+      content: textInput,
+      title: defaultTitle
     };
     
-    setExtractionCriteria(prev => [...prev, newCriteria]);
-    if (!suggestedCriteria) {
-      setNewCriteriaName('');
-      setNewCriteriaDescription('');
-    }
-    setError(null);
+    setInterviews(prev => [...prev, newInterview]);
+    setTextInput('');
+    setTextTitle('');
+    setShowTextInput(false);
   };
 
-  const handleUpdateCriteria = (id: string, name: string, description: string) => {
-    setExtractionCriteria(prev => 
-      prev.map(criteria => 
-        criteria.id === id 
-          ? { ...criteria, name: name.trim(), description: description.trim() }
-          : criteria
-      )
-    );
-    setEditingCriteria(null);
+  // 제목 업데이트
+  const updateTitle = (id: string, title: string) => {
+    setInterviews(prev => prev.map(item => 
+      item.id === id ? { ...item, title } : item
+    ));
   };
 
-  const handleRemoveCriteria = (id: string) => {
-    setExtractionCriteria(prev => prev.filter(criteria => criteria.id !== id));
+  // 삭제
+  const removeInterview = (id: string) => {
+    setInterviews(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAddCriteria();
-    }
-  };
-
-  const handleNextStep = () => {
-    if (currentStep === 0 && !projectId) {
-      if (!selectedProjectId) {
-        setError("프로젝트를 선택해주세요");
-        return;
-      }
-      setError(null);
-      setCurrentStep(1);
-    } else if (currentStep === 1) {
-      if (inputMode === 'file' && files.length === 0) {
-        setError("분석할 파일을 먼저 선택해주세요");
-        return;
-      }
-      if (inputMode === 'text' && !textInput.trim()) {
-        setError("분석할 텍스트를 입력해주세요");
-        return;
-      }
-      setError(null);
-      // 제출
-      handleSubmit();
-    }
-  };
-
-  const handlePreviousStep = () => {
-    if (currentStep === 1 && !projectId) {
-      setCurrentStep(0);
-      setError(null);
-    }
-  };
-
+  // 제출
   const handleSubmit = async () => {
-    if (!selectedProjectId) {
-      setError("프로젝트를 선택해주세요");
+    if (interviews.length === 0) {
+      toast.error('인터뷰를 추가해주세요');
+      return;
+    }
+
+    // 제목이 없는 인터뷰 확인
+    const untitledInterviews = interviews.filter(item => !item.title.trim());
+    if (untitledInterviews.length > 0) {
+      toast.error('모든 인터뷰에 제목을 입력해주세요');
+      // 첫 번째 제목 없는 인터뷰에 포커스
+      const firstUntitled = untitledInterviews[0];
+      if (firstUntitled) {
+        const inputElement = document.querySelector(`[data-interview-id="${firstUntitled.id}"]`) as HTMLInputElement;
+        if (inputElement) {
+          inputElement.focus();
+        }
+      }
       return;
     }
     
     setIsSubmitting(true);
-    setError(null);
     
     try {
-      let textToSubmit = '';
-      
-      if (inputMode === 'file') {
-        if (files.length === 0) {
-          setError("분석할 파일을 먼저 선택해주세요");
-          return;
+      // 각 인터뷰를 개별적으로 처리
+      const promises = interviews.map(async (item) => {
+        // 각 인터뷰를 개별적으로 제출
+        if (onFilesSubmit) {
+          if (item.type === 'file') {
+            // PDF 파일은 클라이언트에서 텍스트 추출 시도
+            const file = item.content as File;
+            const processed = await preprocessFileOnClient(file);
+            
+            if (processed.type === 'text') {
+              // PDF에서 텍스트 추출 성공 - 텍스트로 전송
+              return onFilesSubmit(processed.content as string, projectId, item.title);
+            } else {
+              // 다른 파일이거나 PDF 처리 실패 - 파일로 전송
+              return onFilesSubmit(processed.content as File, projectId, item.title);
+            }
+          } else {
+            // 텍스트는 그대로 전달
+            return onFilesSubmit(item.content as string, projectId, item.title);
+          }
         }
-        
-        // 파일을 텍스트로 변환
-        setIsProcessingFile(true);
-        try {
-          const fileTexts = await Promise.all(files.map(file => readFileAsText(file)));
-          textToSubmit = fileTexts.join('\n\n---\n\n'); // 여러 파일을 구분자로 연결
-        } catch (error) {
-          setError("파일을 읽는 중 오류가 발생했습니다.");
-          setIsProcessingFile(false);
-          return;
-        }
-        setIsProcessingFile(false);
-      } else {
-        // 텍스트 모드
-        if (!textInput.trim()) {
-          setError("분석할 텍스트를 입력해주세요");
-          return;
-        }
-        textToSubmit = textInput;
-      }
+      });
       
-      // 텍스트를 API로 전송
-      if (onFilesSubmit) {
-        // onFilesSubmit을 텍스트 전송용으로 활용 (extractionCriteria 제거)
-        await onFilesSubmit(textToSubmit, selectedProjectId);
-      }
+      // 모든 인터뷰를 병렬로 처리
+      await Promise.all(promises);
       
-      // 성공적으로 완료되면 onComplete 호출
-      if (onComplete) {
-        onComplete();
-      }
+      toast.success(`${interviews.length}개의 인터뷰가 처리 중입니다`);
       
-      // 모달 닫기
-      handleModalClose(false);
+      setInterviews([]);
+      setTextInput('');
+      setTextTitle('');
+      setShowTextInput(false);
+      onOpenChange?.(false);
     } catch (error) {
-      // 에러가 발생하면 모달을 닫지 않고 에러 메시지 표시
-      const errorMessage = error instanceof Error ? error.message : "분석 중 오류가 발생했습니다. 다시 시도해주세요.";
-      setError(errorMessage);
+      toast.error('처리 중 오류가 발생했습니다');
     } finally {
       setIsSubmitting(false);
-      setIsProcessingFile(false);
     }
   };
 
-  const handleModalClose = (newOpen: boolean) => {
-    if (!newOpen) {
-      setCurrentStep(projectId ? 1 : 0); // projectId가 있으면 파일 업로드 단계로 리셋
-      setFiles([]);
-      setTextInput('');
-      setInputMode('file');
-      setExtractionCriteria(DEFAULT_CRITERIA);
-      setNewCriteriaName('');
-      setNewCriteriaDescription('');
-      setEditingCriteria(null);
-      setShowFileList(false);
-      setIsProcessingFile(false);
-      setIsSubmitting(false);
-      if (!projectId) {
-        setSelectedProjectId('');
-      }
-      setError(null);
-      if (onClose) {
-        onClose();
-      } else if (onOpenChange) {
-        onOpenChange(false);
-      }
-    } else if (onOpenChange) {
-      onOpenChange(newOpen);
-    }
-  };
 
-  // 파일 요약 정보 컴포넌트
-  const FilesSummary = () => {
-    if (files.length === 0) return null;
-    
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
-    
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-green-900">
-              {files.length}개 파일 선택됨 ({totalSizeMB}MB)
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowFileList(!showFileList)}
-            className="text-green-700 hover:text-green-800 h-6 px-2"
-          >
-            {showFileList ? '숨기기' : '보기'}
-          </Button>
-        </div>
-        
-        <AnimatePresence>
-          {showFileList && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-3 space-y-2 max-h-32 overflow-y-auto"
-            >
-              {files.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <File className="h-3 w-3 text-green-600 flex-shrink-0" />
-                    <span className="text-xs text-green-800 truncate">{file.name}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveFile(index)}
-                    className="h-5 w-5 text-green-400 hover:text-red-500 flex-shrink-0"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  };
-
-  // 0단계: 프로젝트 선택
-  const ProjectSelectionStep = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-3">
-        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-          <FolderOpen className="h-6 w-6 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">프로젝트를 선택해주세요</h3>
-          <p className="text-sm text-gray-600 mt-1">분석 결과가 저장될 프로젝트를 선택해주세요</p>
-        </div>
-      </div>
-      
-      {loadingProjects ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="ml-2 text-sm text-gray-600">프로젝트 목록 로딩 중...</span>
-        </div>
-      ) : projects.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-xl">
-          <FolderOpen className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-          <p className="text-sm text-gray-600 mb-2">사용 가능한 프로젝트가 없습니다</p>
-          <p className="text-xs text-gray-500">프로젝트를 먼저 생성해주세요</p>
-        </div>
-      ) : (
-        <Select onValueChange={setSelectedProjectId} value={selectedProjectId}>
-          <SelectTrigger className="w-full h-11 text-sm">
-            <SelectValue placeholder="프로젝트를 선택하세요..." />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </div>
-  );
-
-  // 1단계: 파일 업로드 또는 텍스트 입력
-  const FileUploadStep = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-3">
-        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-          <Folder className="h-6 w-6 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">인터뷰 내용을 입력해주세요</h3>
-          <p className="text-sm text-gray-600 mt-1">파일을 업로드하거나 텍스트를 직접 입력할 수 있습니다</p>
-        </div>
-      </div>
-      
-      {/* 탭 선택 */}
-      <div className="flex bg-gray-100 rounded-lg p-1">
-        <button
-          type="button"
-          onClick={() => setInputMode('file')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
-            inputMode === 'file'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <FileUp className="h-4 w-4" />
-          <span className="text-sm font-medium">파일 업로드</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setInputMode('text')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
-            inputMode === 'text'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Type className="h-4 w-4" />
-          <span className="text-sm font-medium">텍스트 입력</span>
-        </button>
-      </div>
-      
-      {/* 파일 업로드 모드 */}
-      {inputMode === 'file' ? (
-        <>
-          <div
-            className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
-              isDragging 
-                ? 'border-blue-400 bg-blue-50' 
-                : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-              multiple
-              accept=".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
-            />
-            
-            <div className="space-y-4">
-              <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">
-                  파일을 드래그하거나 선택해주세요
-                </p>
-                <Button
-                  type="button"
-                  onClick={handleUploadClick}
-                  size="sm"
-                  className="bg-gray-900 hover:bg-gray-800 text-white"
-                >
-                  파일 선택
-                </Button>
-                <p className="text-xs text-gray-500">
-                  텍스트 파일 · 최대 10MB
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <FilesSummary />
-        </>
-      ) : (
-        /* 텍스트 입력 모드 */
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="interview-text">인터뷰 내용</Label>
-            <Textarea
-              id="interview-text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="인터뷰 내용을 여기에 입력하세요..."
-              className="min-h-[300px] resize-none font-mono text-sm"
-            />
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-gray-500">
-                질문과 답변을 구분하여 입력하면 더 정확한 분석이 가능합니다
-              </p>
-              <p className="text-xs text-gray-500">
-                {textInput.length} 글자
-              </p>
-            </div>
-          </div>
-        </>
-      )}
-      
-      {/* 개인정보 보호 안내 */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-        <div className="flex items-start gap-2">
-          <Shield className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-blue-900">개인정보 자동 보호</p>
-            <p className="text-xs text-blue-700">
-              업로드된 파일의 이름, 전화번호, 이메일 등 개인정보가 자동으로 마스킹되어 안전하게 저장됩니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // 2단계: 분석 기준 설정
-  const CriteriaSetupStep = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-3">
-        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-          <Settings className="h-6 w-6 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">어떤 내용을 분석할까요?</h3>
-          <p className="text-sm text-gray-600 mt-1">분석 기준을 추가하면 더 정확한 결과를 얻을 수 있어요</p>
-        </div>
-      </div>
-      
-      {/* 현재 설정된 기준 */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-900">분석 기준 ({extractionCriteria.length}개)</h4>
-        <div className="space-y-2">
-          {extractionCriteria.map((criteria) => (
-            <div
-              key={criteria.id}
-              className="p-3 bg-white border border-gray-200 rounded-xl"
-            >
-              {editingCriteria === criteria.id ? (
-                <CriteriaEditForm 
-                  criteria={criteria}
-                  onSave={handleUpdateCriteria}
-                  onCancel={() => setEditingCriteria(null)}
-                />
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{criteria.name}</span>
-                      {criteria.isDefault && (
-                        <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600">
-                          기본
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-600">{criteria.description}</p>
-                  </div>
-                  {!criteria.isDefault && (
-                    <div className="flex items-center gap-1 ml-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingCriteria(criteria.id)}
-                        className="h-6 w-6 text-gray-400 hover:text-gray-600"
-                      >
-                        <Edit3 className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveCriteria(criteria.id)}
-                        className="h-6 w-6 text-gray-400 hover:text-red-500"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* 새 기준 추가 */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-900">새 기준 추가</h4>
-        <div className="space-y-2">
-          <Input
-            value={newCriteriaName}
-            onChange={(e) => setNewCriteriaName(e.target.value)}
-            placeholder="분석 기준 이름"
-            className="text-sm"
-          />
-          <Textarea
-            value={newCriteriaDescription}
-            onChange={(e) => setNewCriteriaDescription(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="어떤 내용을 분석하고 싶은지 설명해주세요"
-            className="text-sm resize-none"
-            rows={2}
-          />
-          <Button
-            type="button"
-            onClick={() => handleAddCriteria()}
-            disabled={!newCriteriaName.trim()}
-            size="sm"
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white"
-          >
-            <Plus className="h-3 w-3 mr-2" />
-            기준 추가
-          </Button>
-        </div>
-      </div>
-      
-      {/* 추천 기준 */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-900">추천 기준</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {SUGGESTED_CRITERIA.filter(suggested => 
-            !extractionCriteria.some(criteria => 
-              criteria.name.toLowerCase() === suggested.name.toLowerCase()
-            )
-          ).slice(0, 6).map((suggested) => (
-            <button
-              key={suggested.name}
-              onClick={() => handleAddCriteria(suggested)}
-              className="p-2 text-left border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-            >
-              <p className="text-xs font-medium text-gray-900">{suggested.name}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{suggested.description}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // 기준 편집 폼 컴포넌트
-  const CriteriaEditForm = ({ 
-    criteria, 
-    onSave, 
-    onCancel 
-  }: { 
-    criteria: ExtractionCriteria;
-    onSave: (id: string, name: string, description: string) => void;
-    onCancel: () => void;
-  }) => {
-    const [editName, setEditName] = useState(criteria.name);
-    const [editDescription, setEditDescription] = useState(criteria.description);
-    
-    const handleSave = () => {
-      if (editName.trim()) {
-        onSave(criteria.id, editName, editDescription);
-      }
-    };
-    
-    return (
-      <div className="space-y-2">
-        <Input
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          className="text-sm font-medium"
-          placeholder="기준 이름"
-        />
-        <Textarea
-          value={editDescription}
-          onChange={(e) => setEditDescription(e.target.value)}
-          className="text-sm resize-none"
-          rows={2}
-          placeholder="기준 설명"
-        />
-        <div className="flex gap-2">
-          <Button
-            onClick={handleSave}
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-          >
-            저장
-          </Button>
-          <Button
-            onClick={onCancel}
-            variant="outline"
-            size="sm"
-            className="text-xs"
-          >
-            취소
-          </Button>
-        </div>
-      </div>
-    );
+  // 모달 닫기 시 상태 초기화
+  const handleClose = () => {
+    setInterviews([]);
+    setTextInput('');
+    setTextTitle('');
+    setShowTextInput(false);
+    setIsDragging(false);
+    onOpenChange?.(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleModalClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-3xl p-0 gap-0 h-[85vh] flex flex-col">
+        <DialogTitle className="sr-only">인터뷰 추가</DialogTitle>
+        
         {/* 헤더 */}
-        <div className="p-6 pb-4 flex-shrink-0">
-          <DialogHeader className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold text-gray-900">
-                  인터뷰 분석하기
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  {currentStep === 1 ? "파일을 업로드해주세요" : "분석 기준을 설정해주세요"}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-xl font-semibold">인터뷰 추가</h2>
         </div>
-        
-        {/* 컨텐츠 */}
-        <div className="px-6 overflow-y-auto flex-1 min-h-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {currentStep === 0 && !projectId && <ProjectSelectionStep />}
-              {currentStep === 1 && <FileUploadStep />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        
-        {/* 에러 메시지 */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mx-6 mb-4 flex-shrink-0"
-            >
-              <div className="bg-red-50 border border-red-200 p-3 rounded-xl">
-                <div className="flex gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-red-700">
-                    {error}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* 푸터 */}
-        <div className="p-6 pt-4 border-t border-gray-100 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-              {currentStep > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={handlePreviousStep}
-                  size="sm"
-                  className="text-gray-600"
-                >
-                  <ArrowLeft className="h-3 w-3 mr-2" />
-                  이전
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                onClick={() => onOpenChange?.(false)}
-                size="sm"
-                className="text-gray-600"
-              >
-                취소
-              </Button>
-            </div>
+
+        {/* 본문 */}
+        <div className="flex-1 overflow-auto">
+          <div className="p-6 space-y-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              accept={SUPPORTED_FILE_EXTENSIONS.join(',')}
+            />
             
-            <Button
-              onClick={handleNextStep}
-              disabled={
-                (currentStep === 0 && !projectId && !selectedProjectId) ||
-                (currentStep === 1 && ((inputMode === 'file' && files.length === 0) || (inputMode === 'text' && !textInput.trim()))) ||
-                isProcessingFile ||
-                isSubmitting
-              }
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+            {/* 드래그 앤 드롭 영역 */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={cn(
+                "relative border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all",
+                isDragging 
+                  ? "border-blue-500 bg-blue-50" 
+                  : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
+                interviews.length > 0 && "p-8"
+              )}
             >
-              {currentStep === 1 ? (
-                isProcessingFile || isSubmitting ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                    {isProcessingFile ? '처리 중...' : '분석 중...'}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3 w-3 mr-2" />
-                    분석 시작
-                  </>
-                )
+              {isDragging ? (
+                <>
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+                  <p className="text-lg font-medium text-blue-600">파일을 여기에 놓으세요</p>
+                </>
               ) : (
                 <>
-                  다음
-                  <ArrowRight className="h-3 w-3 ml-2" />
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium text-gray-700 mb-2">
+                    파일을 드래그하거나 클릭하여 업로드
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {getFileTypeDescription()} (최대 {MAX_FILE_SIZE_MB}MB)
+                  </p>
                 </>
               )}
-            </Button>
+            </div>
+
+            {/* 텍스트 입력 추가 버튼 */}
+            {!showTextInput && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTextInput(true)}
+                  className="text-gray-600"
+                >
+                  <Type className="w-4 h-4 mr-2" />
+                  텍스트로 직접 입력
+                </Button>
+              </div>
+            )}
+
+            {/* 텍스트 입력 영역 */}
+            {showTextInput && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-gray-700">텍스트 입력</h3>
+                  <button
+                    onClick={() => {
+                      setShowTextInput(false);
+                      setTextInput('');
+                      setTextTitle('');
+                    }}
+                    className="p-1 hover:bg-gray-200 rounded"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+                
+                <input
+                  type="text"
+                  value={textTitle}
+                  onChange={(e) => setTextTitle(e.target.value)}
+                  placeholder="제목 (선택사항)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="인터뷰 내용을 입력하세요..."
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+                
+                <Button
+                  onClick={handleAddText}
+                  disabled={!textInput.trim()}
+                  size="sm"
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  추가
+                </Button>
+              </div>
+            )}
+
+            {/* 추가된 인터뷰 목록 */}
+            {interviews.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    추가된 인터뷰 ({interviews.length})
+                  </h3>
+                  {interviews.some(item => !item.title.trim()) && (
+                    <span className="text-xs text-red-500">* 제목은 필수입니다</span>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  {interviews.map((item) => (
+                    <div key={item.id} className="group flex items-center gap-3 p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow">
+                      <div className="flex-shrink-0">
+                        {item.type === 'file' ? (
+                          <FileText className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <Type className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={item.title}
+                          onChange={(e) => updateTitle(item.id, e.target.value)}
+                          placeholder="제목을 입력하세요 (필수)"
+                          data-interview-id={item.id}
+                          className={cn(
+                            "w-full px-2 py-1 text-sm font-medium bg-transparent border-b focus:outline-none transition-colors",
+                            item.title.trim() 
+                              ? "border-transparent hover:border-gray-300 focus:border-gray-400" 
+                              : "border-red-300 hover:border-red-400 focus:border-red-500"
+                          )}
+                        />
+                        <p className="text-xs text-gray-500 mt-1 truncate">
+                          {item.type === 'file' ? item.name : '텍스트 입력'}
+                        </p>
+                      </div>
+                      
+                      <button
+                        onClick={() => removeInterview(item.id)}
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all"
+                      >
+                        <X className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* 하단 액션 */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            취소
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={interviews.length === 0 || isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              `분석 시작${interviews.length > 0 ? ` (${interviews.length})` : ''}`
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
-} 
+}

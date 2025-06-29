@@ -2,8 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { Interview } from '@/types/interview'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
 
@@ -25,68 +25,95 @@ export default function InterviewDetail({ interview, onBack }: InterviewDetailPr
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full">
       {/* 헤더 영역 */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="mb-6">
         {/* Breadcrumb */}
-        <div className="px-6 py-3 border-b border-gray-100">
-          <div className="flex items-center gap-1.5 text-sm">
-            <button
-              onClick={onBack}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              인터뷰 관리
-            </button>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-gray-700 font-medium">
+        <div className="flex items-center gap-2 mb-6">
+          <button
+            onClick={onBack}
+            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            인터뷰 관리
+          </button>
+          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+          <span className="text-sm font-medium text-foreground">
+            {interview.title || '제목 없음'}
+          </span>
+        </div>
+        
+        {/* 헤더 컨텐츠와 탭 네비게이션 */}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {/* 인터뷰 제목 */}
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">
               {interview.title || '제목 없음'}
-            </span>
+            </h1>
+            
+            {/* 메타 정보 */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>{new Date(interview.created_at).toLocaleDateString('ko-KR')}</span>
+              {interview.interviewee_profile?.[0]?.demographics && (
+                <>
+                  <span>·</span>
+                  <span>{interview.interviewee_profile[0].demographics.age_group}</span>
+                  <span>·</span>
+                  <span>{interview.interviewee_profile[0].demographics.gender}</span>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* 탭 네비게이션 - 우측 배치 */}
+          <div className="flex items-center gap-6 ml-8">
+            <button
+              onClick={() => setActiveTab('insights')}
+              className={cn(
+                "text-sm transition-all",
+                activeTab === 'insights' 
+                  ? "text-gray-900 font-semibold" 
+                  : "text-gray-400 hover:text-gray-600 font-medium"
+              )}
+            >
+              인사이트
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => setActiveTab('script')}
+              className={cn(
+                "text-sm transition-all",
+                activeTab === 'script' 
+                  ? "text-gray-900 font-semibold" 
+                  : "text-gray-400 hover:text-gray-600 font-medium"
+              )}
+            >
+              대화 스크립트
+            </button>
           </div>
         </div>
         
+        {/* 구분선 */}
+        <div className="h-px bg-gradient-to-r from-gray-200 via-gray-200/50 to-transparent mt-6" />
       </div>
       
-      {/* 탭 콘텐츠 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        {/* 탭 네비게이션 */}
-        <div className="bg-white">
-          <div className="px-6">
-            <TabsList className="h-11 bg-transparent p-0 gap-6">
-              <TabsTrigger 
-                value="insights"
-                className="h-11 px-0 pb-0 pt-0 rounded-none border-b-2 data-[state=active]:border-gray-900 data-[state=inactive]:border-transparent data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-500 hover:text-gray-700 transition-colors text-sm font-medium bg-transparent shadow-none"
-              >
-                인사이트
-              </TabsTrigger>
-              <TabsTrigger 
-                value="script" 
-                className="h-11 px-0 pb-0 pt-0 rounded-none border-b-2 data-[state=active]:border-gray-900 data-[state=inactive]:border-transparent data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-500 hover:text-gray-700 transition-colors text-sm font-medium bg-transparent shadow-none"
-              >
-                대화 스크립트
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
+      {/* 탭 콘텐츠 영역 */}
+      <div className="flex-1">
+        {activeTab === 'insights' && (
+          <InterviewInsights 
+            interview={interview} 
+            onEvidenceClick={handleEvidenceClick}
+          />
+        )}
         
-        {/* 탭 콘텐츠 영역 */}
-        <div className="flex-1 overflow-auto">
-          <TabsContent value="insights" className="h-full m-0">
-            <InterviewInsights 
-              interview={interview} 
-              onEvidenceClick={handleEvidenceClick}
-            />
-          </TabsContent>
-          
-          <TabsContent value="script" className="h-full m-0">
-            <InterviewScriptViewer 
-              ref={scriptViewerRef}
-              script={interview.cleaned_script || []} 
-              interview={interview}
-              className="h-full"
-            />
-          </TabsContent>
-        </div>
-      </Tabs>
+        {activeTab === 'script' && (
+          <InterviewScriptViewer 
+            ref={scriptViewerRef}
+            script={interview.cleaned_script || []} 
+            interview={interview}
+            className="h-full"
+          />
+        )}
+      </div>
     </div>
   )
 }

@@ -4,16 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { FileText, Plus, Search } from "lucide-react"
+import { Plus, RotateCw, Wifi, WifiOff } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { Interview } from '@/types/interview'
-import InterviewCard from '@/components/interview/interview-card'
+import { InterviewList } from '@/components/interview/interview-list'
 import InterviewDetail from '@/components/interview/interview-detail'
-import { supabase } from '@/lib/supabase'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
-import { Input } from '@/components/ui/input'
+import { useRealtimeInterviews } from '@/hooks/use-realtime-interviews'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
@@ -21,10 +19,6 @@ const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod =>
   loading: () => null
 })
 
-const WorkflowProgressModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.WorkflowProgressModal })), {
-  ssr: false,
-  loading: () => null
-})
 
 interface Project {
   id: string
@@ -47,17 +41,11 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
   const router = useRouter()
   
   const [interviews, setInterviews] = useState<Interview[]>([])
-  const [loading, setLoading] = useState(false)  // 초기값을 false로 변경
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
-  const [offset, setOffset] = useState(0)
-  const [searchTerm, setSearchTerm] = useState('')
-  const limit = 20
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
-  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false)
-  const [workflowJobs, setWorkflowJobs] = useState<any[]>([])
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // 선택된 인터뷰 가져오기
   useEffect(() => {
@@ -75,7 +63,7 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
             setSelectedInterview(data)
           }
         } catch (error) {
-          console.error('Failed to fetch selected interview:', error)
+          // Error already handled above
         }
       } else {
         setSelectedInterview(null)
@@ -85,32 +73,19 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
     fetchSelectedInterview()
   }, [selectedInterviewId, session?.access_token])
 
-  // 인터뷰 목록 가져오기
-  const fetchInterviews = async (loadMore = false, currentOffset?: number) => {
-    console.log('fetchInterviews called with:', {
-      profile_company_id: profile?.company_id,
-      project_id: project?.id,
-      session_token: !!session?.access_token,
-      loadMore
-    })
-    
+  // 인터뷰 목록 초기 로딩
+  const fetchInterviews = useCallback(async () => {
     if (!profile?.company_id || !project?.id || !session?.access_token) {
-      console.log('Early return from fetchInterviews - missing required data')
-      setLoading(false)  // loading을 false로 설정
+      setLoading(false)
       return
     }
     
     try {
-      if (loadMore) {
-        setLoadingMore(true)
-      } else {
-        setLoading(true)
-      }
-      
-      const offsetToUse = currentOffset ?? (loadMore ? offset : 0)
+      setLoading(true)
+      setError(null)
       
       const response = await fetch(
-        `/api/interviews?project_id=${project.id}&limit=${limit}&offset=${offsetToUse}${searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''}`,
+        `/api/interviews?project_id=${project.id}`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
@@ -119,65 +94,107 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       )
       
       if (!response.ok) {
-        throw new Error('데이터를 가져오는데 실패했습니다')
+        throw new Error('인터뷰 목록을 불러오는데 실패했습니다')
       }
       
       const result = await response.json()
-      console.log('API Response:', result)
-      
       const { data, success, error } = result
+      
       if (!success) {
-        throw new Error(error || '데이터를 가져오는데 실패했습니다')
+        throw new Error(error || '인터뷰 목록을 불러오는데 실패했습니다')
       }
       
-      const newInterviews = data || []
+      setInterviews(data || [])
       
-      console.log('Fetched interviews:', newInterviews.length, 'items')
-      console.log('First interview:', newInterviews[0])
-      
-      if (loadMore) {
-        setInterviews(prev => [...prev, ...newInterviews])
-      } else {
-        setInterviews(newInterviews)
-      }
-      
-      setHasMore(newInterviews.length === limit)
-      setOffset(offsetToUse + newInterviews.length)
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다')
+      // Error already handled above
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
+  }, [profile?.company_id, project?.id, session?.access_token])
+
+  // 새로고침 함수
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await fetchInterviews()
+    setIsRefreshing(false)
+    toast.success('목록을 새로고침했습니다')
   }
 
+  // 컴포넌트 마운트 시 인터뷰 목록 가져오기
   useEffect(() => {
-    if (profile?.company_id && project?.id && session?.access_token) {
-      fetchInterviews()
+    fetchInterviews()
+  }, [fetchInterviews])
+
+  // WebSocket 실시간 구독 설정
+  const { isConnected: realtimeConnected, reconnect, lastError, connectionStatus } = useRealtimeInterviews({
+    projectId: project?.id || '',
+    enabled: !!project?.id && !!profile?.company_id,
+    onUpdate: (updatedInterview) => {
+      // 로컬 state 업데이트
+      setInterviews(prev => 
+        prev.map(i => i.id === updatedInterview.id ? updatedInterview : i)
+      )
+      
+      // 선택된 인터뷰 업데이트
+      if (selectedInterview?.id === updatedInterview.id) {
+        setSelectedInterview(updatedInterview)
+      }
+    },
+    onInsert: (newInterview) => {
+      // 중복 체크 후 추가
+      setInterviews(prev => {
+        if (prev.some(i => i.id === newInterview.id)) return prev
+        return [newInterview, ...prev]
+      })
+    },
+    onDelete: (deletedId) => {
+      setInterviews(prev => prev.filter(i => i.id !== deletedId))
+      if (selectedInterview?.id === deletedId) {
+        setSelectedInterview(null)
+      }
     }
-  }, [profile?.company_id, project?.id, session?.access_token, searchTerm])
+  })
+
 
 
   // 인터뷰 추가 처리
-  const handleFilesSubmit = async (textOrFiles: string | File[], targetProjectId?: string) => {
+  const handleFilesSubmit = async (content: string | File, targetProjectId?: string, title?: string) => {
     if (!session?.access_token) return
     
     try {
-      setIsProgressModalOpen(true)
+      let response: Response;
       
-      // 텍스트만 처리 (파일은 텍스트로 변환되어 전달됨)
-      const response = await fetch('/api/workflow', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: textOrFiles,
-          projectId: targetProjectId || project.id
+      if (content instanceof File) {
+        // 파일인 경우 FormData 사용
+        const formData = new FormData()
+        formData.append('file', content)
+        formData.append('projectId', targetProjectId || project.id)
+        formData.append('title', title || '제목 없음')
+        
+        response = await fetch('/api/workflow/async', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: formData
         })
-      })
+      } else {
+        // 텍스트인 경우 JSON 사용
+        response = await fetch('/api/workflow/async', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: content,
+            projectId: targetProjectId || project.id,
+            title: title || '제목 없음'
+          })
+        })
+      }
 
       const result = await response.json()
       
@@ -185,18 +202,17 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         throw new Error(result.error || '처리 중 오류가 발생했습니다')
       }
 
-      // 성공 시 바로 목록 새로고침
+      // 성공 시 모달 닫기
       if (result.success) {
-        toast.success('인터뷰가 성공적으로 추가되었습니다')
+        toast.success('인터뷰가 제출되었습니다. 실시간으로 업데이트됩니다.')
         setShowAddInterviewModal(false)
-        setIsProgressModalOpen(false)
-        fetchInterviews()
+        // WebSocket을 통해 자동으로 업데이트되므로 수동 fetch 불필요
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '처리 중 오류가 발생했습니다')
-      setIsProgressModalOpen(false)
     }
   }
+
 
   // 인터뷰 삭제
   const handleDeleteInterview = async (interviewId: string) => {
@@ -225,42 +241,6 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
     }
   }
 
-  // 로딩 상태
-  console.log('Component state:', { loading, interviews: interviews.length, error })
-  
-  if (loading && interviews.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">인터뷰 관리</h1>
-          <Skeleton className="h-10 w-36 rounded-lg" />
-        </div>
-        
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="border-b border-gray-100 last:border-b-0">
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  // 오류 상태
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">인터뷰 관리</h1>
-        </div>
-        <div className="text-center py-8">
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button variant="outline" onClick={() => fetchInterviews()}>다시 시도</Button>
-        </div>
-      </div>
-    )
-  }
 
 
   // 인터뷰 상세 보기
@@ -281,81 +261,84 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
 
   // 인터뷰 목록
   return (
-    <div className="space-y-6">
+    <div>
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <h1 className="text-2xl font-bold">인터뷰 관리</h1>
-        
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="인터뷰 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="h-8 w-8"
+            >
+              <RotateCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <div className="flex items-center gap-2">
+              {realtimeConnected ? (
+                <div className="flex items-center gap-1">
+                  <Wifi className="h-4 w-4 text-green-500" />
+                  <span className="text-xs text-green-600 font-medium">실시간</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <WifiOff className="h-4 w-4 text-red-500" title={`${connectionStatus}${lastError ? `: ${lastError}` : ''}`} />
+                  <span className="text-xs text-red-600 font-medium">{connectionStatus}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reconnect}
+                    className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                  >
+                    재연결
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
           
           <Button 
             onClick={() => setShowAddInterviewModal(true)}
-            className="whitespace-nowrap"
+            className="bg-primary hover:bg-primary/90 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             인터뷰 추가
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          총 {interviews.length}개의 인터뷰가 등록되어 있습니다
+        </p>
+        <div className="h-px bg-gray-200 mt-6" />
       </div>
 
       {/* 인터뷰 목록 */}
-      {interviews.length === 0 ? (
-        <div className="text-center py-16 bg-gray-50 rounded-lg">
-          <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">인터뷰가 없습니다</h3>
-          <p className="text-gray-500 mb-6">첫 번째 인터뷰를 추가해보세요</p>
-          <Button onClick={() => setShowAddInterviewModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            인터뷰 추가하기
+      {error ? (
+        <div className="bg-white rounded-xl p-12 text-center">
+          <p className="text-gray-500 mb-3">{error}</p>
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => fetchInterviews()}
+          >
+            다시 시도
           </Button>
         </div>
       ) : (
-        <>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {interviews.map((interview) => (
-              <motion.div
-                key={interview.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <InterviewCard
-                  interview={interview}
-                  onView={(id) => {
-                    // URL에 interview 쿼리 파라미터 추가
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('interview', id)
-                    router.push(url.pathname + url.search, { scroll: false })
-                  }}
-                  onDelete={handleDeleteInterview}
-                />
-              </motion.div>
-            ))}
-          </div>
-
-          {/* 더보기 버튼 */}
-          {hasMore && (
-            <div className="text-center pt-6">
-              <Button
-                variant="outline"
-                onClick={() => fetchInterviews(true)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? '불러오는 중...' : '더 보기'}
-              </Button>
-            </div>
-          )}
-        </>
+        <InterviewList
+          interviews={interviews}
+          onView={(id) => {
+            // URL에 interview 쿼리 파라미터 추가
+            const url = new URL(window.location.href)
+            url.searchParams.set('interview', id)
+            router.push(url.pathname + url.search, { scroll: false })
+          }}
+          onDelete={handleDeleteInterview}
+          loading={loading}
+        />
       )}
+
 
       {/* 인터뷰 추가 모달 */}
       <AddInterviewModal
@@ -365,21 +348,6 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         projectId={project.id}
       />
 
-      {/* 진행 상황 모달 */}
-      <WorkflowProgressModal
-        open={isProgressModalOpen}
-        onOpenChange={setIsProgressModalOpen}
-        jobs={workflowJobs}
-        onComplete={() => {
-          setIsProgressModalOpen(false)
-          setWorkflowJobs([])
-          fetchInterviews()
-        }}
-        onAddMore={() => {
-          setIsProgressModalOpen(false)
-          setShowAddInterviewModal(true)
-        }}
-      />
     </div>
   )
 }

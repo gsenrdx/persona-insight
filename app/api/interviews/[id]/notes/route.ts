@@ -11,9 +11,12 @@ const supabase = createClient<Database>(
 // GET /api/interviews/[id]/notes - 인터뷰의 모든 메모 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // params를 await
+    const { id } = await params;
+    
     // 인증 처리
     const authorization = request.headers.get('authorization')
     if (!authorization) {
@@ -33,7 +36,7 @@ export async function GET(
           created_by_profile:profiles!created_by(id, name, avatar_url)
         )
       `)
-      .eq('interview_id', params.id)
+      .eq('interview_id', id)
       .eq('is_deleted', false)
       .order('created_at', { ascending: true })
 
@@ -61,9 +64,12 @@ export async function GET(
 // POST /api/interviews/[id]/notes - 새 메모 생성
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // params를 await
+    const { id } = await params;
+    
     // 인증 처리
     const authorization = request.headers.get('authorization')
     if (!authorization) {
@@ -87,7 +93,7 @@ export async function POST(
     const { data: note, error } = await supabase
       .from('interview_notes')
       .insert({
-        interview_id: params.id,
+        interview_id: id,
         script_item_ids: scriptItemIds,
         content,
         created_by: userId,

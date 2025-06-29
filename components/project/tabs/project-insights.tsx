@@ -314,23 +314,18 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   }
   
   return (
-    <div className="space-y-6">
-      {/* 연도별 선택과 인터뷰 고객 수를 묶어서 표시 */}
-      <Card className="shadow-sm border-gray-200 dark:border-gray-800">
-        <CardHeader>
-          <div>
-            <CardTitle className="text-2xl font-bold">프로젝트 인터뷰 현황</CardTitle>
-            <CardDescription>
-              {project.name} 프로젝트의 연도별 인터뷰 데이터를 확인하세요 (복수 선택 가능)
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* 연도 선택 드롭다운과 태그를 같은 줄에 배치 */}
-          <div className="mb-5 flex flex-wrap gap-4 items-center">
+    <div>
+      {/* 헤더 */}
+      <div className="mb-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-1">프로젝트 인사이트</h1>
+          <p className="text-sm text-muted-foreground">연도별 인터뷰 데이터를 분석하고 인사이트를 확인하세요</p>
+        </div>
+        {/* 연도 선택 */}
+        <div className="flex flex-wrap gap-4 items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="min-w-[180px] justify-between border-gray-200 dark:border-gray-800">
+                <Button variant="outline" className="min-w-[180px] justify-between">
                   <span>
                     {selectedYears.length === 1 
                       ? `${selectedYears[0]}년` 
@@ -355,50 +350,43 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* 선택된 연도 태그 */}
-            <div className="flex gap-2 flex-wrap">
-              {selectedYears.map(year => (
-                <Badge key={year} variant="outline" className="px-3 py-1 text-sm bg-primary/5 border-gray-200 dark:border-gray-800">
-                  {year}년: <span className="font-bold ml-1">{insightData[year]?.intervieweeCount || 0}명</span>
-                </Badge>
-              ))}
-            </div>
+          {/* 선택된 연도 태그 */}
+          <div className="flex gap-2 flex-wrap">
+            {selectedYears.map(year => (
+              <Badge key={year} variant="secondary" className="px-3 py-1 text-sm">
+                {year}년: <span className="font-semibold ml-1">{insightData[year]?.intervieweeCount || 0}명</span>
+              </Badge>
+            ))}
           </div>
+        </div>
+      </div>
           
-          {/* 주요 통계 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 완료된 인터뷰 수 */}
-            <div className="flex items-center justify-center">
-              <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <p className="text-4xl font-bold mb-3">
-                    {selectedYears.reduce((total, year) => total + (insightData[year]?.intervieweeCount || 0), 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground text-center font-medium">
-                    완료된 인터뷰
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* 인사이트 수 */}
-            <div className="flex items-center justify-center">
-              <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <p className="text-4xl font-bold mb-3">
-                    {selectedYears.reduce((total, year) => {
-                      return total + (insightData[year]?.insights?.length || 0)
-                    }, 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground text-center font-medium">
-                    발견된 인사이트
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+      {/* 주요 통계 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* 완료된 인터뷰 수 */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Users className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium text-muted-foreground">완료된 인터뷰</h3>
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-3xl font-bold text-gray-900">
+            {selectedYears.reduce((total, year) => total + (insightData[year]?.intervieweeCount || 0), 0)}
+          </p>
+        </div>
+        
+        {/* 인사이트 수 */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium text-muted-foreground">발견된 인사이트</h3>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {selectedYears.reduce((total, year) => {
+              return total + (insightData[year]?.insights?.length || 0)
+            }, 0)}
+          </p>
+        </div>
+      </div>
       
       {/* 종합 인사이트 요약 카드와 내용 */}
       {(() => {

@@ -45,15 +45,6 @@ export interface PersonaCardProps {
   persona_description?: string
 }
 
-export interface FloatingActionButtonProps {
-  isProcessing: boolean
-  activeJobsLength: number
-  jobsLength: number
-  completedJobsLength: number
-  failedJobsLength: number
-  overallProgress: number
-  onButtonClick: () => void
-}
 
 export interface PersonaHeaderProps {
   name: string
@@ -83,52 +74,15 @@ export interface PersonaSwitcherProps extends BaseComponentProps {
   showHeader?: boolean
 }
 
-// === Workflow 관련 타입들 ===
-
-export enum WorkflowStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing', 
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  PERSONA_SYNTHESIZING = 'persona_synthesizing',
-  PERSONA_SYNTHESIS_COMPLETED = 'persona_synthesis_completed',
-  PERSONA_SYNTHESIS_FAILED = 'persona_synthesis_failed'
-}
-
-export interface WorkflowJob {
-  id: string
-  fileName: string
-  file: File
-  status: WorkflowStatus
-  progress: number
-  startTime?: Date
-  endTime?: Date
-  result?: any
-  error?: string
-  personaType?: string
-  synthesisResult?: any
-  projectId?: string
-  extractionCriteria?: ExtractionCriteria[]
-}
 
 // === Modal 컴포넌트 Props ===
 export interface AddInterviewModalProps extends BaseModalProps {
   onClose?: () => void
   onComplete?: () => void
-  onFilesSubmit?: (textOrFiles: string | File[], projectId?: string) => void | Promise<void>
+  onFilesSubmit?: (content: string | File, projectId?: string, title?: string) => void | Promise<void>
   projectId?: string
 }
 
-export interface WorkflowProgressModalProps extends BaseModalProps {
-  jobs: WorkflowJob[]
-  onRetryJob: (jobId: string) => void
-  onRemoveJob: (jobId: string) => void
-  onClearCompleted: () => void
-  onClearAll: () => void
-  onAddMore: () => void
-  onJobClick?: (job: WorkflowJob) => void
-  onStartPersonaSynthesis?: (jobId: string) => void
-}
 
 export interface PersonaCriteriaModalProps extends BaseModalProps {
   projectId?: string

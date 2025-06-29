@@ -9,16 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, ArrowUpRight, ChevronRight, ChevronDown, AlertCircle, Clock, Database } from 'lucide-react'
+import { LogOut, User, HelpCircle, Database, ChevronDown } from 'lucide-react'
 import ProfileModal from './profile-modal'
 import { MisoKnowledgeStatusModal } from '@/components/modal/miso-knowledge-status-modal'
 
 export default function UserMenu() {
-  const { user, profile, error, signOut, refreshProfile } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const [loading, setLoading] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [knowledgeStatusOpen, setKnowledgeStatusOpen] = useState(false)
@@ -34,88 +31,53 @@ export default function UserMenu() {
     }
   }
 
-  // 버전 정보
-  const version = 'v1.0.4'
-  const updateDate = '2025.06.15'
-  const updateLink = 'https://miso.oopy.io/persona-insight'
-  const guideLink = 'https://www.example.com/'
-
-  const handleUpdateClick = () => {
-    window.open(updateLink, '_blank')
-  }
-
-  const handleGuideClick = () => {
-    window.open(guideLink, '_blank')
-  }
+  const guideLink = 'https://miso.oopy.io/persona-insight'
 
   if (!user) return null
 
-  // 정상 프로필 표시
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center gap-1 h-8 py-1 px-2 text-left">
-            <div className="font-medium text-sm">{profile?.name || '최정규'}</div>
-            <ChevronDown className="h-3.5 w-3.5" />
+          <Button 
+            variant="ghost" 
+            className="h-9 px-3 text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          >
+            <span>{profile?.name || '사용자'}</span>
+            <ChevronDown className="ml-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-48 p-0 shadow-md" align="end" alignOffset={-5} sideOffset={8}>
-          <DropdownMenuItem
-            onClick={() => setProfileModalOpen(true)}
-            className="flex justify-between items-center px-3 py-2 text-xs"
-          >
-            <span>내 정보 수정</span>
+        <DropdownMenuContent className="w-56" align="end">
+          <div className="px-2 py-1.5">
+            <p className="text-sm font-medium">{profile?.name}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
+            <User className="mr-2 h-4 w-4" />
+            <span>프로필 설정</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex justify-between items-center px-3 py-2 text-xs">
-            <div className="flex items-center gap-1.5">
-              <span>업데이트 일자</span>
-            </div>
-            <span className="text-gray-500">{updateDate}</span>
+          
+          <DropdownMenuItem onClick={() => setKnowledgeStatusOpen(true)}>
+            <Database className="mr-2 h-4 w-4" />
+            <span>MISO Knowledge 상태</span>
           </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={handleUpdateClick}
-            className="flex justify-between items-center px-3 py-2 text-xs"
-          >
-            <span>업데이트 소식</span>
-            <ArrowUpRight className="h-3 w-3" />
+          
+          <DropdownMenuItem onClick={() => window.open(guideLink, '_blank')}>
+            <HelpCircle className="mr-2 h-4 w-4" />
+            <span>도움말</span>
           </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={handleGuideClick}
-            className="flex justify-between items-center px-3 py-2 text-xs"
-          >
-            <span>시스템 가이드</span>
-            <ArrowUpRight className="h-3 w-3" />
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator className="m-0" />
-
-          <DropdownMenuSeparator className="m-0" />
-
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex justify-between items-center px-3 py-2 text-xs">
-              <span>관리 메뉴</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
-              <DropdownMenuItem
-                onClick={() => setKnowledgeStatusOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 text-xs"
-              >
-                <Database className="h-4 w-4" />
-                <span>MISO Knowledge 연동 상태</span>
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-
-          <DropdownMenuSeparator className="m-0" />
-
+          
+          <DropdownMenuSeparator />
+          
           <DropdownMenuItem
             onClick={handleSignOut}
             disabled={loading}
-            className="text-red-600 focus:text-red-600 px-3 py-2 text-xs"
+            className="text-red-600 focus:text-red-600 dark:text-red-400"
           >
+            <LogOut className="mr-2 h-4 w-4" />
             <span>로그아웃</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -135,4 +97,4 @@ export default function UserMenu() {
       />
     </>
   )
-} 
+}

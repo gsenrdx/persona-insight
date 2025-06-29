@@ -11,9 +11,12 @@ const supabase = createClient<Database>(
 // PATCH /api/interviews/[id]/notes/[noteId] - 메모 수정
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
+    // params를 await
+    const { id, noteId } = await params;
+    
     // 인증 처리
     const authorization = request.headers.get('authorization')
     if (!authorization) {
@@ -35,7 +38,7 @@ export async function PATCH(
     const { data: note, error } = await supabase
       .from('interview_notes')
       .update({ content })
-      .eq('id', params.noteId)
+      .eq('id', noteId)
       .eq('created_by', userId)
       .select(`
         *,
@@ -63,9 +66,12 @@ export async function PATCH(
 // DELETE /api/interviews/[id]/notes/[noteId] - 메모 삭제 (소프트 삭제)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
+    // params를 await
+    const { id, noteId } = await params;
+    
     // 인증 처리
     const authorization = request.headers.get('authorization')
     if (!authorization) {
@@ -78,7 +84,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('interview_notes')
       .update({ is_deleted: true })
-      .eq('id', params.noteId)
+      .eq('id', noteId)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

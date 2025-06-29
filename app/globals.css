@@ -535,6 +535,20 @@ body {
   .animate-intelligence-pulse {
     animation: intelligence-pulse 10s ease-in-out infinite;
   }
+
+  /* 인터뷰 처리 진행 바 애니메이션 */
+  @keyframes progress {
+    0% {
+      width: 0%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  .animate-progress {
+    animation: progress 2s ease-in-out infinite;
+  }
   
   /* 배경 그라데이션 효과 */
   .persona-card-gradient {

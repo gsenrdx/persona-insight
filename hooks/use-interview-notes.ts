@@ -50,11 +50,10 @@ export function useInterviewNotes(interviewId: string) {
       return result.data as InterviewNote
     },
     onMutate: async (data: CreateNoteRequest) => {
-      // 이전 데이터 백업
       await queryClient.cancelQueries({ queryKey: ['interview-notes', interviewId] })
-      const previousNotes = queryClient.getQueryData(['interview-notes', interviewId])
+      const previousNotes = queryClient.getQueryData(['interview-notes', interviewId]) as InterviewNote[]
       
-      // 낙관적 업데이트
+      // 낙관적 업데이트 - 임시 메모 추가
       const optimisticNote: InterviewNote = {
         id: `temp-${Date.now()}`,
         interview_id: interviewId,
@@ -122,45 +121,46 @@ export function useInterviewNotes(interviewId: string) {
 
   // 댓글 추가
   const addReplyMutation = useMutation({
-    mutationFn: async ({ noteId, content }: { noteId: string; content: string }) => {
+    mutationFn: async (data: CreateReplyRequest) => {
       if (!session?.access_token) throw new Error('No access token')
       
-      const response = await fetch(`/api/interviews/${interviewId}/notes/${noteId}/replies`, {
+      const response = await fetch(`/api/interviews/${interviewId}/notes/${data.noteId}/replies`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content: data.content })
       })
       
       if (!response.ok) {
         throw new Error('Failed to create reply')
       }
+      
+      const result = await response.json()
+      return result.data
     },
-    onMutate: async ({ noteId, content }) => {
+    onMutate: async (data: CreateReplyRequest) => {
       await queryClient.cancelQueries({ queryKey: ['interview-notes', interviewId] })
       const previousNotes = queryClient.getQueryData(['interview-notes', interviewId]) as InterviewNote[]
       
-      // 낙관적 업데이트
-      const optimisticReply = {
-        id: `temp-reply-${Date.now()}`,
-        note_id: noteId,
-        content,
-        created_by: session?.user?.id || '',
-        company_id: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_deleted: false,
-        created_by_profile: {
-          id: profile?.id || '',
-          name: profile?.name || '사용자',
-          avatar_url: profile?.avatar_url || null
-        }
-      }
-      
+      // 낙관적 업데이트 - 댓글 추가
       const updatedNotes = previousNotes?.map(note => {
-        if (note.id === noteId) {
+        if (note.id === data.noteId) {
+          const optimisticReply = {
+            id: `temp-reply-${Date.now()}`,
+            note_id: data.noteId,
+            content: data.content,
+            created_by: session?.user?.id || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_deleted: false,
+            created_by_profile: {
+              id: profile?.id || '',
+              name: profile?.name || '사용자',
+              avatar_url: profile?.avatar_url || null
+            }
+          }
           return {
             ...note,
             replies: [...(note.replies || []), optimisticReply]

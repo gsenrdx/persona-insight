@@ -1,11 +1,8 @@
 import { Suspense } from "react"
-import Link from "next/link"
 import { PersonaCardGrid } from "@/components/persona"
 import { SearchBar, SearchResult } from "@/components/search"
-import { TagList, SkeletonCardGrid, Navigation } from "@/components/shared"
-import AuthGuard from "@/components/auth/auth-guard"
-import UserMenu from "@/components/auth/user-menu"
-import CompanyBranding from "@/components/auth/company-branding"
+import { TagList, SkeletonCardGrid } from "@/components/shared"
+import { AppLayout } from "@/components/layout/app-layout"
 import { PagePrefetch } from "./page-prefetch"
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string, searchIntent?: string, results?: string }> }) {
@@ -13,33 +10,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   const isSearching = !!params.searchIntent || !!params.results
   
   return (
-    <AuthGuard>
-    <div className="relative min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-hidden">
+    <AppLayout>
       {/* 프로젝트 데이터 프리페칭 */}
       <PagePrefetch />
-      {/* 배경 장식 요소 */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
-      <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
-      <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       
-                  <header className="container mx-auto px-4 py-8 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex flex-col gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-baseline">
-                <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-                <CompanyBranding />
-              </div>
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Navigation />
-            <UserMenu />
-          </div>
-        </div>
-      </header>
-      
-      <main className="container mx-auto px-4 py-8 relative z-10">
+      <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto mb-12 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
             우리의 고객을 만나보세요
@@ -65,12 +40,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
             <PersonaCardGrid />
           </Suspense>
         )}
-      </main>
+      </div>
       
       <footer className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
         <p>© 2025 Persona Insight by MISO. All rights reserved.</p>
       </footer>
-    </div>
-    </AuthGuard>
+    </AppLayout>
   )
 }
