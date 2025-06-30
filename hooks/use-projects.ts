@@ -44,21 +44,29 @@ export function useProjects(query: ProjectListQuery = {}, options?: { enabled?: 
  * 단일 프로젝트 조회
  */
 export function useProject(projectId: string) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   
   return useQuery({
     queryKey: queryKeys.projects.detail(projectId),
     queryFn: async () => {
-      if (!user) throw new Error('로그인이 필요합니다')
+      // 세션을 직접 가져와서 사용
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
-      const response = await projectsApi.getProject(session.access_token, projectId, user.id)
+      const response = await projectsApi.getProject(session.access_token, projectId)
       return extractApiData(response)
     },
-    enabled: !!user && !!projectId,
+    enabled: !authLoading && !!projectId, // authLoading이 false일 때만 실행
     staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
     gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
     refetchOnMount: false, // 마운트 시 재조회 방지
+    retry: (failureCount, error: any) => {
+      // 404 에러는 재시도하지 않음
+      if (error?.message?.includes('찾을 수 없습니다')) {
+        return false
+      }
+      return failureCount < 3
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })
 }
 
@@ -66,18 +74,18 @@ export function useProject(projectId: string) {
  * 프로젝트 멤버 목록 조회
  */
 export function useProjectMembers(projectId: string) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   
   return useQuery({
     queryKey: queryKeys.projects.member(projectId),
     queryFn: async () => {
-      if (!user) throw new Error('로그인이 필요합니다')
+      // 세션을 직접 가져와서 사용
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
       const response = await projectsApi.getProjectMembers(session.access_token, projectId)
       return extractApiData(response)
     },
-    enabled: !!user && !!projectId,
+    enabled: !authLoading && !!projectId, // authLoading이 false일 때만 실행
     staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
     gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
     refetchOnMount: false, // 마운트 시 재조회 방지

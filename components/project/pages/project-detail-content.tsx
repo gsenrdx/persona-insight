@@ -22,19 +22,19 @@ interface ProjectDetailContentProps {
 
 
 export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
-  const { profile } = useAuth()
+  const { profile, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   
   // 병렬 데이터 페칭
-  const { data: project, isLoading: projectLoading, error, isError, refetch } = useProject(projectId)
+  const { data: project, isLoading: projectLoading, error, isError, refetch, isInitialLoading } = useProject(projectId)
   const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
   
   const [activeView, setActiveView] = useState('interviews')
   const [showScrollTop, setShowScrollTop] = useState(false)
   
-  // 전체 로딩 상태
-  const isLoading = projectLoading || membersLoading
+  // 전체 로딩 상태 - 인증 로딩 상태도 포함
+  const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {
@@ -104,7 +104,25 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     )
   }
 
-  if (isError || !project) {
+  // 인증이 아직 진행 중이면 로딩 표시
+  if (authLoading || !user) {
+    return (
+      <ProjectLayout
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        projectName="로딩 중..."
+      >
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">인증 확인 중...</p>
+          </div>
+        </div>
+      </ProjectLayout>
+    )
+  }
+
+  if (isError && !isLoading && !project) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="container mx-auto px-4 py-8">

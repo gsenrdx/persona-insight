@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
         primary_pain_points: outputs.primary_pain_points || null,
         primary_needs: outputs.primary_needs || null,
         hmw_questions: outputs.hmw_questions || null,
+        ai_persona_match: outputs.ai_persona_match || null,
+        ai_persona_explanation: outputs.ai_persona_explanation || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', interviewId)

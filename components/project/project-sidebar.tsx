@@ -3,7 +3,6 @@
 import { FileText, BarChart3, Settings, ArrowLeft } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
 
 interface ProjectSidebarProps {
   activeView: string
@@ -67,7 +66,7 @@ export function ProjectSidebar({ activeView, onViewChange, projectName }: Projec
               key={item.id}
               onClick={() => onViewChange(item.id)}
               className={cn(
-                "w-full flex items-center justify-between px-4 py-3 mb-1 rounded-xl transition-all group relative overflow-hidden",
+                "w-full flex items-center justify-between px-4 py-3 mb-1 rounded-xl group relative",
                 isActive 
                   ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary shadow-sm" 
                   : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
@@ -75,7 +74,7 @@ export function ProjectSidebar({ activeView, onViewChange, projectName }: Projec
             >
               <div className="flex items-center gap-3 relative z-10">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+                  "w-10 h-10 rounded-lg flex items-center justify-center",
                   isActive ? "bg-primary/10" : "bg-gray-100 group-hover:bg-gray-200"
                 )}>
                   <Icon className={cn(
@@ -100,15 +99,7 @@ export function ProjectSidebar({ activeView, onViewChange, projectName }: Projec
               </div>
               
               {isActive && (
-                <motion.div
-                  layoutId="project-nav-indicator"
-                  className="absolute inset-0 border-2 border-primary/20 rounded-xl"
-                  transition={{
-                    type: "spring",
-                    stiffness: 500,
-                    damping: 30
-                  }}
-                />
+                <div className="absolute inset-0 border-2 border-primary/20 rounded-xl" />
               )}
             </button>
           )

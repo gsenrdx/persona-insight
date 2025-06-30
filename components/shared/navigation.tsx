@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils/index"
-import { motion } from "framer-motion"
 
 const navigationItems = [
   {
@@ -37,7 +36,7 @@ export function Navigation() {
             key={item.href}
             href={item.href}
             className={cn(
-              "relative px-4 py-2 text-sm font-medium rounded-lg transition-all",
+              "relative px-4 py-2 text-sm font-medium rounded-lg",
               "hover:bg-gray-100 dark:hover:bg-gray-800",
               isActive 
                 ? "text-gray-900 dark:text-gray-100" 
@@ -46,15 +45,7 @@ export function Navigation() {
           >
             {item.name}
             {isActive && (
-              <motion.div
-                layoutId="navigation-indicator"
-                className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600"
-                transition={{
-                  type: "spring",
-                  stiffness: 500,
-                  damping: 30
-                }}
-              />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600" />
             )}
           </Link>
         )

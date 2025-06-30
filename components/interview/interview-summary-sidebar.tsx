@@ -3,7 +3,7 @@
 import { Interview } from '@/types/interview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, User, Star } from 'lucide-react'
+import { Calendar, User, Star, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,32 @@ export default function InterviewSummarySidebar({ interview }: InterviewSummaryS
                     {interview.session_info[0].interview_topic || '주제 정보 없음'}
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI 페르소나 매칭 */}
+          {(interview?.ai_persona_match || interview?.ai_persona_definition) && (
+            <div className="pt-4 border-t border-gray-100">
+              <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                AI 페르소나 분석
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">매칭된 페르소나</p>
+                  <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                    {interview.ai_persona_definition?.name_ko || interview.ai_persona_match}
+                  </Badge>
+                </div>
+                {interview.ai_persona_explanation && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">분석 근거</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {interview.ai_persona_explanation}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

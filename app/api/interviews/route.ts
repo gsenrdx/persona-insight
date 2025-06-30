@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         *,
         created_by_profile:profiles!interviews_created_by_fkey(id, name),
         persona:personas!interviews_persona_id_fkey(id, persona_type, persona_title),
+        ai_persona_definition:persona_definitions!interviews_ai_persona_match_fkey(id, name_ko, name_en, description, tags),
         interview_notes(id, is_deleted)
       `)
       .eq('company_id', companyId)

@@ -73,14 +73,36 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { searchParams } = new URL(request.url)
-    const user_id = searchParams.get('user_id')
+    // Authorization 헤더 확인
+    const authorization = request.headers.get('authorization')
+    let user_id: string
 
-    if (!user_id) {
-      return NextResponse.json({
-        error: "user_id가 필요합니다",
-        success: false
-      }, { status: 400 })
+    if (authorization) {
+      // 헤더에서 사용자 정보 추출
+      const token = authorization.replace('Bearer ', '')
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+      
+      if (error || !user) {
+        return NextResponse.json({
+          error: "인증이 실패했습니다",
+          success: false
+        }, { status: 401 })
+      }
+      
+      user_id = user.id
+    } else {
+      // 레거시 지원: URL 파라미터에서 user_id 가져오기
+      const { searchParams } = new URL(request.url)
+      const urlUserId = searchParams.get('user_id')
+      
+      if (!urlUserId) {
+        return NextResponse.json({
+          error: "인증이 필요합니다",
+          success: false
+        }, { status: 401 })
+      }
+      
+      user_id = urlUserId
     }
 
     const resolvedParams = await params
@@ -122,15 +144,36 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { user_id, ...updateData } = body
+    const { ...updateData } = body
     const resolvedParams = await params
     const projectId = resolvedParams.id
     
-    if (!user_id) {
-      return NextResponse.json({
-        error: "사용자 인증이 필요합니다",
-        success: false
-      }, { status: 401 })
+    // Authorization 헤더 확인
+    const authorization = request.headers.get('authorization')
+    let user_id: string
+
+    if (authorization) {
+      // 헤더에서 사용자 정보 추출
+      const token = authorization.replace('Bearer ', '')
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+      
+      if (error || !user) {
+        return NextResponse.json({
+          error: "인증이 실패했습니다",
+          success: false
+        }, { status: 401 })
+      }
+      
+      user_id = user.id
+    } else {
+      // 레거시 지원: body에서 user_id 가져오기
+      if (!body.user_id) {
+        return NextResponse.json({
+          error: "사용자 인증이 필요합니다",
+          success: false
+        }, { status: 401 })
+      }
+      user_id = body.user_id
     }
 
     // 프로젝트 접근 권한 확인
@@ -203,16 +246,36 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json()
-    const { user_id } = body
     const resolvedParams = await params
     const projectId = resolvedParams.id
     
-    if (!user_id) {
-      return NextResponse.json({
-        error: "사용자 인증이 필요합니다",
-        success: false
-      }, { status: 401 })
+    // Authorization 헤더 확인
+    const authorization = request.headers.get('authorization')
+    let user_id: string
+
+    if (authorization) {
+      // 헤더에서 사용자 정보 추출
+      const token = authorization.replace('Bearer ', '')
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+      
+      if (error || !user) {
+        return NextResponse.json({
+          error: "인증이 실패했습니다",
+          success: false
+        }, { status: 401 })
+      }
+      
+      user_id = user.id
+    } else {
+      // 레거시 지원: body에서 user_id 가져오기
+      const body = await request.json()
+      if (!body.user_id) {
+        return NextResponse.json({
+          error: "사용자 인증이 필요합니다",
+          success: false
+        }, { status: 401 })
+      }
+      user_id = body.user_id
     }
 
     // 프로젝트 접근 권한 확인

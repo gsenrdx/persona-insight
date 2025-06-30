@@ -54,6 +54,15 @@ export interface HMWQuestion {
   hmw_questions: string;
 }
 
+// AI 페르소나 정의 (관계 데이터)
+export interface AIPersonaDefinition {
+  id: string;
+  name_ko: string;
+  name_en: string;
+  description?: string;
+  tags: string[];
+}
+
 // 인터뷰 타입 (DB 기반)
 export interface Interview {
   id: string;
@@ -78,6 +87,9 @@ export interface Interview {
   primary_pain_points: InsightItem[] | null;
   primary_needs: InsightItem[] | null;
   hmw_questions: HMWQuestion[] | null;
+  // AI 페르소나 매칭 결과
+  ai_persona_match?: string | null; // persona_definitions 테이블 참조 (외래키)
+  ai_persona_explanation?: string | null;
   // 관계 데이터
   created_by_profile?: {
     id: string;
@@ -88,6 +100,7 @@ export interface Interview {
     persona_type: string;
     persona_title: string | null;
   };
+  ai_persona_definition?: AIPersonaDefinition; // AI 페르소나 정의 관계 데이터
   note_count?: number;
 }
 
