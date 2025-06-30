@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Loader2, ChevronUp } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
-import { useProject } from '@/hooks/use-projects'
+import { useProject, useProjectMembers } from '@/hooks/use-projects'
 import { toast } from 'sonner'
 import ProjectSettings from '@/components/project/tabs/project-settings'
 import ProjectInterviews from '@/components/project/tabs/project-interviews-new'
@@ -25,9 +25,16 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { profile } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: project, isLoading, error, isError, refetch } = useProject(projectId)
+  
+  // 병렬 데이터 페칭
+  const { data: project, isLoading: projectLoading, error, isError, refetch } = useProject(projectId)
+  const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
+  
   const [activeView, setActiveView] = useState('interviews')
   const [showScrollTop, setShowScrollTop] = useState(false)
+  
+  // 전체 로딩 상태
+  const isLoading = projectLoading || membersLoading
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {

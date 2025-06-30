@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Plus, RotateCw, Wifi, WifiOff } from "lucide-react"
+import { Plus, RotateCw, Wifi, WifiOff, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
+import { useInterviews, useInterview, useDeleteInterview } from '@/hooks/use-interviews'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 import { Interview } from '@/types/interview'
 import { InterviewList } from '@/components/interview/interview-list'
 import InterviewDetail from '@/components/interview/interview-detail'
@@ -39,117 +42,125 @@ interface ProjectInterviewsProps {
 export default function ProjectInterviews({ project, selectedInterviewId }: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
+  const queryClient = useQueryClient()
   
-  const [interviews, setInterviews] = useState<Interview[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // React Query 훅 사용
+  const { data: interviewsData, isLoading, error, refetch } = useInterviews({ projectId: project.id })
+  const { data: selectedInterviewData } = useInterview(selectedInterviewId || '')
+  
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
+  const [interviews, setInterviews] = useState<Interview[]>([])
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // 선택된 인터뷰 가져오기
+  // React Query 데이터를 state에 동기화
   useEffect(() => {
-    const fetchSelectedInterview = async () => {
-      if (selectedInterviewId && session?.access_token) {
-        try {
-          const response = await fetch(`/api/interviews/${selectedInterviewId}`, {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          })
-          
-          if (response.ok) {
-            const { data } = await response.json()
-            setSelectedInterview(data)
-          }
-        } catch (error) {
-          // Error already handled above
-        }
-      } else {
-        setSelectedInterview(null)
-      }
+    if (interviewsData) {
+      setInterviews(interviewsData)
     }
-    
-    fetchSelectedInterview()
-  }, [selectedInterviewId, session?.access_token])
+  }, [interviewsData])
 
-  // 인터뷰 목록 초기 로딩
-  const fetchInterviews = useCallback(async () => {
-    if (!profile?.company_id || !project?.id || !session?.access_token) {
-      setLoading(false)
-      return
+  // 선택된 인터뷰 동기화
+  useEffect(() => {
+    if (selectedInterviewData) {
+      setSelectedInterview(selectedInterviewData)
+    } else if (!selectedInterviewId) {
+      setSelectedInterview(null)
     }
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch(
-        `/api/interviews?project_id=${project.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error('인터뷰 목록을 불러오는데 실패했습니다')
-      }
-      
-      const result = await response.json()
-      const { data, success, error } = result
-      
-      if (!success) {
-        throw new Error(error || '인터뷰 목록을 불러오는데 실패했습니다')
-      }
-      
-      setInterviews(data || [])
-      
-    } catch (error) {
-      setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다')
-      // Error already handled above
-    } finally {
-      setLoading(false)
-    }
-  }, [profile?.company_id, project?.id, session?.access_token])
+  }, [selectedInterviewData, selectedInterviewId])
 
   // 새로고침 함수
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await fetchInterviews()
-    setIsRefreshing(false)
+    const toastId = toast.loading('목록을 새로고침하는 중...')
+    await refetch()
+    toast.dismiss(toastId)
     toast.success('목록을 새로고침했습니다')
   }
-
-  // 컴포넌트 마운트 시 인터뷰 목록 가져오기
-  useEffect(() => {
-    fetchInterviews()
-  }, [fetchInterviews])
 
   // WebSocket 실시간 구독 설정
   const { isConnected: realtimeConnected, reconnect, lastError, connectionStatus } = useRealtimeInterviews({
     projectId: project?.id || '',
     enabled: !!project?.id && !!profile?.company_id,
     onUpdate: (updatedInterview) => {
-      // 로컬 state 업데이트
+      // React Query 캐시 업데이트
+      queryClient.setQueryData(
+        queryKeys.interviews.byProject(project.id),
+        (old: Interview[] | undefined) => {
+          if (!old) return [updatedInterview]
+          return old.map(i => i.id === updatedInterview.id ? updatedInterview : i)
+        }
+      )
+      
+      // 선택된 인터뷰 캐시 업데이트
+      if (updatedInterview.id === selectedInterviewId) {
+        queryClient.setQueryData(
+          queryKeys.interviews.detail(updatedInterview.id),
+          updatedInterview
+        )
+      }
+      
+      // 처리 완료 시 캐시 무효화 (서버에서 최신 데이터 다시 가져오기)
+      if (updatedInterview.processing_status === 'completed' || 
+          updatedInterview.processing_status === 'failed') {
+        // 인터뷰 상세 정보 캐시 무효화
+        queryClient.invalidateQueries({ 
+          queryKey: queryKeys.interviews.detail(updatedInterview.id) 
+        })
+        
+        // 프로젝트의 인터뷰 목록도 갱신
+        queryClient.invalidateQueries({ 
+          queryKey: queryKeys.interviews.byProject(project.id) 
+        })
+        
+        // 처리 완료 알림
+        if (updatedInterview.processing_status === 'completed') {
+          toast.success(`"${updatedInterview.name || '인터뷰'}" 분석이 완료되었습니다!`)
+        } else if (updatedInterview.processing_status === 'failed') {
+          toast.error(`"${updatedInterview.name || '인터뷰'}" 분석에 실패했습니다.`)
+        }
+      }
+      
+      // 로컬 state도 업데이트
       setInterviews(prev => 
         prev.map(i => i.id === updatedInterview.id ? updatedInterview : i)
       )
       
-      // 선택된 인터뷰 업데이트
       if (selectedInterview?.id === updatedInterview.id) {
         setSelectedInterview(updatedInterview)
       }
     },
     onInsert: (newInterview) => {
-      // 중복 체크 후 추가
+      // React Query 캐시에 추가
+      queryClient.setQueryData(
+        queryKeys.interviews.byProject(project.id),
+        (old: Interview[] | undefined) => {
+          if (!old) return [newInterview]
+          if (old.some(i => i.id === newInterview.id)) return old
+          return [newInterview, ...old]
+        }
+      )
+      
+      // 로컬 state도 업데이트
       setInterviews(prev => {
         if (prev.some(i => i.id === newInterview.id)) return prev
         return [newInterview, ...prev]
       })
     },
     onDelete: (deletedId) => {
+      // React Query 캐시에서 제거
+      queryClient.setQueryData(
+        queryKeys.interviews.byProject(project.id),
+        (old: Interview[] | undefined) => {
+          if (!old) return []
+          return old.filter(i => i.id !== deletedId)
+        }
+      )
+      
+      // 삭제된 인터뷰의 상세 캐시도 무효화
+      queryClient.removeQueries({ 
+        queryKey: queryKeys.interviews.detail(deletedId) 
+      })
+      
+      // 로컬 state도 업데이트
       setInterviews(prev => prev.filter(i => i.id !== deletedId))
       if (selectedInterview?.id === deletedId) {
         setSelectedInterview(null)
@@ -214,27 +225,13 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
   }
 
 
-  // 인터뷰 삭제
+  // 인터뷰 삭제 훅 사용
+  const deleteInterview = useDeleteInterview()
+  
+  // 인터뷰 삭제 핸들러
   const handleDeleteInterview = async (interviewId: string) => {
-    if (!session?.access_token) return
-    
     try {
-      const response = await fetch(`/api/interviews/${interviewId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '인터뷰 삭제에 실패했습니다')
-      }
-
-      // 목록에서 삭제
-      setInterviews(prev => prev.filter(item => item.id !== interviewId))
-      
-      
+      await deleteInterview.mutateAsync(interviewId)
       toast.success('인터뷰가 삭제되었습니다')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '인터뷰 삭제에 실패했습니다')
@@ -245,6 +242,30 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
 
   // 인터뷰 상세 보기
   if (selectedInterview) {
+    // 처리 중인 인터뷰인 경우 목록으로 돌아가기
+    if (selectedInterview.processing_status === 'pending' || 
+        selectedInterview.processing_status === 'processing') {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-lg font-medium">인터뷰 분석 중입니다...</p>
+          <p className="text-sm text-muted-foreground">
+            분석이 완료되면 상세 내용을 확인할 수 있습니다.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('interview')
+              router.replace(url.pathname + url.search, { scroll: false })
+            }}
+          >
+            목록으로 돌아가기
+          </Button>
+        </div>
+      )
+    }
+    
     return (
       <InterviewDetail 
         interview={selectedInterview}
@@ -271,10 +292,10 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isLoading}
               className="h-8 w-8"
             >
-              <RotateCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
             <div className="flex items-center gap-2">
               {realtimeConnected ? (
@@ -320,7 +341,7 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
           <Button 
             variant="outline"
             size="sm"
-            onClick={() => fetchInterviews()}
+            onClick={() => refetch()}
           >
             다시 시도
           </Button>
@@ -329,13 +350,23 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         <InterviewList
           interviews={interviews}
           onView={(id) => {
+            // 선택한 인터뷰 찾기
+            const interview = interviews.find(i => i.id === id)
+            
+            // 처리 중인 인터뷰는 상세 보기 차단
+            if (interview?.processing_status === 'pending' || 
+                interview?.processing_status === 'processing') {
+              toast.warning('인터뷰 분석이 진행 중입니다. 완료 후 확인해주세요.')
+              return
+            }
+            
             // URL에 interview 쿼리 파라미터 추가
             const url = new URL(window.location.href)
             url.searchParams.set('interview', id)
             router.push(url.pathname + url.search, { scroll: false })
           }}
           onDelete={handleDeleteInterview}
-          loading={loading}
+          loading={isLoading}
         />
       )}
 

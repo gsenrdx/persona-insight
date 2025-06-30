@@ -7,6 +7,25 @@ import { ExtractionCriteria } from './api'
 // Re-export ExtractionCriteria for components
 export type { ExtractionCriteria }
 
+// === Workflow 관련 타입들 ===
+export enum WorkflowStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
+}
+
+export interface WorkflowJob {
+  id: string
+  status: WorkflowStatus
+  projectId: string
+  fileName?: string
+  progress?: number
+  error?: string
+  createdAt: string
+  updatedAt: string
+}
+
 // === 기본 Props 타입들 ===
 export interface BaseComponentProps {
   className?: string

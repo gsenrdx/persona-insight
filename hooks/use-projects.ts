@@ -34,9 +34,9 @@ export function useProjects(query: ProjectListQuery = {}, options?: { enabled?: 
       return extractApiData(response)
     },
     enabled: options?.enabled !== undefined ? options.enabled : (!!user && (!!query.companyId || !!query.userId)),
-    staleTime: options?.staleTime ?? 1 * 60 * 1000, // 1분간 fresh 상태 유지
-    gcTime: 5 * 60 * 1000, // 5분간 캐시 유지
-    refetchOnMount: options?.refetchOnMount ?? true,
+    staleTime: options?.staleTime ?? 10 * 60 * 1000, // 10분간 fresh 상태 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
+    refetchOnMount: options?.refetchOnMount ?? false, // 마운트 시 재조회 방지
   })
 }
 
@@ -56,7 +56,9 @@ export function useProject(projectId: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!projectId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재조회 방지
   })
 }
 
@@ -76,7 +78,9 @@ export function useProjectMembers(projectId: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!projectId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재조회 방지
   })
 }
 
@@ -96,7 +100,9 @@ export function useProjectInsights(projectId: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!projectId,
-    staleTime: 5 * 60 * 1000, // 인사이트는 좀 더 오래 캐시
+    staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재조회 방지
   })
 }
 

@@ -1,3 +1,5 @@
+"use client"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils/index"
 import { useTheme } from "next-themes"

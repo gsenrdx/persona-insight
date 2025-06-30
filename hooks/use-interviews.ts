@@ -32,8 +32,9 @@ export function useInterviews(query: InterviewListQuery = {}) {
       return extractApiData(response)
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2분간 fresh 상태 유지
-    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재조회 방지
   })
 }
 
@@ -53,7 +54,9 @@ export function useInterview(interviewId: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!interviewId,
-    staleTime: 3 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+    gcTime: 20 * 60 * 1000, // 20분간 캐시 유지
+    refetchOnMount: false, // 마운트 시 재조회 방지
   })
 }
 

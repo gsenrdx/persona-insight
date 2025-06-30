@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,7 +10,7 @@ import { ProjectWithMembership } from '@/types'
 import { useAuth } from '@/hooks/use-auth'
 import { queryClient } from '@/lib/query-client'
 import { queryKeys } from '@/lib/query-keys'
-import { projectsApi as projectService } from '@/lib/api'
+import { projectsApi as projectService, interviewsApi } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
 interface ProjectCardProps {
@@ -157,6 +159,13 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect }: ProjectCard
       queryClient.prefetchQuery({
         queryKey: queryKeys.projects.member(project.id),
         queryFn: () => projectService.getProjectMembers(session.access_token, project.id),
+        staleTime: 5 * 60 * 1000,
+      })
+      
+      // 인터뷰 목록 프리페치
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.interviews.byProject(project.id),
+        queryFn: () => interviewsApi.getInterviews(session.access_token, { projectId: project.id }),
         staleTime: 5 * 60 * 1000,
       })
 
