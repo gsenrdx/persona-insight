@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Plus, RotateCw, Wifi, WifiOff, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
@@ -15,6 +14,7 @@ import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { useRealtimeInterviews } from '@/hooks/use-realtime-interviews'
+import { cn } from '@/lib/utils'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
@@ -69,12 +69,12 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
   }, [selectedInterviewData, selectedInterviewId])
 
   // 새로고침 함수
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     const toastId = toast.loading('목록을 새로고침하는 중...')
     await refetch()
     toast.dismiss(toastId)
     toast.success('목록을 새로고침했습니다')
-  }
+  }, [refetch])
 
   // WebSocket 실시간 구독 설정
   const { isConnected: realtimeConnected, reconnect, lastError, connectionStatus } = useRealtimeInterviews({
@@ -98,25 +98,23 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         )
       }
       
-      // 처리 완료 시 캐시 무효화 (서버에서 최신 데이터 다시 가져오기)
-      if (updatedInterview.processing_status === 'completed' || 
-          updatedInterview.processing_status === 'failed') {
-        // 인터뷰 상세 정보 캐시 무효화
-        queryClient.invalidateQueries({ 
-          queryKey: queryKeys.interviews.detail(updatedInterview.id) 
-        })
+      // 더 이상 토스트 알림을 표시하지 않음 - WebSocket으로 자동 업데이트되므로
+      const isNewlyCompleted = updatedInterview.processing_status === 'completed' && 
+        interviews.find(i => i.id === updatedInterview.id)?.processing_status !== 'completed'
         
-        // 프로젝트의 인터뷰 목록도 갱신
-        queryClient.invalidateQueries({ 
-          queryKey: queryKeys.interviews.byProject(project.id) 
+      if (isNewlyCompleted) {
+        // 크게 눈에 띄만한 성공 알림만 표시
+        toast.success(`"${updatedInterview.title}" 분석이 완료되었습니다!`, {
+          duration: 5000,
+          action: {
+            label: '확인',
+            onClick: () => {
+              const url = new URL(window.location.href)
+              url.searchParams.set('interview', updatedInterview.id)
+              router.replace(url.pathname + url.search, { scroll: false })
+            }
+          }
         })
-        
-        // 처리 완료 알림
-        if (updatedInterview.processing_status === 'completed') {
-          toast.success(`"${updatedInterview.name || '인터뷰'}" 분석이 완료되었습니다!`)
-        } else if (updatedInterview.processing_status === 'failed') {
-          toast.error(`"${updatedInterview.name || '인터뷰'}" 분석에 실패했습니다.`)
-        }
       }
       
       // 로컬 state도 업데이트
@@ -167,6 +165,7 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       }
     }
   })
+
 
 
 
@@ -282,65 +281,56 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
 
   // 인터뷰 목록
   return (
-    <div>
-      {/* 헤더 */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="h-8 w-8"
-            >
-              <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-            <div className="flex items-center gap-2">
-              {realtimeConnected ? (
-                <div className="flex items-center gap-1">
-                  <Wifi className="h-4 w-4 text-green-500" />
-                  <span className="text-xs text-green-600 font-medium">실시간</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <WifiOff className="h-4 w-4 text-red-500" title={`${connectionStatus}${lastError ? `: ${lastError}` : ''}`} />
-                  <span className="text-xs text-red-600 font-medium">{connectionStatus}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={reconnect}
-                    className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                  >
-                    재연결
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <Button 
-            onClick={() => setShowAddInterviewModal(true)}
-            className="bg-primary hover:bg-primary/90 text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            인터뷰 추가
-          </Button>
+    <div className="space-y-6">
+      {/* 상단 헤더 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h2>
+          <p className="text-sm text-gray-500 mt-1">총 {interviews.length}개의 인터뷰가 등록되어 있습니다</p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          총 {interviews.length}개의 인터뷰가 등록되어 있습니다
-        </p>
-        <div className="h-px bg-gray-200 mt-6" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-sm">
+            {realtimeConnected ? (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                <span className="text-gray-700">연결됨</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                <span className="text-gray-700">연결 끊김</span>
+              </>
+            )}
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              isLoading
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-gray-700 hover:bg-gray-100 border border-gray-300"
+            )}
+          >
+            <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
+          <button
+            onClick={() => setShowAddInterviewModal(true)}
+            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            인터뷰 추가
+          </button>
+        </div>
       </div>
 
-      {/* 인터뷰 목록 */}
+      {/* 인터뷰 테이블 */}
       {error ? (
-        <div className="bg-white rounded-xl p-12 text-center">
-          <p className="text-gray-500 mb-3">{error}</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <p className="text-gray-500 mb-4">{error}</p>
           <Button 
             variant="outline"
-            size="sm"
             onClick={() => refetch()}
           >
             다시 시도
@@ -350,26 +340,22 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         <InterviewDataTable
           interviews={interviews}
           onView={(id) => {
-            // 선택한 인터뷰 찾기
             const interview = interviews.find(i => i.id === id)
             
-            // 처리 중인 인터뷰는 상세 보기 차단
             if (interview?.processing_status === 'pending' || 
                 interview?.processing_status === 'processing') {
               toast.warning('인터뷰 분석이 진행 중입니다. 완료 후 확인해주세요.')
               return
             }
             
-            // URL에 interview 쿼리 파라미터 추가
             const url = new URL(window.location.href)
             url.searchParams.set('interview', id)
             router.push(url.pathname + url.search, { scroll: false })
           }}
           onDelete={handleDeleteInterview}
-          loading={isLoading}
+          isLoading={isLoading}
         />
       )}
-
 
       {/* 인터뷰 추가 모달 */}
       <AddInterviewModal
@@ -378,7 +364,6 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
         onFilesSubmit={handleFilesSubmit}
         projectId={project.id}
       />
-
     </div>
   )
 }

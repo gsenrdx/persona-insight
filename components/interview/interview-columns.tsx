@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowUpDown } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare } from "lucide-react"
 
 export const createInterviewColumns = (
   onView: (id: string) => void,
@@ -20,18 +20,36 @@ export const createInterviewColumns = (
   {
     accessorKey: "title",
     header: ({ column }) => {
+      const sorted = column.getIsSorted()
       return (
-        <Button
-          variant="ghost"
+        <button
+          className="flex items-center gap-1 hover:text-gray-900 transition-colors group"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           제목
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === "asc" ? (
+            <ArrowUp className="h-3 w-3 text-blue-600" />
+          ) : sorted === "desc" ? (
+            <ArrowDown className="h-3 w-3 text-blue-600" />
+          ) : (
+            <ChevronsUpDown className="h-3 w-3 text-gray-400 group-hover:text-gray-600" />
+          )}
+        </button>
       )
     },
     cell: ({ row }) => {
-      return <div className="font-medium">{row.getValue("title") || "제목 없음"}</div>
+      const noteCount = row.original.note_count || 0
+      return (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{row.getValue("title") || "제목 없음"}</span>
+          {noteCount > 0 && (
+            <div className="flex items-center gap-1 text-gray-500">
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span className="text-xs">{noteCount}</span>
+            </div>
+          )}
+        </div>
+      )
     },
   },
   {
@@ -40,13 +58,13 @@ export const createInterviewColumns = (
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       const statusMap = {
-        completed: { label: "완료", variant: "default" as const },
-        processing: { label: "분석중", variant: "secondary" as const },
-        pending: { label: "대기중", variant: "outline" as const },
-        failed: { label: "실패", variant: "destructive" as const },
+        completed: { label: "완료", className: "bg-green-100 text-green-700 border-green-200" },
+        processing: { label: "분석중", className: "bg-blue-100 text-blue-700 border-blue-200" },
+        pending: { label: "대기중", className: "bg-gray-100 text-gray-700 border-gray-200" },
+        failed: { label: "실패", className: "bg-red-100 text-red-700 border-red-200" },
       }
-      const config = statusMap[status as keyof typeof statusMap] || { label: status, variant: "outline" as const }
-      return <Badge variant={config.variant}>{config.label}</Badge>
+      const config = statusMap[status as keyof typeof statusMap] || { label: status, className: "bg-gray-100 text-gray-700" }
+      return <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>{config.label}</span>
     },
   },
   {
@@ -61,29 +79,28 @@ export const createInterviewColumns = (
     },
   },
   {
-    accessorKey: "note_count",
-    header: "노트",
-    cell: ({ row }) => {
-      const count = row.getValue("note_count") as number
-      return <div className="text-center">{count || 0}</div>
-    },
-  },
-  {
     accessorKey: "created_at",
     header: ({ column }) => {
+      const sorted = column.getIsSorted()
       return (
-        <Button
-          variant="ghost"
+        <button
+          className="flex items-center gap-1 hover:text-gray-900 transition-colors group"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           생성일
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === "asc" ? (
+            <ArrowUp className="h-3 w-3 text-blue-600" />
+          ) : sorted === "desc" ? (
+            <ArrowDown className="h-3 w-3 text-blue-600" />
+          ) : (
+            <ChevronsUpDown className="h-3 w-3 text-gray-400 group-hover:text-gray-600" />
+          )}
+        </button>
       )
     },
     cell: ({ row }) => {
       return (
-        <div className="text-muted-foreground">
+        <div className="text-sm text-gray-600">
           {format(new Date(row.getValue("created_at")), "yyyy.MM.dd")}
         </div>
       )

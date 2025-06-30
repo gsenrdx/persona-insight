@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode } from "react"
+import { ReactNode, useState } from "react"
 import Link from "next/link"
 import { Navigation } from "@/components/shared"
 import UserMenu from "@/components/auth/user-menu"
@@ -8,6 +8,7 @@ import CompanyBranding from "@/components/auth/company-branding"
 import AuthGuard from "@/components/auth/auth-guard"
 import { ProjectSidebar } from "@/components/project/project-sidebar"
 import { cn } from "@/lib/utils"
+import { Menu, X } from "lucide-react"
 
 interface ProjectLayoutProps {
   children: ReactNode
@@ -15,6 +16,7 @@ interface ProjectLayoutProps {
   activeView: string
   onViewChange: (view: string) => void
   className?: string
+  headerTitle?: string
 }
 
 export function ProjectLayout({ 
@@ -22,49 +24,86 @@ export function ProjectLayout({
   projectName,
   activeView,
   onViewChange,
-  className
+  className,
+  headerTitle
 }: ProjectLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-        {/* 배경 장식 요소 */}
-        <div className="fixed inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
-        <div className="fixed top-20 -left-96 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
-        <div className="fixed top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
+      <div className="min-h-screen flex bg-gray-50">
         
-        {/* 헤더 */}
-        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
-          <div className="container mx-auto px-4">
-            <div className="h-16 flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="flex items-baseline">
-                  <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
-                  <CompanyBranding />
-                </div>
-              </Link>
+        {/* 모바일 사이드바 오버레이 */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* 통합된 사이드바 (헤더 포함) */}
+        <aside className={cn(
+          "w-64 h-screen bg-blue-600 text-white flex flex-col transition-transform duration-200 z-50 shadow-lg",
+          "fixed top-0 left-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}>
+          {/* 로고 영역 */}
+          <div className="h-20 flex items-center justify-between px-6 border-b border-white/10">
+            <Link href="/" className="flex-1 block">
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-white">Persona Insight</h2>
+                <CompanyBranding className="text-blue-100 text-xs" />
+              </div>
+            </Link>
+            <button
+              className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+          
+          {/* 프로젝트 정보 및 네비게이션 */}
+          <ProjectSidebar 
+            activeView={activeView}
+            onViewChange={(view) => {
+              onViewChange(view)
+              setSidebarOpen(false)
+            }}
+            projectName={projectName}
+            className="flex-1"
+          />
+        </aside>
+        
+        {/* 메인 콘텐츠 영역 */}
+        <div className="flex-1 flex flex-col lg:ml-64">
+          {/* 상단 헤더 바 */}
+          <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+            <div className="h-full flex items-center justify-between px-4 lg:px-8">
+              <div className="flex items-center gap-4">
+                <button
+                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu className="w-5 h-5 text-gray-600" />
+                </button>
+                {headerTitle && (
+                  <h1 className="text-xl font-semibold text-gray-900">{headerTitle}</h1>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <Navigation />
                 <UserMenu />
               </div>
             </div>
-          </div>
-        </header>
-        
-        {/* 메인 콘텐츠 */}
-        <div className="flex relative">
-          {/* 사이드바 */}
-          <ProjectSidebar 
-            activeView={activeView}
-            onViewChange={onViewChange}
-            projectName={projectName}
-          />
+          </header>
           
-          {/* 콘텐츠 영역 */}
+          {/* 콘텐츠 */}
           <main className={cn(
-            "flex-1 min-h-[calc(100vh-4rem)] p-8",
+            "flex-1 p-6 lg:p-8 overflow-auto",
             className
           )}>
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               {children}
             </div>
           </main>

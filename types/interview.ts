@@ -63,6 +63,18 @@ export interface AIPersonaDefinition {
   tags: string[];
 }
 
+// 인터뷰 노트 타입
+export interface InterviewNote {
+  id: string;
+  content: string;
+  created_at: string;
+  created_by?: string;
+  author?: {
+    id: string;
+    name: string;
+  };
+}
+
 // 인터뷰 타입 (DB 기반)
 export interface Interview {
   id: string;
@@ -102,6 +114,7 @@ export interface Interview {
   };
   ai_persona_definition?: AIPersonaDefinition; // AI 페르소나 정의 관계 데이터
   note_count?: number;
+  notes?: InterviewNote[];
 }
 
 // 인터뷰 목록 필터

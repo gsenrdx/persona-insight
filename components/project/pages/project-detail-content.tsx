@@ -1,25 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Loader2, ChevronUp } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject, useProjectMembers } from '@/hooks/use-projects'
-import { toast } from 'sonner'
 import ProjectSettings from '@/components/project/tabs/project-settings'
 import ProjectInterviews from '@/components/project/tabs/project-interviews-new'
 import ProjectInsights from '@/components/project/tabs/project-insights'
 import { MaskingTest } from '@/components/test/masking-test'
 import { ProjectLayout } from '@/components/layout/project-layout'
-import { cn } from '@/lib/utils'
 
 interface ProjectDetailContentProps {
   projectId: string
 }
-
-
 
 export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { profile, user, loading: authLoading } = useAuth()
@@ -31,7 +26,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
   
   const [activeView, setActiveView] = useState('interviews')
-  const [showScrollTop, setShowScrollTop] = useState(false)
   
   // 전체 로딩 상태 - 인증 로딩 상태도 포함
   const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
@@ -53,19 +47,18 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     router.replace(url.pathname + url.search, { scroll: false })
   }
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  // 스크롤 이벤트 핸들러
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300)
+  const getHeaderTitle = () => {
+    switch (activeView) {
+      case 'interviews':
+        return '인터뷰 관리'
+      case 'insights':
+        return '인사이트'
+      case 'settings':
+        return '프로젝트 설정'
+      default:
+        return '인터뷰 관리'
     }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }
 
   const renderContent = () => {
     if (!project) return null
@@ -163,11 +156,10 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName={project?.name}
+        headerTitle={getHeaderTitle()}
       >
         {renderContent()}
       </ProjectLayout>
-      
-      
     </>
   )
 }

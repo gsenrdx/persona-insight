@@ -8,6 +8,7 @@ interface ProjectSidebarProps {
   activeView: string
   onViewChange: (view: string) => void
   projectName?: string
+  className?: string
 }
 
 const navigationItems = [
@@ -31,32 +32,32 @@ const navigationItems = [
   }
 ]
 
-export function ProjectSidebar({ activeView, onViewChange, projectName }: ProjectSidebarProps) {
+export function ProjectSidebar({ activeView, onViewChange, projectName, className }: ProjectSidebarProps) {
   const router = useRouter()
   
   return (
-    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white/50 backdrop-blur-sm border-r border-gray-200/50 sticky top-16">
+    <div className={cn("flex flex-col", className)}>
       {/* 프로젝트 헤더 */}
       {projectName && (
-        <div className="p-6 border-b border-gray-200/30">
-          <div className="flex items-center gap-2">
+        <div className="px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/projects')}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
               title="프로젝트 목록으로"
             >
-              <ArrowLeft className="w-4 h-4 text-gray-500" />
+              <ArrowLeft className="w-4 h-4 text-white/70 group-hover:text-white" />
             </button>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-gray-900 truncate">{projectName}</h2>
-              <p className="text-sm text-gray-500">프로젝트 관리</p>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-semibold text-white truncate">{projectName}</h2>
+              <p className="text-xs text-blue-100/70 mt-0.5">프로젝트 관리</p>
             </div>
           </div>
         </div>
       )}
       
       {/* 네비게이션 */}
-      <nav className="p-3">
+      <nav className="flex-1 p-4 space-y-1">
         {navigationItems.map((item) => {
           const isActive = activeView === item.id
           const Icon = item.icon
@@ -66,45 +67,45 @@ export function ProjectSidebar({ activeView, onViewChange, projectName }: Projec
               key={item.id}
               onClick={() => onViewChange(item.id)}
               className={cn(
-                "w-full flex items-center justify-between px-4 py-3 mb-1 rounded-xl group relative",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                 isActive 
-                  ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary shadow-sm" 
-                  : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
+                  ? "bg-white/20 backdrop-blur-sm shadow-sm" 
+                  : "hover:bg-white/10"
               )}
             >
-              <div className="flex items-center gap-3 relative z-10">
+              <div className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                isActive 
+                  ? "bg-white/25" 
+                  : "bg-white/10 group-hover:bg-white/15"
+              )}>
+                <Icon className={cn(
+                  "w-4 h-4",
+                  isActive ? "text-white" : "text-white/80"
+                )} />
+              </div>
+              <div className="flex-1 text-left">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center",
-                  isActive ? "bg-primary/10" : "bg-gray-100 group-hover:bg-gray-200"
+                  "text-sm font-medium",
+                  isActive ? "text-white" : "text-white/90"
                 )}>
-                  <Icon className={cn(
-                    "w-5 h-5",
-                    isActive ? "text-primary" : "text-gray-500 group-hover:text-gray-700"
-                  )} />
+                  {item.label}
                 </div>
-                <div className="text-left">
-                  <div className={cn(
-                    "text-sm font-semibold",
-                    isActive ? "text-gray-900" : "text-gray-700"
-                  )}>
-                    {item.label}
-                  </div>
-                  <div className={cn(
-                    "text-xs",
-                    isActive ? "text-primary/70" : "text-gray-500"
-                  )}>
-                    {item.description}
-                  </div>
+                <div className={cn(
+                  "text-xs mt-0.5",
+                  isActive ? "text-white/80" : "text-white/60"
+                )}>
+                  {item.description}
                 </div>
               </div>
               
               {isActive && (
-                <div className="absolute inset-0 border-2 border-primary/20 rounded-xl" />
+                <div className="w-1 h-8 bg-white/40 rounded-full ml-auto" />
               )}
             </button>
           )
         })}
       </nav>
-    </aside>
+    </div>
   )
 }
