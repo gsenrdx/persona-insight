@@ -185,39 +185,61 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   }, [])
 
   // Handle interview changes
-  const handleInterviewChange = useCallback((
+  const handleInterviewChange = useCallback(async (
     payload: RealtimePostgresChangesPayload<InterviewRow>
   ) => {
-    setState(prev => {
-      const { eventType, new: newRow, old: oldRow } = payload
-      let interviews = [...prev.interviews]
+    const { eventType, new: newRow, old: oldRow } = payload
 
-      switch (eventType) {
-        case 'INSERT':
-          if (newRow) {
-            interviews.push(transformInterviewRow(newRow))
-          }
-          break
-        case 'UPDATE':
-          if (newRow) {
-            const index = interviews.findIndex(i => i.id === newRow.id)
-            if (index >= 0) {
-              interviews[index] = transformInterviewRow(newRow)
-            }
-          }
-          break
-        case 'DELETE':
-          if (oldRow) {
-            interviews = interviews.filter(i => i.id !== oldRow.id)
-            // Also remove notes for this interview
-            const { [oldRow.id]: _, ...remainingNotes } = prev.notes
-            return { ...prev, interviews, notes: remainingNotes }
-          }
-          break
-      }
+    switch (eventType) {
+      case 'INSERT':
+      case 'UPDATE':
+        if (newRow) {
+          // Fetch complete interview data with profile
+          const { data: fullInterview, error } = await supabase
+            .from('interviews')
+            .select(`
+              *,
+              created_by_profile:profiles!interviews_created_by_fkey(
+                id,
+                name
+              ),
+              interview_notes(count)
+            `)
+            .eq('id', newRow.id)
+            .single()
 
-      return { ...prev, interviews }
-    })
+          if (!error && fullInterview) {
+            setState(prev => {
+              let interviews = [...prev.interviews]
+              
+              if (eventType === 'INSERT') {
+                interviews.push(transformInterviewRow(fullInterview))
+              } else {
+                const index = interviews.findIndex(i => i.id === fullInterview.id)
+                if (index >= 0) {
+                  interviews[index] = transformInterviewRow(fullInterview)
+                }
+              }
+
+              return { ...prev, interviews }
+            })
+          }
+        }
+        break
+        
+      case 'DELETE':
+        if (oldRow) {
+          setState(prev => ({
+            ...prev,
+            interviews: prev.interviews.filter(i => i.id !== oldRow.id),
+            notes: (() => {
+              const { [oldRow.id]: _, ...remainingNotes } = prev.notes
+              return remainingNotes
+            })()
+          }))
+        }
+        break
+    }
   }, [])
 
   // Handle note changes

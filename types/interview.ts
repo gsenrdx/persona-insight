@@ -107,6 +107,7 @@ export interface Interview {
     id: string;
     name: string;
   };
+  created_by_name?: string; // 생성자 이름 (denormalized for RLS)
   persona?: {
     id: string;
     persona_type: string;
