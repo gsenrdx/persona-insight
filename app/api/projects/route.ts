@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members(id, role, joined_at, user_id),
-          interviewees(count),
+          interviews(count),
           personas!left(count)
         `)
         .eq('company_id', company_id)
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members!inner(id, role, joined_at, user_id),
-          interviewees(count),
+          interviews(count),
           personas!left(count)
         `)
         .eq('company_id', company_id)
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members(count),
-          interviewees(count),
+          interviews(count),
           personas(count)
         `)
         .eq('company_id', company_id)
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
       const memberCount = project.project_members?.length || 0
       
       // 인터뷰 및 페르소나 수 계산
-      const interviewCount = project.interviewees?.[0]?.count || 0
+      const interviewCount = project.interviews?.[0]?.count || 0
       const personaCount = project.personas?.[0]?.count || 0
       
       return {
@@ -152,7 +152,7 @@ export async function GET(request: Request) {
         interview_count: interviewCount,
         persona_count: personaCount,
         project_members: undefined, // 중복 데이터 제거
-        interviewees: undefined, // 중복 데이터 제거
+        interviews: undefined, // 중복 데이터 제거
         personas: undefined // 중복 데이터 제거
       }
     })

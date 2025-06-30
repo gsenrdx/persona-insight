@@ -10,7 +10,7 @@ import { useInterviews, useInterview, useDeleteInterview } from '@/hooks/use-int
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import { Interview } from '@/types/interview'
-import { InterviewList } from '@/components/interview/interview-list'
+import { InterviewDataTable } from '@/components/interview/interview-data-table-clean'
 import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
@@ -347,7 +347,7 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
           </Button>
         </div>
       ) : (
-        <InterviewList
+        <InterviewDataTable
           interviews={interviews}
           onView={(id) => {
             // 선택한 인터뷰 찾기

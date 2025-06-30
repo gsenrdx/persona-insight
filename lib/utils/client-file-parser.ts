@@ -3,11 +3,25 @@
  * PDF 등 특수 형식을 브라우저에서 텍스트로 변환
  */
 
-import * as pdfjsLib from 'pdfjs-dist';
+// Dynamic import to prevent SSR issues
+let pdfjsLib: any = null;
 
-// PDF.js 워커 설정
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// PDF.js 초기화 함수
+async function initializePdfJs() {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF.js can only be used in browser environment');
+  }
+  
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    
+    // PDF.js 워커 설정
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    }
+  }
+  
+  return pdfjsLib;
 }
 
 /**
@@ -17,8 +31,9 @@ if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
  */
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
+    const pdfjs = await initializePdfJs();
     const arrayBuffer = await file.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     
     const textParts: string[] = [];
@@ -66,6 +81,15 @@ export function isClientProcessableFile(file: File): boolean {
  * @returns 처리된 내용 또는 원본 파일
  */
 export async function preprocessFileOnClient(file: File): Promise<{ type: 'text' | 'file'; content: string | File; fileName: string }> {
+  // Ensure we're only running on client
+  if (typeof window === 'undefined') {
+    return {
+      type: 'file',
+      content: file,
+      fileName: file.name
+    };
+  }
+  
   if (isPDFFile(file)) {
     try {
       const text = await extractTextFromPDF(file);
