@@ -44,12 +44,12 @@ export const queryKeys = {
     synthesisJob: (jobId: string) => ['personas', 'synthesis', 'job', jobId] as const,
   },
 
-  // === 인터뷰 관련 쿼리 키 ===
+  // === 인터뷰 관련 쿼리 키 === (일부 컴포넌트에서 여전히 사용중)
   interviews: {
     all: ['interviews'] as const,
     lists: () => ['interviews', 'list'] as const,
     list: (filters: string) => ['interviews', 'list', filters] as const,
-    byProject: (projectId: string) => ['interviews', 'project', projectId] as const,
+    byProject: (projectId: string, params?: any) => ['interviews', 'project', projectId] as const,
     details: () => ['interviews', 'detail'] as const,
     detail: (id: string) => ['interviews', 'detail', id] as const,
     extractionCriteria: (projectId?: string) => 

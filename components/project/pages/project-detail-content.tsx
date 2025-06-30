@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject, useProjectMembers } from '@/hooks/use-projects'
 import ProjectSettings from '@/components/project/tabs/project-settings'
-import ProjectInterviews from '@/components/project/tabs/project-interviews-new'
+import ProjectInterviews from '@/components/project/tabs/project-interviews-realtime'
 import ProjectInsights from '@/components/project/tabs/project-insights'
 import { ProjectLayout } from '@/components/layout/project-layout'
 

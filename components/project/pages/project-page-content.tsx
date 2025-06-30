@@ -89,23 +89,23 @@ export function ProjectPageContent() {
     }))
   })
 
-  // 인터뷰 데이터 배치 프리페칭 (프로젝트당 최대 20개)
-  const interviewQueries = useQueries({
-    queries: visibleProjects.map(project => ({
-      queryKey: queryKeys.interviews.byProject(project.id, { limit: 20 }),
-      queryFn: async () => {
-        if (!profile?.company_id) throw new Error('회사 정보가 없습니다')
-        const response = await fetch(
-          `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=20&offset=0`
-        )
-        if (!response.ok) throw new Error('인터뷰 데이터를 가져올 수 없습니다')
-        const data = await response.json()
-        return data.data || []
-      },
-      staleTime: 5 * 60 * 1000, // 5분
-      enabled: !!profile?.company_id && !!profile?.id && !!visibleProjects.length,
-    }))
-  })
+  // 인터뷰 데이터는 이제 Realtime으로 처리되므로 프리페칭 제거
+  // const interviewQueries = useQueries({
+  //   queries: visibleProjects.map(project => ({
+  //     queryKey: queryKeys.interviews.byProject(project.id, { limit: 20 }),
+  //     queryFn: async () => {
+  //       if (!profile?.company_id) throw new Error('회사 정보가 없습니다')
+  //       const response = await fetch(
+  //         `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=20&offset=0`
+  //       )
+  //       if (!response.ok) throw new Error('인터뷰 데이터를 가져올 수 없습니다')
+  //       const data = await response.json()
+  //       return data.data || []
+  //     },
+  //     staleTime: 5 * 60 * 1000, // 5분
+  //     enabled: !!profile?.company_id && !!profile?.id && !!visibleProjects.length,
+  //   }))
+  // })
 
   // 새 프로젝트 생성
   const handleCreateProject = async (projectData: CreateProjectData) => {
