@@ -5,7 +5,7 @@ import { CleanedScriptItem } from '@/types/interview'
 import { Interview } from '@/types/interview'
 import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useInterviewNotes } from '@/hooks/use-interview-notes'
+import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes-realtime'
 import { useAuth } from '@/hooks/use-auth'
 
 interface InterviewScriptViewerProps {
@@ -25,7 +25,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   const scriptContainerRef = useRef<HTMLDivElement>(null)
   const { profile } = useAuth()
   
-  // DB 연동 훅 사용
+  // DB 연동 훅 사용 (Realtime)
   const { 
     notes, 
     getNotesByScriptId, 
@@ -35,7 +35,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     deleteReply,
     isAddingNote,
     isDeletingNote 
-  } = useInterviewNotes(interview?.id || '')
+  } = useInterviewNotesRealtime(interview?.id || '')
   
   // 스크립트 ID별 메모 맵핑
   const memosByScriptId = useMemo(() => {

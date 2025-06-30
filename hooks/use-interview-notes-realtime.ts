@@ -1,118 +1,148 @@
 import { useCallback } from 'react'
 import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
 import { supabase } from '@/lib/supabase'
-import { InterviewNote } from '@/types/interview-notes'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import type { InterviewNote, CreateNoteRequest, CreateReplyRequest } from '@/types/interview-notes'
 
 export function useInterviewNotesRealtime(interviewId: string) {
-  const { user } = useAuth()
-  const { notes, broadcastEvent } = useInterviewRealtime()
+  const { user, session } = useAuth()
+  const { notes } = useInterviewRealtime()
   
+  // Get notes for current interview
   const interviewNotes = notes[interviewId] || []
 
-  // Create note
-  const createNote = useCallback(async (content: string, parentId?: string) => {
-    if (!user) throw new Error('Not authenticated')
+  // Add note
+  const addNote = useCallback(async (data: CreateNoteRequest) => {
+    if (!session?.access_token) {
+      toast.error('인증이 필요합니다')
+      return
+    }
 
     try {
-      const { data: newNote, error } = await supabase
-        .from('interview_notes')
-        .insert({
-          interview_id: interviewId,
-          user_id: user.id,
-          content,
-          parent_id: parentId,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // 브로드캐스트로 다른 사용자에게 알림
-      broadcastEvent('note-created', {
-        interviewId,
-        noteId: newNote.id,
-        userId: user.id,
+      const response = await fetch(`/api/interviews/${interviewId}/notes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
       })
-
-      toast.success('노트가 추가되었습니다')
-      return newNote
+      
+      if (!response.ok) {
+        throw new Error('Failed to create note')
+      }
+      
+      // Realtime will automatically update via subscription
+      toast.success('메모가 추가되었습니다')
     } catch (error) {
-      console.error('Failed to create note:', error)
-      toast.error('노트 추가에 실패했습니다')
-      throw error
+      console.error('Failed to add note:', error)
+      toast.error('메모 추가에 실패했습니다')
     }
-  }, [interviewId, user, broadcastEvent])
-
-  // Update note
-  const updateNote = useCallback(async (noteId: string, content: string) => {
-    if (!user) throw new Error('Not authenticated')
-
-    try {
-      const { error } = await supabase
-        .from('interview_notes')
-        .update({ content, updated_at: new Date().toISOString() })
-        .eq('id', noteId)
-        .eq('user_id', user.id) // 본인 노트만 수정 가능
-
-      if (error) throw error
-
-      // 브로드캐스트로 다른 사용자에게 알림
-      broadcastEvent('note-updated', {
-        interviewId,
-        noteId,
-        userId: user.id,
-      })
-
-      toast.success('노트가 수정되었습니다')
-    } catch (error) {
-      console.error('Failed to update note:', error)
-      toast.error('노트 수정에 실패했습니다')
-      throw error
-    }
-  }, [user, broadcastEvent, interviewId])
+  }, [session, interviewId])
 
   // Delete note
   const deleteNote = useCallback(async (noteId: string) => {
-    if (!user) throw new Error('Not authenticated')
+    if (!session?.access_token) {
+      toast.error('인증이 필요합니다')
+      return
+    }
 
     try {
-      const { error } = await supabase
-        .from('interview_notes')
-        .delete()
-        .eq('id', noteId)
-        .eq('user_id', user.id) // 본인 노트만 삭제 가능
-
-      if (error) throw error
-
-      // 브로드캐스트로 다른 사용자에게 알림
-      broadcastEvent('note-deleted', {
-        interviewId,
-        noteId,
-        userId: user.id,
+      const response = await fetch(`/api/interviews/${interviewId}/notes/${noteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       })
-
-      toast.success('노트가 삭제되었습니다')
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete note')
+      }
+      
+      // Realtime will automatically update via subscription
+      toast.success('메모가 삭제되었습니다')
     } catch (error) {
       console.error('Failed to delete note:', error)
-      toast.error('노트 삭제에 실패했습니다')
-      throw error
+      toast.error('메모 삭제에 실패했습니다')
     }
-  }, [user, broadcastEvent, interviewId])
+  }, [session, interviewId])
 
-  // Add reply to note
-  const addReply = useCallback(async (noteId: string, content: string) => {
-    return createNote(content, noteId)
-  }, [createNote])
+  // Add reply
+  const addReply = useCallback(async (data: CreateReplyRequest) => {
+    if (!session?.access_token) {
+      toast.error('인증이 필요합니다')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/interviews/${interviewId}/notes/${data.noteId}/replies`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: data.content })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create reply')
+      }
+      
+      // Realtime will automatically update via subscription
+      toast.success('댓글이 추가되었습니다')
+    } catch (error) {
+      console.error('Failed to add reply:', error)
+      toast.error('댓글 추가에 실패했습니다')
+    }
+  }, [session, interviewId])
+
+  // Delete reply
+  const deleteReply = useCallback(async ({ noteId, replyId }: { noteId: string; replyId: string }) => {
+    if (!session?.access_token) {
+      toast.error('인증이 필요합니다')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/interviews/${interviewId}/notes/${noteId}/replies/${replyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete reply')
+      }
+      
+      // Realtime will automatically update via subscription
+      toast.success('댓글이 삭제되었습니다')
+    } catch (error) {
+      console.error('Failed to delete reply:', error)
+      toast.error('댓글 삭제에 실패했습니다')
+    }
+  }, [session, interviewId])
+
+  // Get notes by script ID
+  const getNotesByScriptId = useCallback((scriptId: string) => {
+    return interviewNotes.filter((note: any) => 
+      note.script_item_ids?.includes(scriptId)
+    )
+  }, [interviewNotes])
 
   return {
     notes: interviewNotes,
-    createNote,
-    updateNote,
+    isLoading: false, // Realtime is always ready
+    error: null,
+    addNote,
     deleteNote,
     addReply,
-    isLoading: false, // Realtime은 항상 동기화됨
-    error: null,
+    deleteReply,
+    getNotesByScriptId,
+    isAddingNote: false,
+    isDeletingNote: false,
+    isAddingReply: false,
+    isDeletingReply: false
   }
 }

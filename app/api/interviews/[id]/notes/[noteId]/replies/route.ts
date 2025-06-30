@@ -11,7 +11,7 @@ const supabase = createClient<Database>(
 // POST /api/interviews/[id]/notes/[noteId]/replies - 댓글 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
     // 인증 처리
@@ -31,11 +31,14 @@ export async function POST(
       )
     }
 
+    // params를 await
+    const { noteId } = await params
+
     // 댓글 생성
     const { data: reply, error } = await supabase
       .from('interview_note_replies')
       .insert({
-        note_id: params.noteId,
+        note_id: noteId,
         content,
         created_by: userId,
         company_id: companyId
@@ -62,7 +65,7 @@ export async function POST(
 // DELETE /api/interviews/[id]/notes/[noteId]/replies/[replyId] - 댓글 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
     // URL에서 replyId 추출

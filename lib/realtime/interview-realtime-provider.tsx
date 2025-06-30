@@ -3,11 +3,13 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { Interview, InterviewNote } from '@/types/interview'
+import { Interview } from '@/types/interview'
+import { InterviewNote } from '@/types/interview-notes'
 import { Database } from '@/types/supabase'
 
 type InterviewRow = Database['public']['Tables']['interviews']['Row']
 type InterviewNoteRow = Database['public']['Tables']['interview_notes']['Row']
+type InterviewNoteReplyRow = Database['public']['Tables']['interview_note_replies']['Row']
 
 interface InterviewRealtimeState {
   interviews: Interview[]
@@ -62,7 +64,10 @@ const transformInterviewRow = (row: InterviewRow & {
   }
 }
 
-const transformNoteRow = (row: InterviewNoteRow): InterviewNote => {
+const transformNoteRow = (row: InterviewNoteRow & { 
+  created_by_profile?: any,
+  replies?: any[]
+}): InterviewNote => {
   return {
     id: row.id,
     interview_id: row.interview_id,
@@ -71,6 +76,9 @@ const transformNoteRow = (row: InterviewNoteRow): InterviewNote => {
     created_at: row.created_at,
     updated_at: row.updated_at,
     metadata: row.metadata || {},
+    script_item_ids: row.script_item_ids || [],
+    created_by_profile: row.created_by_profile,
+    replies: row.replies?.filter(r => !r.is_deleted) || [],
   }
 }
 
@@ -115,7 +123,26 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       if (interviewIds.length > 0) {
         const { data: notes, error: notesError } = await supabase
           .from('interview_notes')
-          .select('*')
+          .select(`
+            *,
+            created_by_profile:profiles!created_by(
+              id,
+              name,
+              avatar_url
+            ),
+            replies:interview_note_replies(
+              id,
+              content,
+              created_by,
+              created_at,
+              is_deleted,
+              created_by_profile:profiles!created_by(
+                id,
+                name,
+                avatar_url
+              )
+            )
+          `)
           .in('interview_id', interviewIds)
           .order('created_at', { ascending: false })
 
@@ -190,46 +217,155 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   }, [])
 
   // Handle note changes
-  const handleNoteChange = useCallback((
+  const handleNoteChange = useCallback(async (
     payload: RealtimePostgresChangesPayload<InterviewNoteRow>
   ) => {
-    setState(prev => {
-      const { eventType, new: newRow, old: oldRow } = payload
-      const notes = { ...prev.notes }
+    const { eventType, new: newRow, old: oldRow } = payload
 
-      switch (eventType) {
-        case 'INSERT':
-          if (newRow) {
-            const interviewId = newRow.interview_id
-            if (!notes[interviewId]) {
-              notes[interviewId] = []
-            }
-            notes[interviewId].push(transformNoteRow(newRow))
-          }
-          break
-        case 'UPDATE':
-          if (newRow) {
-            const interviewId = newRow.interview_id
-            if (notes[interviewId]) {
-              const index = notes[interviewId].findIndex(n => n.id === newRow.id)
-              if (index >= 0) {
-                notes[interviewId][index] = transformNoteRow(newRow)
+    switch (eventType) {
+      case 'INSERT':
+      case 'UPDATE':
+        if (newRow) {
+          // Fetch complete note data with profile and replies
+          const { data: fullNote, error } = await supabase
+            .from('interview_notes')
+            .select(`
+              *,
+              created_by_profile:profiles!created_by(
+                id,
+                name,
+                avatar_url
+              ),
+              replies:interview_note_replies(
+                id,
+                content,
+                created_by,
+                created_at,
+                is_deleted,
+                created_by_profile:profiles!created_by(
+                  id,
+                  name,
+                  avatar_url
+                )
+              )
+            `)
+            .eq('id', newRow.id)
+            .single()
+
+          if (!error && fullNote) {
+            setState(prev => {
+              const notes = { ...prev.notes }
+              const interviewId = fullNote.interview_id
+              
+              if (!notes[interviewId]) {
+                notes[interviewId] = []
               }
-            }
+
+              if (eventType === 'INSERT') {
+                notes[interviewId].push(transformNoteRow(fullNote))
+              } else {
+                const index = notes[interviewId].findIndex(n => n.id === fullNote.id)
+                if (index >= 0) {
+                  notes[interviewId][index] = transformNoteRow(fullNote)
+                }
+              }
+
+              return { ...prev, notes }
+            })
           }
-          break
-        case 'DELETE':
-          if (oldRow) {
+        }
+        break
+        
+      case 'DELETE':
+        if (oldRow) {
+          setState(prev => {
+            const notes = { ...prev.notes }
             const interviewId = oldRow.interview_id
             if (notes[interviewId]) {
               notes[interviewId] = notes[interviewId].filter(n => n.id !== oldRow.id)
             }
-          }
-          break
-      }
+            return { ...prev, notes }
+          })
+        }
+        break
+    }
+  }, [])
 
-      return { ...prev, notes }
-    })
+  // Handle reply changes
+  const handleReplyChange = useCallback(async (
+    payload: RealtimePostgresChangesPayload<InterviewNoteReplyRow>
+  ) => {
+    const { eventType, new: newRow, old: oldRow } = payload
+
+    switch (eventType) {
+      case 'INSERT':
+      case 'UPDATE':
+        if (newRow) {
+          // Fetch complete reply data with profile
+          const { data: fullReply, error } = await supabase
+            .from('interview_note_replies')
+            .select(`
+              *,
+              created_by_profile:profiles!created_by(
+                id,
+                name,
+                avatar_url
+              )
+            `)
+            .eq('id', newRow.id)
+            .single()
+
+          if (!error && fullReply) {
+            setState(prev => {
+              const notes = { ...prev.notes }
+              
+              // Find the note across all interviews
+              for (const interviewId in notes) {
+                const noteIndex = notes[interviewId].findIndex(n => n.id === fullReply.note_id)
+                if (noteIndex >= 0) {
+                  const note = notes[interviewId][noteIndex]
+                  
+                  if (eventType === 'INSERT') {
+                    note.replies = [...(note.replies || []), fullReply]
+                  } else {
+                    const replyIndex = note.replies?.findIndex(r => r.id === fullReply.id)
+                    if (replyIndex !== undefined && replyIndex >= 0 && note.replies) {
+                      note.replies[replyIndex] = fullReply
+                    }
+                  }
+                  
+                  notes[interviewId][noteIndex] = { ...note }
+                  break
+                }
+              }
+
+              return { ...prev, notes }
+            })
+          }
+        }
+        break
+        
+      case 'DELETE':
+        if (oldRow) {
+          setState(prev => {
+            const notes = { ...prev.notes }
+            
+            // Find and remove the reply
+            for (const interviewId in notes) {
+              const noteIndex = notes[interviewId].findIndex(n => n.id === oldRow.note_id)
+              if (noteIndex >= 0) {
+                const note = notes[interviewId][noteIndex]
+                note.replies = note.replies?.filter(r => r.id !== oldRow.id) || []
+                notes[interviewId][noteIndex] = { ...note }
+                break
+              }
+            }
+
+            return { ...prev, notes }
+          })
+        }
+        break
+    }
   }, [])
 
   // Handle presence sync
@@ -327,6 +463,15 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           })
         }
       )
+      .on<InterviewNoteReplyRow>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interview_note_replies',
+        },
+        handleReplyChange
+      )
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState()
         handlePresenceSync(presenceState)
@@ -355,7 +500,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       })
 
     channelRef.current = channel
-  }, [loadInitialData, handleInterviewChange, handleNoteChange, handlePresenceSync, handleBroadcastUpdate])
+  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate])
 
   // Unsubscribe
   const unsubscribe = useCallback(() => {
