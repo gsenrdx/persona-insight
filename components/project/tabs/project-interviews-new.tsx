@@ -339,6 +339,7 @@ export default function ProjectInterviews({ project, selectedInterviewId }: Proj
       ) : (
         <InterviewDataTable
           interviews={interviews}
+          currentUserId={profile?.id}
           onView={(id) => {
             const interview = interviews.find(i => i.id === id)
             

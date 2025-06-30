@@ -32,6 +32,7 @@ interface InterviewDataTableProps {
   onView: (id: string) => void
   onDelete?: (id: string) => void
   isLoading?: boolean
+  currentUserId?: string
 }
 
 export function InterviewDataTable({
@@ -39,6 +40,7 @@ export function InterviewDataTable({
   onView,
   onDelete,
   isLoading,
+  currentUserId,
 }: InterviewDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "created_at", desc: true },
@@ -47,8 +49,8 @@ export function InterviewDataTable({
   const [globalFilter, setGlobalFilter] = React.useState("")
 
   const columns = React.useMemo(
-    () => createInterviewColumns(onView, onDelete),
-    [onView, onDelete]
+    () => createInterviewColumns(onView, onDelete, currentUserId),
+    [onView, onDelete, currentUserId]
   )
 
   const table = useReactTable({
@@ -103,6 +105,9 @@ export function InterviewDataTable({
                 </div>
               </TableHead>
               <TableHead>
+                <div className="h-4 w-12 animate-pulse bg-gray-100 rounded" />
+              </TableHead>
+              <TableHead>
                 <div className="h-4 w-8 animate-pulse bg-gray-100 rounded" />
               </TableHead>
             </TableRow>
@@ -129,6 +134,9 @@ export function InterviewDataTable({
                 </TableCell>
                 <TableCell>
                   <div className="h-4 w-20 animate-pulse bg-gray-100 rounded" />
+                </TableCell>
+                <TableCell>
+                  <div className="h-4 w-16 animate-pulse bg-gray-100 rounded" />
                 </TableCell>
                 <TableCell>
                   <div className="h-8 w-8 animate-pulse bg-gray-100 rounded" />

@@ -7,9 +7,9 @@ export const maxDuration = 300 // 5분 타임아웃
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { interviewId, maskedContent, userName } = body;
+  const { interviewId, maskedContent, userName, projectId } = body;
   
-  if (!interviewId || !maskedContent) {
+  if (!interviewId || !maskedContent || !projectId) {
     return new Response('필수 파라미터가 누락되었습니다.', { status: 400 });
   }
 
@@ -27,7 +27,58 @@ export async function POST(req: NextRequest) {
   )
 
   try {
-    // 1. 상태를 processing으로 업데이트
+    // 1. 프로젝트 및 회사 정보 조회
+    const { data: interview, error: interviewError } = await supabase
+      .from('interviews')
+      .select(`
+        id,
+        project:projects!interviews_project_id_fkey (
+          id,
+          name,
+          description,
+          purpose,
+          target_audience,
+          research_method,
+          company:companies!projects_company_id_fkey (
+            id,
+            name,
+            description
+          )
+        )
+      `)
+      .eq('id', interviewId)
+      .single()
+
+    if (interviewError || !interview) {
+      return new Response(JSON.stringify({
+        error: '인터뷰 정보 조회 실패',
+        message: interviewError?.message || '인터뷰를 찾을 수 없습니다.'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const project = interview.project
+    const company = project?.company
+
+    // 회사 정보는 마스킹하지 않고 그대로 사용
+    const companyName = company?.name || ''
+    const companyInfo = company?.description || ''
+    const interviewObjective = project?.purpose || ''
+    const targetAudience = project?.target_audience || ''
+    
+    // 디버깅용 로그 (개발 환경에서만)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== Context Data ===')
+      console.log('Company name:', companyName)
+      console.log('Company info:', companyInfo)
+      console.log('Interview objective:', interviewObjective)
+      console.log('Target audience:', targetAudience)
+      console.log('===================')
+    }
+
+    // 2. 상태를 processing으로 업데이트
     const { error: statusError } = await supabase
       .from('interviews')
       .update({
@@ -61,7 +112,11 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           inputs: {
             context: maskedContent,
-            preprocess_type: 'interview'
+            preprocess_type: 'interview',
+            company_name: companyName,
+            company_info: companyInfo,
+            interview_objective: interviewObjective,
+            target_audience: targetAudience
           },
           mode: 'blocking',
           user: userName

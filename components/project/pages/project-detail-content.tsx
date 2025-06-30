@@ -9,7 +9,6 @@ import { useProject, useProjectMembers } from '@/hooks/use-projects'
 import ProjectSettings from '@/components/project/tabs/project-settings'
 import ProjectInterviews from '@/components/project/tabs/project-interviews-new'
 import ProjectInsights from '@/components/project/tabs/project-insights'
-import { MaskingTest } from '@/components/test/masking-test'
 import { ProjectLayout } from '@/components/layout/project-layout'
 
 interface ProjectDetailContentProps {
@@ -72,8 +71,6 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         return <ProjectInsights project={project} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
-      case 'masking-test':
-        return <MaskingTest projectId={project.id} />
       default:
         return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
     }

@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { CleanedScriptItem } from '@/types/interview'
 import { Interview } from '@/types/interview'
-import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInterviewNotes } from '@/hooks/use-interview-notes'
 import { useAuth } from '@/hooks/use-auth'
@@ -112,6 +112,43 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     )
   }
 
+  // 스크립트를 텍스트 파일로 다운로드
+  const handleDownload = () => {
+    // 스크립트를 텍스트 형식으로 변환
+    let content = `인터뷰 스크립트\n`
+    content += `제목: ${interview?.title || '제목 없음'}\n`
+    content += `날짜: ${interview?.interview_date || new Date().toISOString().split('T')[0]}\n`
+    content += `${'='.repeat(50)}\n\n`
+
+    script.forEach((item, index) => {
+      if (index > 0 && script[index - 1].speaker !== item.speaker) {
+        content += '\n'
+      }
+      
+      const speaker = item.speaker === 'question' ? 'Q' : 'A'
+      const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
+      
+      content += `${speaker}: ${item.cleaned_sentence}${category}\n`
+    })
+
+    // Blob 생성 및 다운로드
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // 파일명 생성 (제목을 사용하고, 특수문자 제거)
+    const fileName = interview?.title 
+      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
+      : 'interview_script'
+    link.download = `${fileName}.txt`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className={cn("h-full overflow-auto bg-white", className)}>
       {/* 메인 콘텐츠 영역 */}
@@ -125,15 +162,25 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                 <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
                 <p className="text-xs text-gray-500 mt-1">Interview Script</p>
               </div>
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
+                  />
+                </div>
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                  title="스크립트 다운로드"
+                >
+                  <Download className="w-4 h-4" />
+                  다운로드
+                </button>
               </div>
             </div>
           </div>
@@ -161,17 +208,22 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                       className="relative flex gap-8"
                     >
                       {/* 왼쪽 화자 표시 영역 */}
-                      <div className="w-12 flex-shrink-0 pt-0.5">
-                        {!isConsecutiveSameSpeaker && (
-                          <span className={cn(
-                            "text-xs font-medium",
-                            item.speaker === 'question' 
-                              ? "text-gray-500" 
-                              : "text-blue-600"
-                          )}>
-                            {item.speaker === 'question' ? 'Q.' : 'A.'}
-                          </span>
-                        )}
+                      <div className="w-12 flex-shrink-0">
+                        <div className={cn(
+                          "text-sm leading-relaxed", // 내용과 동일한 폰트 크기와 line-height
+                          item.category && "mt-5" // 카테고리가 있을 때 위치 조정
+                        )}>
+                          {!isConsecutiveSameSpeaker && (
+                            <span className={cn(
+                              "font-medium",
+                              item.speaker === 'question' 
+                                ? "text-gray-500" 
+                                : "text-blue-600"
+                            )}>
+                              {item.speaker === 'question' ? 'Q.' : 'A.'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* 스크립트 내용 */}

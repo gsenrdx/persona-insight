@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 import { Database } from "@/types/database"
-import { maskSensitiveDataRefined } from "@/lib/utils/masking-refined"
 import { extractTextFromFileOnServer } from "@/lib/utils/server-file-parser"
 
 export const runtime = 'nodejs'
@@ -79,15 +78,6 @@ export async function POST(req: NextRequest) {
   
   const { userId, companyId, userName } = userProfile
 
-  // 텍스트 마스킹
-  let maskedContent: string
-  try {
-    const { maskedText } = maskSensitiveDataRefined(text)
-    maskedContent = maskedText
-  } catch (error) {
-    return new Response('텍스트 처리 중 오류가 발생했습니다.', { status: 500 })
-  }
-
   try {
     // 1. 즉시 DB에 pending 상태로 저장
     const { data: insertedData, error: insertError } = await supabase
@@ -96,7 +86,7 @@ export async function POST(req: NextRequest) {
         company_id: companyId,
         project_id: projectId,
         title: title || '제목 없음',
-        raw_text: maskedContent,
+        raw_text: text,
         status: 'pending',
         created_by: userId,
         created_at: new Date().toISOString(),
@@ -126,8 +116,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         interviewId,
-        maskedContent,
-        userName
+        maskedContent: text,
+        userName,
+        projectId
       })
     }).catch(() => {
       // 백그라운드 처리 실패 시 무시 (사용자에게는 영향 없음)

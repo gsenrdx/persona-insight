@@ -15,7 +15,8 @@ import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, Messag
 
 export const createInterviewColumns = (
   onView: (id: string) => void,
-  onDelete?: (id: string) => void
+  onDelete?: (id: string) => void,
+  currentUserId?: string
 ): ColumnDef<Interview>[] => [
   {
     accessorKey: "title",
@@ -107,6 +108,18 @@ export const createInterviewColumns = (
     },
   },
   {
+    id: "created_by",
+    header: "생성자",
+    cell: ({ row }) => {
+      const createdByProfile = row.original.created_by_profile
+      return (
+        <div className="text-sm text-gray-600">
+          {createdByProfile?.name || "-"}
+        </div>
+      )
+    },
+  },
+  {
     id: "actions",
     cell: ({ row }) => {
       const interview = row.original
@@ -123,7 +136,7 @@ export const createInterviewColumns = (
             <DropdownMenuItem onClick={() => onView(interview.id)}>
               상세보기
             </DropdownMenuItem>
-            {onDelete && (
+            {onDelete && currentUserId && interview.created_by === currentUserId && (
               <DropdownMenuItem 
                 onClick={() => onDelete(interview.id)}
                 className="text-destructive"
