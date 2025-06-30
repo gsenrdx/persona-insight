@@ -33,6 +33,7 @@ interface InterviewDataTableProps {
   onDelete?: (id: string) => void
   isLoading?: boolean
   currentUserId?: string
+  presence?: Record<string, any[]>
 }
 
 export function InterviewDataTable({
@@ -41,6 +42,7 @@ export function InterviewDataTable({
   onDelete,
   isLoading,
   currentUserId,
+  presence,
 }: InterviewDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "created_at", desc: true },
@@ -49,8 +51,8 @@ export function InterviewDataTable({
   const [globalFilter, setGlobalFilter] = React.useState("")
 
   const columns = React.useMemo(
-    () => createInterviewColumns(onView, onDelete, currentUserId),
-    [onView, onDelete, currentUserId]
+    () => createInterviewColumns(onView, onDelete, currentUserId, presence),
+    [onView, onDelete, currentUserId, presence]
   )
 
   const table = useReactTable({

@@ -12,7 +12,8 @@ import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { InterviewRealtimeProvider } from '@/lib/realtime/interview-realtime-provider'
+import { InterviewRealtimeProvider, useAllPresence } from '@/lib/realtime/interview-realtime-provider'
+import { PresenceIndicator } from '@/components/ui/presence-indicator'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
@@ -49,6 +50,9 @@ function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInter
     updateInterview, 
     deleteInterview 
   } = useInterviewsRealtime(project.id)
+  
+  // 전체 presence 정보 가져오기
+  const allPresence = useAllPresence()
   
   const { 
     interview: selectedInterview, 
@@ -166,12 +170,12 @@ function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInter
     
     return (
       <div>
-        {viewerCount > 1 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-700">
-              현재 {viewerCount}명이 이 인터뷰를 보고 있습니다
-            </p>
-          </div>
+        {presence.length > 0 && (
+          <PresenceIndicator 
+            viewers={presence}
+            currentUserId={profile?.id}
+            className="mb-4"
+          />
         )}
         <InterviewDetail 
           interview={selectedInterview}
@@ -257,6 +261,7 @@ function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInter
           }}
           onDelete={handleDeleteInterview}
           isLoading={isLoading}
+          presence={allPresence}
         />
       )}
 

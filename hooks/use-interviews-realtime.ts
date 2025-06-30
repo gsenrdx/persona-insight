@@ -113,7 +113,8 @@ export function useInterviewsRealtime(projectId: string) {
 
 // Hook for single interview
 export function useInterviewDetailRealtime(interviewId: string) {
-  const { interviews, notes, presence, trackPresence, broadcastEvent } = useInterviewRealtime()
+  const { user, profile } = useAuth()
+  const { interviews, notes, presence, trackPresence, untrackPresence, broadcastEvent } = useInterviewRealtime()
   
   const interview = interviews.find(i => i.id === interviewId)
   const interviewNotes = notes[interviewId] || []
@@ -121,13 +122,21 @@ export function useInterviewDetailRealtime(interviewId: string) {
 
   // Track user presence when viewing interview
   useEffect(() => {
-    if (interviewId) {
+    if (interviewId && user && profile) {
       trackPresence(interviewId, {
+        userId: user.id,
+        userName: profile.name || 'Unknown User',
+        email: user.email, // Add email from user object
         viewing: true,
         timestamp: new Date().toISOString(),
       })
+      
+      // Untrack presence when leaving the interview
+      return () => {
+        untrackPresence()
+      }
     }
-  }, [interviewId, trackPresence])
+  }, [interviewId, user, profile, trackPresence, untrackPresence])
 
   return {
     interview,

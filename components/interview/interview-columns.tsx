@@ -11,12 +11,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare, Eye } from "lucide-react"
+import { PresenceIndicatorCompact } from "@/components/ui/presence-indicator"
 
 export const createInterviewColumns = (
   onView: (id: string) => void,
   onDelete?: (id: string) => void,
-  currentUserId?: string
+  currentUserId?: string,
+  presence?: Record<string, any[]>
 ): ColumnDef<Interview>[] => [
   {
     accessorKey: "title",
@@ -40,15 +42,25 @@ export const createInterviewColumns = (
     },
     cell: ({ row }) => {
       const noteCount = row.original.note_count || 0
+      const viewers = presence?.[row.original.id] || []
+      
       return (
         <div className="flex items-center gap-2">
           <span className="font-medium">{row.getValue("title") || "제목 없음"}</span>
-          {noteCount > 0 && (
-            <div className="flex items-center gap-1 text-gray-500">
-              <MessageSquare className="h-3.5 w-3.5" />
-              <span className="text-xs">{noteCount}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {noteCount > 0 && (
+              <div className="flex items-center gap-1 text-gray-500">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span className="text-xs">{noteCount}</span>
+              </div>
+            )}
+            {viewers.length > 0 && (
+              <PresenceIndicatorCompact 
+                viewers={viewers}
+                currentUserId={currentUserId}
+              />
+            )}
+          </div>
         </div>
       )
     },

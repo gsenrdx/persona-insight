@@ -22,6 +22,7 @@ interface InterviewRealtimeContextValue extends InterviewRealtimeState {
   subscribeToProject: (projectId: string) => void
   unsubscribe: () => void
   trackPresence: (interviewId: string, data: any) => void
+  untrackPresence: () => void
   broadcastEvent: (event: string, payload: any) => void
 }
 
@@ -237,12 +238,23 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     
     Object.entries(presenceState).forEach(([key, presences]: [string, any]) => {
       (presences as any[]).forEach(p => {
-        const { interview_id, ...data } = p
+        const { interview_id, user_id, user_name, email, ...data } = p
         if (interview_id) {
           if (!presence[interview_id]) {
             presence[interview_id] = []
           }
-          presence[interview_id].push({ userId: key, ...data })
+          // Check if user already exists to avoid duplicates
+          const userExists = presence[interview_id].some(
+            viewer => viewer.userId === (user_id || key)
+          )
+          if (!userExists) {
+            presence[interview_id].push({ 
+              userId: user_id || key, 
+              userName: user_name,
+              email: email,
+              ...data 
+            })
+          }
         }
       })
     })
@@ -368,9 +380,19 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
 
     channelRef.current.track({
       interview_id: interviewId,
+      user_id: data.userId,
+      user_name: data.userName,
+      email: data.email,
       ...data,
       online_at: new Date().toISOString(),
     })
+  }, [])
+
+  // Untrack presence
+  const untrackPresence = useCallback(() => {
+    if (!channelRef.current) return
+    
+    channelRef.current.untrack()
   }, [])
 
   // Broadcast event
@@ -404,6 +426,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         subscribeToProject,
         unsubscribe,
         trackPresence,
+        untrackPresence,
         broadcastEvent,
       }}
     >
@@ -440,4 +463,9 @@ export function useInterviewNotes(interviewId: string) {
 export function useInterviewPresence(interviewId: string) {
   const { presence } = useInterviewRealtime()
   return presence[interviewId] || []
+}
+
+export function useAllPresence() {
+  const { presence } = useInterviewRealtime()
+  return presence
 }
