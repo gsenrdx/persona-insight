@@ -12,8 +12,9 @@ import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { InterviewRealtimeProvider, useAllPresence } from '@/lib/realtime/interview-realtime-provider'
+import { useAllPresence } from '@/lib/realtime/interview-realtime-provider'
 import { PresenceIndicator } from '@/components/ui/presence-indicator'
+import { RealtimeConnectionStatus } from '@/components/ui/realtime-connection-status'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
@@ -37,7 +38,7 @@ interface ProjectInterviewsProps {
   selectedInterviewId?: string | null
 }
 
-function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInterviewsProps) {
+export default function ProjectInterviewsRealtime({ project, selectedInterviewId }: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
   
@@ -201,23 +202,10 @@ function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInter
           <p className="text-sm text-gray-500 mt-1">총 {interviews.length}개의 인터뷰가 등록되어 있습니다</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-sm">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-gray-700">실시간 동기화</span>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              isLoading
-                ? "text-gray-400 cursor-not-allowed"
-                : "text-gray-700 hover:bg-gray-100 border border-gray-300"
-            )}
-          >
-            <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            새로고침
-          </button>
+          <RealtimeConnectionStatus 
+            projectId={project.id}
+            onRefresh={handleRefresh}
+          />
           <button
             onClick={() => setShowAddInterviewModal(true)}
             className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
@@ -276,11 +264,3 @@ function ProjectInterviewsContent({ project, selectedInterviewId }: ProjectInter
   )
 }
 
-// Provider로 감싸진 컴포넌트 export
-export default function ProjectInterviewsRealtime(props: ProjectInterviewsProps) {
-  return (
-    <InterviewRealtimeProvider>
-      <ProjectInterviewsContent {...props} />
-    </InterviewRealtimeProvider>
-  )
-}

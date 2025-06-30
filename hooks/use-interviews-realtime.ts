@@ -12,18 +12,10 @@ export function useInterviewsRealtime(projectId: string) {
   // Subscribe to project on mount
   useEffect(() => {
     if (projectId && user) {
-      // Small delay to ensure component is fully mounted
-      const timeoutId = setTimeout(() => {
-        subscribeToProject(projectId)
-      }, 10)
-      
-      return () => {
-        clearTimeout(timeoutId)
-        // Don't immediately unsubscribe - let the provider handle cleanup
-      }
+      // Direct subscription without delay since provider handles state properly now
+      subscribeToProject(projectId)
     }
-    // projectId나 user가 없으면 로딩 상태를 해제하지 않음
-    // Provider가 초기 로딩 상태를 관리함
+    // No cleanup needed - provider handles lifecycle
   }, [projectId, user, subscribeToProject])
 
   // Create interview

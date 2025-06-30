@@ -1,7 +1,7 @@
 'use client'
 
 import { use } from 'react'
-import { ProjectDetailContent } from '@/components/project/pages/project-detail-content'
+import { ProjectDetailWithRealtime } from '@/components/project/pages/project-detail-with-realtime'
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>
@@ -10,5 +10,5 @@ interface ProjectPageProps {
 export default function ProjectPage({ params }: ProjectPageProps) {
   const resolvedParams = use(params)
 
-  return <ProjectDetailContent projectId={resolvedParams.id} />
+  return <ProjectDetailWithRealtime projectId={resolvedParams.id} />
 } 

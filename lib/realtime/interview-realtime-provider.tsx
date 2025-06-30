@@ -95,6 +95,10 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const channelRef = useRef<RealtimeChannel | null>(null)
   const projectIdRef = useRef<string | null>(null)
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const maxReconnectAttempts = 5
+  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load initial data
   const loadInitialData = useCallback(async (projectId: string) => {
@@ -411,30 +415,47 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       cleanupTimeoutRef.current = null
     }
 
-    // If already subscribed to this project, just reload data
+    // If already subscribed to this project, check the channel state
     if (projectIdRef.current === projectId && channelRef.current) {
       const channelState = channelRef.current.state
-      if (channelState === 'joined') {
-        loadInitialData(projectId)
+      if (channelState === 'joined' || channelState === 'joining') {
+        // If already joined or joining, just ensure data is loaded
+        if (!state.isLoading && state.interviews.length === 0) {
+          loadInitialData(projectId)
+        }
         return
+      }
+      // If channel exists but is closed/errored, we need to clean it up
+      if (channelState === 'closed' || channelState === 'errored') {
+        const oldChannel = channelRef.current
+        channelRef.current = null
+        supabase.removeChannel(oldChannel)
+        // Continue to create new channel
       }
     }
 
     // Unsubscribe from previous channel if exists
     if (channelRef.current) {
+      // Always clean up existing channel when switching projects
       const oldChannel = channelRef.current
       channelRef.current = null
-      // Delay removal to avoid connection issues
-      setTimeout(() => {
-        supabase.removeChannel(oldChannel)
-      }, 50)
+      
+      // Clear health check immediately
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current)
+        healthCheckIntervalRef.current = null
+      }
+      
+      // Immediate removal for project change
+      supabase.removeChannel(oldChannel)
     }
 
     projectIdRef.current = projectId
 
-    // Create channel following Supabase docs pattern
+    // Create channel with unique name to prevent conflicts
+    const channelName = `project-${projectId}-${Date.now()}-${Math.random().toString(36).substring(2)}`
     const channel = supabase
-      .channel(`project-${projectId}`)
+      .channel(channelName)
       .on<InterviewRow>(
         'postgres_changes',
         {
@@ -485,29 +506,114 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       .on('broadcast', { event: 'interview-update' }, ({ payload }) => {
         handleBroadcastUpdate(payload)
       })
-      .subscribe((status) => {
+      .subscribe((status, error) => {
         if (status === 'SUBSCRIBED') {
           setState(prev => ({ ...prev, isSubscribed: true, error: null }))
+          reconnectAttemptsRef.current = 0 // Reset reconnect attempts
           // Load initial data
           loadInitialData(projectId)
-        } else if (status === 'CHANNEL_ERROR') {
+        } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           setState(prev => ({ 
             ...prev, 
             isSubscribed: false, 
-            error: new Error('Failed to subscribe to channel') 
+            error: new Error(error?.message || 'Failed to subscribe to channel') 
           }))
+          
+          // Attempt to reconnect with exponential backoff
+          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000)
+            reconnectAttemptsRef.current++
+            
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current)
+            }
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (projectIdRef.current === projectId && channelRef.current) {
+                // Clean up the failed channel before reconnecting
+                const oldChannel = channelRef.current
+                channelRef.current = null
+                supabase.removeChannel(oldChannel)
+                
+                // Now attempt to reconnect
+                subscribeToProject(projectId)
+              }
+            }, delay)
+          }
+        } else if (status === 'TIMED_OUT') {
+          // Handle timeout - clean up and reconnect
+          if (projectIdRef.current === projectId && channelRef.current) {
+            const oldChannel = channelRef.current
+            channelRef.current = null
+            supabase.removeChannel(oldChannel)
+            
+            // Clear health check
+            if (healthCheckIntervalRef.current) {
+              clearInterval(healthCheckIntervalRef.current)
+              healthCheckIntervalRef.current = null
+            }
+            
+            subscribeToProject(projectId)
+          }
         }
       })
 
     channelRef.current = channel
-  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate])
+    
+    // Set up health check
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current)
+    }
+    
+    healthCheckIntervalRef.current = setInterval(() => {
+      if (channelRef.current && projectIdRef.current === projectId) {
+        const state = channelRef.current.state
+        if (state === 'closed' || state === 'errored') {
+          // Channel disconnected, create new subscription
+          // First clean up the old channel
+          const oldChannel = channelRef.current
+          channelRef.current = null
+          supabase.removeChannel(oldChannel)
+          
+          // Clear health check to avoid duplicate calls
+          if (healthCheckIntervalRef.current) {
+            clearInterval(healthCheckIntervalRef.current)
+            healthCheckIntervalRef.current = null
+          }
+          
+          // Reset attempts and reconnect
+          reconnectAttemptsRef.current = 0
+          subscribeToProject(projectId)
+        }
+      }
+    }, 30000) // Check every 30 seconds
+  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, state.isLoading, state.interviews.length])
 
   // Unsubscribe
   const unsubscribe = useCallback(() => {
+    // Clear any pending cleanup first
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current)
+      cleanupTimeoutRef.current = null
+    }
+    
+    // Clear any reconnect attempts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+    
+    // Clear health check
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current)
+      healthCheckIntervalRef.current = null
+    }
+    
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
       projectIdRef.current = null
+      reconnectAttemptsRef.current = 0
       setState({
         interviews: [],
         notes: {},
@@ -554,15 +660,27 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Clear any reconnect attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      
+      // Clear health check
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current)
+        healthCheckIntervalRef.current = null
+      }
+      
       // In StrictMode, React may unmount and remount quickly
-      // Use longer timeout to prevent closing connection that will be immediately reopened
+      // Use shorter timeout for navigation away from project
       cleanupTimeoutRef.current = setTimeout(() => {
         if (channelRef.current && projectIdRef.current) {
           unsubscribe()
         }
-      }, 500)
+      }, 100) // Short timeout to ensure cleanup on navigation
     }
-  }, []) // Empty deps intentionally - we only want cleanup on final unmount
+  }, [unsubscribe])
 
   return (
     <InterviewRealtimeContext.Provider
