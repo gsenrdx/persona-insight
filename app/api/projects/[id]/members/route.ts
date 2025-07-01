@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
+import { getAuthenticatedUserProfile } from '@/lib/utils/auth-cache'
 
 export async function GET(
   request: NextRequest,
@@ -8,25 +9,16 @@ export async function GET(
   try {
     const { id } = await params
     
-    // Authorization 헤더에서 사용자 토큰 가져오기
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Authorization 헤더 확인
+    const authorization = request.headers.get('authorization')
+    if (!authorization) {
       return NextResponse.json({
-        error: '인증 토큰이 필요합니다',
+        error: '인증이 필요합니다',
         success: false
       }, { status: 401 })
     }
 
-    const token = authHeader.split(' ')[1]
-    
-    // 토큰으로 사용자 정보 확인
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    if (authError || !user) {
-      return NextResponse.json({
-        error: '인증되지 않은 사용자입니다',
-        success: false
-      }, { status: 401 })
-    }
+    const { userId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
 
     // 프로젝트 존재 여부 및 접근 권한 확인
     const { data: project, error: projectError } = await supabaseAdmin
@@ -48,7 +40,7 @@ export async function GET(
         .from('project_members')
         .select('id')
         .eq('project_id', id)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single()
 
       if (!membership) {

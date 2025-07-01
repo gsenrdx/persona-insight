@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
+import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 
 // 프로젝트 권한 확인 함수
 async function checkProjectAccess(projectId: string, userId: string) {
@@ -75,41 +76,20 @@ export async function GET(
   try {
     // Authorization 헤더 확인
     const authorization = request.headers.get('authorization')
-    let user_id: string
-
-    if (authorization) {
-      // 헤더에서 사용자 정보 추출
-      const token = authorization.replace('Bearer ', '')
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-      
-      if (error || !user) {
-        return NextResponse.json({
-          error: "인증이 실패했습니다",
-          success: false
-        }, { status: 401 })
-      }
-      
-      user_id = user.id
-    } else {
-      // 레거시 지원: URL 파라미터에서 user_id 가져오기
-      const { searchParams } = new URL(request.url)
-      const urlUserId = searchParams.get('user_id')
-      
-      if (!urlUserId) {
-        return NextResponse.json({
-          error: "인증이 필요합니다",
-          success: false
-        }, { status: 401 })
-      }
-      
-      user_id = urlUserId
+    if (!authorization) {
+      return NextResponse.json({
+        error: "인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
+
+    const { userId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
 
     const resolvedParams = await params
     const projectId = resolvedParams.id
 
     // 프로젝트 접근 권한 확인
-    const accessCheck = await checkProjectAccess(projectId, user_id)
+    const accessCheck = await checkProjectAccess(projectId, userId)
     
     if (!accessCheck.hasAccess) {
       return NextResponse.json({
@@ -150,34 +130,17 @@ export async function PUT(
     
     // Authorization 헤더 확인
     const authorization = request.headers.get('authorization')
-    let user_id: string
-
-    if (authorization) {
-      // 헤더에서 사용자 정보 추출
-      const token = authorization.replace('Bearer ', '')
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-      
-      if (error || !user) {
-        return NextResponse.json({
-          error: "인증이 실패했습니다",
-          success: false
-        }, { status: 401 })
-      }
-      
-      user_id = user.id
-    } else {
-      // 레거시 지원: body에서 user_id 가져오기
-      if (!body.user_id) {
-        return NextResponse.json({
-          error: "사용자 인증이 필요합니다",
-          success: false
-        }, { status: 401 })
-      }
-      user_id = body.user_id
+    if (!authorization) {
+      return NextResponse.json({
+        error: "인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
+    const { userId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
+
     // 프로젝트 접근 권한 확인
-    const accessCheck = await checkProjectAccess(projectId, user_id)
+    const accessCheck = await checkProjectAccess(projectId, userId)
     
     if (!accessCheck.hasAccess) {
       return NextResponse.json({
@@ -251,35 +214,17 @@ export async function DELETE(
     
     // Authorization 헤더 확인
     const authorization = request.headers.get('authorization')
-    let user_id: string
-
-    if (authorization) {
-      // 헤더에서 사용자 정보 추출
-      const token = authorization.replace('Bearer ', '')
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-      
-      if (error || !user) {
-        return NextResponse.json({
-          error: "인증이 실패했습니다",
-          success: false
-        }, { status: 401 })
-      }
-      
-      user_id = user.id
-    } else {
-      // 레거시 지원: body에서 user_id 가져오기
-      const body = await request.json()
-      if (!body.user_id) {
-        return NextResponse.json({
-          error: "사용자 인증이 필요합니다",
-          success: false
-        }, { status: 401 })
-      }
-      user_id = body.user_id
+    if (!authorization) {
+      return NextResponse.json({
+        error: "인증이 필요합니다",
+        success: false
+      }, { status: 401 })
     }
 
+    const { userId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
+
     // 프로젝트 접근 권한 확인
-    const accessCheck = await checkProjectAccess(projectId, user_id)
+    const accessCheck = await checkProjectAccess(projectId, userId)
     
     if (!accessCheck.hasAccess) {
       return NextResponse.json({
