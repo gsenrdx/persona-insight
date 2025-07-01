@@ -26,10 +26,20 @@ export async function POST(req: NextRequest) {
       return new Response('인증 정보가 필요합니다.', { status: 401 });
     }
 
-    // Supabase 클라이언트 초기화
+    // Supabase 클라이언트 초기화 (서버용 - realtime 완전 비활성화)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        fetch: fetch
+      },
+      realtime: {
+        disabled: true
+      }
+    });
 
     // JWT 토큰에서 사용자 정보 추출
     let userId: string | null = null;

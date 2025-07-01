@@ -20,10 +20,21 @@ export async function POST(req: NextRequest) {
     return new Response('API 키가 설정되지 않았습니다.', { status: 500 })
   }
 
-  // Supabase 초기화
+  // Supabase 초기화 (서버용 - realtime 완전 비활성화)
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        fetch: fetch
+      },
+      realtime: {
+        disabled: true
+      }
+    }
   )
 
   try {
@@ -69,26 +80,7 @@ export async function POST(req: NextRequest) {
     const targetAudience = project?.target_audience || ''
     
 
-    // 2. 상태를 processing으로 업데이트
-    const { error: statusError } = await supabase
-      .from('interviews')
-      .update({
-        status: 'processing',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', interviewId)
-
-    if (statusError) {
-      return new Response(JSON.stringify({
-        error: 'DB 업데이트 실패',
-        message: statusError.message
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 2. MISO API 호출
+    // 2. MISO API 호출 (이미 processing 상태로 생성됨)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 290000) // 4분 50초 타임아웃
     

@@ -59,10 +59,21 @@ export async function POST(req: NextRequest) {
     return new Response('인증 정보가 필요합니다.', { status: 401 })
   }
 
-  // Supabase 초기화
+  // Supabase 초기화 (서버용 - realtime 완전 비활성화)
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        fetch: fetch
+      },
+      realtime: {
+        disabled: true
+      }
+    }
   )
 
   // 사용자 정보 가져오기
@@ -79,7 +90,7 @@ export async function POST(req: NextRequest) {
   const { userId, companyId, userName } = userProfile
 
   try {
-    // 1. 즉시 DB에 pending 상태로 저장
+    // 1. 즉시 DB에 processing 상태로 저장
     const { data: insertedData, error: insertError } = await supabase
       .from('interviews')
       .insert([{
@@ -87,7 +98,7 @@ export async function POST(req: NextRequest) {
         project_id: projectId,
         title: title || '제목 없음',
         raw_text: text,
-        status: 'pending',
+        status: 'processing',
         created_by: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -128,7 +139,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({
       success: true,
       interview_id: interviewId,
-      status: 'pending',
+      status: 'processing',
       message: '인터뷰가 제출되었습니다. 백그라운드에서 처리 중입니다.'
     }), {
       status: 200,
