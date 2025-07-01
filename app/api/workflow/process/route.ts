@@ -68,15 +68,6 @@ export async function POST(req: NextRequest) {
     const interviewObjective = project?.purpose || ''
     const targetAudience = project?.target_audience || ''
     
-    // 디버깅용 로그 (개발 환경에서만)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('=== Context Data ===')
-      console.log('Company name:', companyName)
-      console.log('Company info:', companyInfo)
-      console.log('Interview objective:', interviewObjective)
-      console.log('Target audience:', targetAudience)
-      console.log('===================')
-    }
 
     // 2. 상태를 processing으로 업데이트
     const { error: statusError } = await supabase

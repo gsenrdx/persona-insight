@@ -23,10 +23,7 @@ export function PagePrefetch() {
 
   useEffect(() => {
     if (projects && projects.length > 0) {
-      // 프로젝트 데이터가 로드되면 콘솔에 프리페치 완료 메시지 (디버깅용)
-      if (process.env.NODE_ENV === 'development') {
-        console.debug(`[Prefetch] ${projects.length}개의 프로젝트 데이터 프리페치 완료`)
-      }
+      // 프로젝트 데이터가 로드되면 프리페치 완료
     }
   }, [projects])
 

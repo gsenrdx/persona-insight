@@ -98,6 +98,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const channelRef = useRef<RealtimeChannel | null>(null)
   const projectIdRef = useRef<string | null>(null)
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastLoadedProjectIdRef = useRef<string | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 3 // 표준적인 재시도 횟수
@@ -109,9 +110,18 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const isSubscribingRef = useRef(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const isPollingRef = useRef(false)
+  const lastActivityRef = useRef<number>(Date.now())
 
   // Load initial data
   const loadInitialData = useCallback(async (projectId: string) => {
+    // 이미 이 프로젝트의 초기 데이터를 로드했고 폴링 중이 아니라면 스킵
+    if (lastLoadedProjectIdRef.current === projectId && !isPollingRef.current) {
+      // 이미 로드했지만 로딩 상태는 false로 설정
+      setState(prev => ({ ...prev, isLoading: false }))
+      return
+    }
+    
+    lastLoadedProjectIdRef.current = projectId
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     
     try {
@@ -237,6 +247,9 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     payload: RealtimePostgresChangesPayload<InterviewRow>
   ) => {
     const { eventType, new: newRow, old: oldRow } = payload
+    
+    // Update last activity time
+    lastActivityRef.current = Date.now()
 
     switch (eventType) {
       case 'INSERT':
@@ -284,14 +297,23 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         
       case 'DELETE':
         if (oldRow) {
-          setState(prev => ({
-            ...prev,
-            interviews: prev.interviews.filter(i => i.id !== oldRow.id),
-            notes: (() => {
-              const { [oldRow.id]: _, ...remainingNotes } = prev.notes
-              return remainingNotes
-            })()
-          }))
+          setState(prev => {
+            // 삭제할 인터뷰가 실제로 존재하는지 확인
+            const interviewExists = prev.interviews.some(i => i.id === oldRow.id)
+            
+            if (interviewExists) {
+              return {
+                ...prev,
+                interviews: prev.interviews.filter(i => i.id !== oldRow.id),
+                notes: (() => {
+                  const { [oldRow.id]: _, ...remainingNotes } = prev.notes
+                  return remainingNotes
+                })()
+              }
+            }
+            
+            return prev
+          })
         }
         break
     }
@@ -554,7 +576,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           // Failed to refresh JWT token
         }
       }
-    }, 30 * 60 * 1000) // Refresh every 30 minutes
+    }, 5 * 60 * 1000) // Refresh every 5 minutes for better stability
   }, [])
   
   // Setup health check
@@ -573,8 +595,39 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           // Health check - Channel state
         }
         
+        // Send heartbeat to keep connection alive
+        if (state === 'joined') {
+          // Send a presence heartbeat to keep the connection active
+          channelRef.current.track({
+            online_at: new Date().toISOString(),
+            heartbeat: true
+          }).catch((error) => {
+            // If heartbeat fails, connection might be degraded
+            if (channelRef.current && projectIdRef.current === projectId) {
+              // Force reconnect on heartbeat failure
+              const oldChannel = channelRef.current
+              channelRef.current = null
+              supabase.removeChannel(oldChannel)
+              setTimeout(() => {
+                subscribeToProject(projectId)
+              }, 100)
+            }
+          })
+          
+          // Check for stale connection (no activity for 2 minutes)
+          const timeSinceLastActivity = Date.now() - lastActivityRef.current
+          if (timeSinceLastActivity > 2 * 60 * 1000) {
+            // Force refresh if no activity for 2 minutes
+            lastActivityRef.current = Date.now()
+            channelRef.current.track({
+              online_at: new Date().toISOString(),
+              force_refresh: true
+            }).catch(() => {})
+          }
+        }
+        
         // Only reconnect if truly disconnected, not if temporarily interrupted
-        if (state === 'closed' || state === 'errored') {
+        else if (state === 'closed' || state === 'errored') {
           // Health check detected disconnection, attempting to reconnect
           
           // Channel disconnected, create new subscription
@@ -614,7 +667,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           }, 100)
         }
       }
-    }, 30000) // Check every 30 seconds
+    }, 15000) // Check every 15 seconds for better connection stability
   }, [])
 
   // Subscribe to project
@@ -643,10 +696,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       }
       
       if (channelState === 'joined') {
-        // Already connected, just ensure data is loaded
-        if (!state.isLoading && state.interviews.length === 0) {
-          loadInitialData(projectId)
-        }
+        // Already connected
         return
       }
       
@@ -719,6 +769,9 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       // Switching projects - clean up existing channel
       const oldChannel = channelRef.current
       channelRef.current = null
+      
+      // Reset initial data flag when switching projects
+      lastLoadedProjectIdRef.current = null
       
       // Clear all intervals immediately
       if (healthCheckIntervalRef.current) {
@@ -851,15 +904,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     // About to subscribe
     
     channel.subscribe((status, error) => {
-        // Development logging
-        if (process.env.NODE_ENV === 'development') {
-          // Channel status update
-        }
         
         if (status === 'SUBSCRIBED') {
           setState(prev => ({ ...prev, isSubscribed: true, error: null }))
           reconnectAttemptsRef.current = 0 // Reset reconnect attempts
           isSubscribingRef.current = false
+          
           
           // Stop polling if it was running (realtime recovered)
           stopPolling()
@@ -868,6 +918,10 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           loadInitialData(projectId)
           // Setup presence cleanup
           setupPresenceCleanup(channel)
+          // Setup health check
+          setupHealthCheck(channel, projectId)
+          // Setup token refresh
+          setupTokenRefresh()
         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           isSubscribingRef.current = false
           setState(prev => ({ 
@@ -1162,6 +1216,42 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       }
     }
   }, [])
+
+  // Monitor network status and visibility changes
+  useEffect(() => {
+    const handleOnline = () => {
+      if (projectIdRef.current && channelRef.current?.state !== 'joined') {
+        // Network came back online, reconnect
+        subscribeToProject(projectIdRef.current)
+      }
+    }
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden && projectIdRef.current) {
+        // Page became visible, check connection
+        if (channelRef.current?.state !== 'joined') {
+          subscribeToProject(projectIdRef.current)
+        } else {
+          // Send a heartbeat if connected
+          channelRef.current.track({
+            online_at: new Date().toISOString(),
+            heartbeat: true
+          }).catch(() => {})
+        }
+      }
+    }
+    
+    // Add event listeners
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('focus', handleOnline)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('focus', handleOnline)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [subscribeToProject])
 
   // Cleanup on unmount
   useEffect(() => {

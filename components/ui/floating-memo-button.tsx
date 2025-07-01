@@ -87,7 +87,7 @@ export default function FloatingMemoButton({ onAddMemo, onAskMiso, className }: 
     const selection = window.getSelection()
     if (selection && onAskMiso) {
       onAskMiso(selection.toString().trim())
-      selection.removeAllRanges()
+      // Don't remove selection to keep highlight
       hideButton()
     }
   }
@@ -115,6 +115,7 @@ export default function FloatingMemoButton({ onAddMemo, onAskMiso, className }: 
         <>
           <button
             onClick={handleAskMiso}
+            onMouseDown={(e) => e.preventDefault()} // Prevent selection from being cleared
             className="flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-l-md transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4">
@@ -128,6 +129,7 @@ export default function FloatingMemoButton({ onAddMemo, onAskMiso, className }: 
       )}
       <button
         onClick={handleAddMemo}
+        onMouseDown={(e) => e.preventDefault()} // Prevent selection from being cleared
         className={cn(
           "flex items-center gap-2 px-3 py-2 hover:bg-gray-800 transition-colors",
           onAskMiso ? "" : "rounded-l-md"
@@ -138,6 +140,7 @@ export default function FloatingMemoButton({ onAddMemo, onAskMiso, className }: 
       </button>
       <button
         onClick={hideButton}
+        onMouseDown={(e) => e.preventDefault()} // Prevent selection from being cleared
         className="p-2 hover:bg-gray-800 rounded-r-md transition-colors border-l border-gray-700"
       >
         <X className="w-4 h-4" />

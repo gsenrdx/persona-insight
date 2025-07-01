@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import FloatingMemoButton from '@/components/ui/floating-memo-button'
+import AIQuestionBar from '@/components/ui/ai-question-bar'
 
 interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
@@ -30,6 +31,25 @@ export default function InterviewScriptViewer({ script, interview, className }: 
       .interview-script-content ::-moz-selection {
         background-color: rgba(35, 131, 226, 0.28);
         color: inherit;
+      }
+      
+      /* AI 질문 중 선택 하이라이트 유지 */
+      .ai-selection-active ::selection {
+        background-color: rgba(35, 131, 226, 0.28) !important;
+        color: inherit !important;
+      }
+      
+      .ai-selection-active ::-moz-selection {
+        background-color: rgba(35, 131, 226, 0.28) !important;
+        color: inherit !important;
+      }
+      
+      /* 선택 유지를 위한 스타일 */
+      .maintain-selection {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
       }
       
       /* 노션 스타일 댓글 하이라이트 - 심플 버전 */
@@ -77,6 +97,9 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyInput, setReplyInput] = useState('')
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
+  const [aiQuestionBarOpen, setAiQuestionBarOpen] = useState(false)
+  const [selectedTextForAI, setSelectedTextForAI] = useState('')
+  const [aiQuestionPosition, setAiQuestionPosition] = useState<{ x: number; y: number } | null>(null)
   const scriptContainerRef = useRef<HTMLDivElement>(null)
   const { profile } = useAuth()
   
@@ -221,7 +244,11 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   }
 
   return (
-    <div className={cn("h-full overflow-auto bg-white interview-script-content", className)}>
+    <div className={cn(
+      "h-full overflow-auto bg-white interview-script-content",
+      aiQuestionBarOpen && "ai-selection-active maintain-selection",
+      className
+    )}>
       {/* 메인 콘텐츠 영역 */}
       <div className="relative overflow-hidden">
         {/* 스크립트 영역 */}
@@ -257,7 +284,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
           </div>
 
           {/* 스크립트 내용 */}
-          <div className="flex-1 overflow-y-auto" ref={scriptContainerRef}>
+          <div className="flex-1 overflow-y-auto relative" ref={scriptContainerRef}>
             <div className="mx-auto px-8 py-6" style={{ maxWidth: (notes.length > 0 || editingMemoId) ? '1600px' : '1024px' }}>
             {filteredScript.length === 0 ? (
               <div className="text-center py-16">
@@ -585,6 +612,96 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                 })}
               </div>
             )}
+            
+            {/* AI 질문 바 - 스크롤 컨테이너 내부에 위치 */}
+            <AIQuestionBar
+              isOpen={aiQuestionBarOpen}
+              onClose={() => {
+                setAiQuestionBarOpen(false)
+                setSelectedTextForAI('')
+                setAiQuestionPosition(null)
+                // Clear the text selection
+                window.getSelection()?.removeAllRanges()
+              }}
+              initialText={selectedTextForAI}
+              selectedText={selectedTextForAI}
+              position={aiQuestionPosition}
+              onSubmit={async (question, onStream, onComplete) => {
+                try {
+                  const response = await fetch('/api/chat/interview-question', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      question,
+                      selectedText: selectedTextForAI,
+                      interviewId: interview?.id,
+                      fullScript: script
+                    })
+                  })
+
+                  if (!response.ok) {
+                    const errorText = await response.text()
+                    throw new Error(errorText || 'AI 응답을 받는데 실패했습니다')
+                  }
+
+                  // 스트리밍 응답 처리
+                  const reader = response.body?.getReader()
+                  const decoder = new TextDecoder()
+                  let buffer = ''
+
+                  if (reader) {
+                    while (true) {
+                      const { done, value } = await reader.read()
+                      if (done) break
+                      
+                      buffer += decoder.decode(value, { stream: true })
+                      const lines = buffer.split('\n')
+                      
+                      // 마지막 불완전한 줄은 버퍼에 남김
+                      buffer = lines.pop() || ''
+                      
+                      for (const line of lines) {
+                        const trimmedLine = line.trim()
+                        if (!trimmedLine) continue
+                        
+                        if (trimmedLine.startsWith('data: ')) {
+                          const dataContent = trimmedLine.slice(6)
+                          
+                          if (dataContent === '[DONE]') {
+                            // 스트리밍 완료 시그널
+                            return
+                          }
+                          
+                          try {
+                            const data = JSON.parse(dataContent)
+                            
+                            // MISO API 응답 형식에 따라 적절한 필드 확인
+                            if (data.answer) {
+                              onStream(data.answer)
+                            } else if (data.choices?.[0]?.delta?.content) {
+                              // OpenAI 스타일 응답
+                              onStream(data.choices[0].delta.content)
+                            } else if (data.content) {
+                              // 직접 content 필드
+                              onStream(data.content)
+                            }
+                          } catch (e) {
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                  // 스트리밍 완료
+                  onComplete()
+                } catch (error) {
+                  onStream('\n\n❌ AI 응답을 받는 중 오류가 발생했습니다. 다시 시도해주세요.')
+                  onComplete()
+                }
+              }}
+            />
             </div>
           </div>
         </div>
@@ -593,8 +710,36 @@ export default function InterviewScriptViewer({ script, interview, className }: 
         <FloatingMemoButton 
           onAddMemo={handleFloatingMemoAdd}
           onAskMiso={(text) => {
-            // TODO: MISO 질문 기능 구현
-            console.log("MISO에게 질문:", text)
+            setSelectedTextForAI(text)
+            // 선택된 텍스트의 위치 계산
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0)
+              const rect = range.getBoundingClientRect()
+              
+              // 스크롤 컨테이너의 위치 가져오기
+              const scrollContainer = scriptContainerRef.current
+              if (scrollContainer) {
+                const containerRect = scrollContainer.getBoundingClientRect()
+                const scrollTop = scrollContainer.scrollTop
+                
+                // 컨테이너 기준 상대 위치 계산
+                const relativeX = rect.left - containerRect.left + rect.width / 2
+                const relativeY = rect.bottom - containerRect.top + scrollTop + 10
+                
+                // AI 질문 바의 너비 (800px)의 절반
+                const halfBarWidth = 400
+                
+                // 왼쪽 경계 체크 및 조정
+                const adjustedX = Math.max(halfBarWidth + 20, relativeX)
+                
+                setAiQuestionPosition({
+                  x: adjustedX,
+                  y: relativeY
+                })
+              }
+            }
+            setAiQuestionBarOpen(true)
           }}
         />
       </div>

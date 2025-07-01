@@ -317,7 +317,7 @@ export class PersonasService {
           )
         } catch (error) {
           // Log but don't fail
-          console.warn('Topic sync failed:', error)
+          // Topic sync failed, but continuing
         }
       }
     }
@@ -421,7 +421,7 @@ export class PersonasService {
       .eq('id', interviewId)
 
     if (error) {
-      console.warn('Interview update failed:', error)
+      // Interview update failed, but continuing
     }
   }
 

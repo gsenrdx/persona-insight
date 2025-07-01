@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare, Eye } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare, Eye, Loader2 } from "lucide-react"
 import { PresenceIndicatorCompact } from "@/components/ui/presence-indicator"
 
 export const createInterviewColumns = (
@@ -77,7 +77,15 @@ export const createInterviewColumns = (
         failed: { label: "실패", className: "bg-red-100 text-red-700 border-red-200" },
       }
       const config = statusMap[status as keyof typeof statusMap] || { label: status, className: "bg-gray-100 text-gray-700" }
-      return <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>{config.label}</span>
+      
+      return (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>
+          {status === "processing" && (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          )}
+          {config.label}
+        </span>
+      )
     },
   },
   {

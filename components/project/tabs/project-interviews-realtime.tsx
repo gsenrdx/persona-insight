@@ -69,7 +69,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   useEffect(() => {
     return () => {
       // This will run when component unmounts (e.g., navigating away from project)
-      console.log('[Realtime] ProjectInterviewsRealtime unmounting, clearing any presence')
+      // Component unmounting, presence will be cleared automatically
     }
   }, [])
 
@@ -155,8 +155,8 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   // 인터뷰 상세 보기
   if (selectedInterview) {
     // 처리 중인 인터뷰인 경우 목록으로 돌아가기
-    if (selectedInterview.processing_status === 'pending' || 
-        selectedInterview.processing_status === 'processing') {
+    if (selectedInterview.status === 'pending' || 
+        selectedInterview.status === 'processing') {
       return (
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -185,7 +185,6 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         currentUserId={profile?.id}
         onBack={() => {
           // Clear presence before navigating back
-          console.log('[Realtime] Navigating back from interview detail')
           // URL에서 interview 쿼리 파라미터 제거
           const url = new URL(window.location.href)
           url.searchParams.delete('interview')
@@ -238,8 +237,8 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           onView={(id) => {
             const interview = interviews.find(i => i.id === id)
             
-            if (interview?.processing_status === 'pending' || 
-                interview?.processing_status === 'processing') {
+            if (interview?.status === 'pending' || 
+                interview?.status === 'processing') {
               toast.warning('인터뷰 분석이 진행 중입니다. 완료 후 확인해주세요.')
               return
             }

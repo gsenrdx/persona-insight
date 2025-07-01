@@ -69,12 +69,25 @@ export function useInterviewsRealtime(projectId: string) {
     if (!user) throw new Error('Not authenticated')
 
     try {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('interviews')
         .delete()
         .eq('id', id)
+        .select('id', { count: 'exact', head: true })
 
       if (error) throw error
+
+      // 삭제가 성공했지만 실시간 업데이트가 작동하지 않는 경우를 대비
+      // (REPLICA IDENTITY가 설정되지 않은 경우)
+      if (count === 1) {
+        // 약간의 지연 후 수동으로 데이터 새로고침
+        // 실시간이 작동하면 이 작업은 중복되지만 해가 없음
+        setTimeout(() => {
+          if (projectId) {
+            subscribeToProject(projectId)
+          }
+        }, 500)
+      }
 
       toast.success('인터뷰가 삭제되었습니다')
     } catch (error) {
@@ -82,7 +95,7 @@ export function useInterviewsRealtime(projectId: string) {
       toast.error('인터뷰 삭제에 실패했습니다')
       throw error
     }
-  }, [user])
+  }, [user, projectId, subscribeToProject])
 
   // Update interview status
   const updateStatus = useCallback(async (id: string, status: InterviewStatus) => {

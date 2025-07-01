@@ -201,7 +201,7 @@ export class ProjectsService {
 
     if (memberError) {
       // Log warning but don't fail the whole operation
-      console.warn('프로젝트 멤버 추가 실패:', memberError)
+      // Project member addition failed, but continuing
     }
 
     return project
