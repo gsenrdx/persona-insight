@@ -89,7 +89,6 @@ export async function GET(
         profile: {
           id: member.profiles?.id || member.user_id,
           name: member.profiles?.name || 'Unknown User',
-          email: '', // 이메일은 auth 테이블에 있어서 별도 조회 필요
           avatar_url: member.profiles?.avatar_url || null
         }
       }))
@@ -117,7 +116,6 @@ export async function GET(
       profile: {
         id: member.profile_id || member.user_id,
         name: member.profile_name || 'Unknown User',
-        email: member.profile_email || '',
         avatar_url: member.profile_avatar_url || null
       }
     }))

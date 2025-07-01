@@ -32,7 +32,6 @@ interface InviteMemberDialogProps {
 interface CompanyMember {
   id: string
   name: string
-  email: string
   avatar_url?: string | null
 }
 
@@ -66,7 +65,7 @@ export function InviteMemberDialog({
     try {
       const { data: members, error } = await supabase
         .from('profiles')
-        .select('id, name, email, avatar_url')
+        .select('id, name, avatar_url')
         .eq('company_id', profile.company_id)
         .not('id', 'in', `(${currentMembers.join(',')})`) // Exclude current members
         .order('name', { ascending: true })
@@ -102,8 +101,7 @@ export function InviteMemberDialog({
   }
 
   const filteredMembers = companyMembers.filter(member =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+    member.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const toggleMemberSelection = (memberId: string) => {
@@ -151,7 +149,7 @@ export function InviteMemberDialog({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="이름 또는 이메일로 검색"
+                placeholder="이름으로 검색"
                 className="pl-9"
               />
             </div>
@@ -217,9 +215,6 @@ export function InviteMemberDialog({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {member.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {member.email}
                         </p>
                       </div>
                     </label>
