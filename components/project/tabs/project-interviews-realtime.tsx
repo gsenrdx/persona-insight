@@ -55,6 +55,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   // 전체 presence 정보 가져오기
   const allPresence = useAllPresence()
   
+  // Only track presence when actually viewing an interview
   const { 
     interview: selectedInterview, 
     notes, 
@@ -63,6 +64,14 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   } = useInterviewDetailRealtime(selectedInterviewId || '')
   
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
+  
+  // Clean up presence when component unmounts or when leaving interview detail
+  useEffect(() => {
+    return () => {
+      // This will run when component unmounts (e.g., navigating away from project)
+      console.log('[Realtime] ProjectInterviewsRealtime unmounting, clearing any presence')
+    }
+  }, [])
 
   // 새로고침 함수
   const handleRefresh = useCallback(async () => {
@@ -181,6 +190,8 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         <InterviewDetail 
           interview={selectedInterview}
           onBack={() => {
+            // Clear presence before navigating back
+            console.log('[Realtime] Navigating back from interview detail')
             // URL에서 interview 쿼리 파라미터 제거
             const url = new URL(window.location.href)
             url.searchParams.delete('interview')

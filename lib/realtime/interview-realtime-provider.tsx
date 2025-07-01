@@ -100,6 +100,10 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const maxReconnectAttempts = 5
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const presenceCleanupIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const presenceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const currentPresenceRef = useRef<any>(null)
+  const isSubscribingRef = useRef(false)
 
   // Load initial data
   const loadInitialData = useCallback(async (projectId: string) => {
@@ -398,25 +402,33 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   // Handle presence sync
   const handlePresenceSync = useCallback((presenceState: any) => {
     const presence: Record<string, any[]> = {}
+    const now = Date.now()
+    const PRESENCE_TIMEOUT = 60000 // 60 seconds timeout
     
     Object.entries(presenceState).forEach(([key, presences]: [string, any]) => {
       (presences as any[]).forEach(p => {
-        const { interview_id, user_id, user_name, email, ...data } = p
+        const { interview_id, user_id, user_name, email, online_at, ...data } = p
         if (interview_id) {
           if (!presence[interview_id]) {
             presence[interview_id] = []
           }
-          // Check if user already exists to avoid duplicates
-          const userExists = presence[interview_id].some(
-            viewer => viewer.userId === (user_id || key)
-          )
-          if (!userExists) {
-            presence[interview_id].push({ 
-              userId: user_id || key, 
-              userName: user_name,
-              email: email,
-              ...data 
-            })
+          
+          // Check if presence is still valid (not timed out)
+          const lastSeen = online_at ? new Date(online_at).getTime() : now
+          if (now - lastSeen < PRESENCE_TIMEOUT) {
+            // Check if user already exists to avoid duplicates
+            const userExists = presence[interview_id].some(
+              viewer => viewer.userId === (user_id || key)
+            )
+            if (!userExists) {
+              presence[interview_id].push({ 
+                userId: user_id || key, 
+                userName: user_name,
+                email: email,
+                onlineAt: online_at || new Date().toISOString(),
+                ...data 
+              })
+            }
           }
         }
       })
@@ -429,9 +441,124 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const handleBroadcastUpdate = useCallback((payload: any) => {
     // Handle custom broadcast events silently
   }, [])
+  
+  // Setup presence cleanup
+  const setupPresenceCleanup = useCallback((channel: RealtimeChannel) => {
+    // Clear existing interval
+    if (presenceCleanupIntervalRef.current) {
+      clearInterval(presenceCleanupIntervalRef.current)
+    }
+    
+    // Clean up stale presence every 30 seconds
+    presenceCleanupIntervalRef.current = setInterval(() => {
+      if (channel.state === 'joined') {
+        // Trigger presence sync to clean up stale entries
+        const presenceState = channel.presenceState()
+        handlePresenceSync(presenceState)
+      }
+    }, 30 * 1000) // 30 seconds
+  }, [handlePresenceSync])
+  
+  // Setup token refresh
+  const setupTokenRefresh = useCallback(() => {
+    // Clear existing interval
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current)
+    }
+    
+    tokenRefreshIntervalRef.current = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token && channelRef.current) {
+          // Update the channel's auth token
+          supabase.realtime.setAuth(session.access_token)
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Realtime] JWT token refreshed')
+          }
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Realtime] Failed to refresh JWT token:', error)
+        }
+      }
+    }, 30 * 60 * 1000) // Refresh every 30 minutes
+  }, [])
+  
+  // Setup health check
+  const setupHealthCheck = useCallback((channel: RealtimeChannel, projectId: string) => {
+    // Clear existing interval
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current)
+    }
+    
+    healthCheckIntervalRef.current = setInterval(() => {
+      if (channelRef.current && projectIdRef.current === projectId) {
+        const state = channelRef.current.state
+        
+        // Development logging
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Realtime] Health check - Channel state:', state)
+        }
+        
+        // Only reconnect if truly disconnected, not if temporarily interrupted
+        if (state === 'closed' || state === 'errored') {
+          console.log('[Realtime] Health check detected disconnection, attempting to reconnect')
+          
+          // Channel disconnected, create new subscription
+          const oldChannel = channelRef.current
+          channelRef.current = null
+          
+          // Clear health check to avoid duplicate calls
+          if (healthCheckIntervalRef.current) {
+            clearInterval(healthCheckIntervalRef.current)
+            healthCheckIntervalRef.current = null
+          }
+          
+          // Clear token refresh
+          if (tokenRefreshIntervalRef.current) {
+            clearInterval(tokenRefreshIntervalRef.current)
+            tokenRefreshIntervalRef.current = null
+          }
+          
+          // Clear intervals
+          if (presenceCleanupIntervalRef.current) {
+            clearInterval(presenceCleanupIntervalRef.current)
+            presenceCleanupIntervalRef.current = null
+          }
+          
+          if (presenceUpdateIntervalRef.current) {
+            clearInterval(presenceUpdateIntervalRef.current)
+            presenceUpdateIntervalRef.current = null
+          }
+          
+          // Channel is already closed/errored, just remove and reconnect
+          supabase.removeChannel(oldChannel)
+          
+          // Small delay to ensure cleanup is complete
+          setTimeout(() => {
+            // Don't reset attempts here - use existing count
+            subscribeToProject(projectId)
+          }, 100)
+        }
+      }
+    }, 30000) // Check every 30 seconds
+  }, [])
 
   // Subscribe to project
   const subscribeToProject = useCallback((projectId: string) => {
+    console.log('[Realtime] subscribeToProject called for:', projectId)
+    console.log('[Realtime] Current channelRef:', channelRef.current)
+    console.log('[Realtime] Current projectIdRef:', projectIdRef.current)
+    console.log('[Realtime] isSubscribing:', isSubscribingRef.current)
+    console.log('[Realtime] All channels:', supabase.getChannels().map(ch => ({ topic: ch.topic, state: ch.state })))
+    
+    // Prevent concurrent subscriptions
+    if (isSubscribingRef.current) {
+      console.log('[Realtime] Already subscribing, skipping')
+      return
+    }
+    
     // Clear any pending cleanup
     if (cleanupTimeoutRef.current) {
       clearTimeout(cleanupTimeoutRef.current)
@@ -465,11 +592,58 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         const oldChannel = channelRef.current
         channelRef.current = null
         
-        // Unsubscribe first, then remove
-        oldChannel.unsubscribe().then(() => {
-          supabase.removeChannel(oldChannel)
-        })
+        // Channel is already in a bad state, just remove it
+        supabase.removeChannel(oldChannel)
       }
+    }
+
+    // Set subscribing flag
+    isSubscribingRef.current = true
+    
+    // First check if we have an existing channel for this project
+    const allChannels = supabase.getChannels()
+    const existingProjectChannel = allChannels.find(ch => 
+      ch.topic === `realtime:project-realtime-${projectId}` || 
+      ch.topic === `project-realtime-${projectId}`
+    )
+    
+    if (existingProjectChannel) {
+      console.log('[Realtime] Found existing channel for project:', existingProjectChannel.state)
+      
+      if (existingProjectChannel.state === 'joined') {
+        // Channel is already joined, just reuse it
+        console.log('[Realtime] Reusing existing joined channel')
+        channelRef.current = existingProjectChannel
+        projectIdRef.current = projectId
+        setState(prev => ({ ...prev, isSubscribed: true, error: null }))
+        
+        // Ensure health checks are running
+        setupHealthCheck(existingProjectChannel, projectId)
+        setupTokenRefresh()
+        setupPresenceCleanup(existingProjectChannel)
+        
+        // Load initial data if needed
+        loadInitialData(projectId)
+        isSubscribingRef.current = false
+        return
+      } else if (existingProjectChannel.state === 'joining') {
+        console.log('[Realtime] Channel is already joining, setting ref and waiting')
+        channelRef.current = existingProjectChannel
+        projectIdRef.current = projectId
+        isSubscribingRef.current = false
+        return
+      } else {
+        // Channel exists but in bad state, remove it
+        console.log('[Realtime] Removing existing channel in bad state:', existingProjectChannel.state)
+        supabase.removeChannel(existingProjectChannel)
+      }
+    }
+    
+    // Check if we're already subscribed to this project via channelRef
+    if (channelRef.current && projectIdRef.current === projectId) {
+      console.log('[Realtime] Already have channelRef for this project, but channel not found in getChannels()')
+      // This shouldn't happen, but if it does, clear the ref
+      channelRef.current = null
     }
 
     // Unsubscribe from previous channel if exists
@@ -478,28 +652,66 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       const oldChannel = channelRef.current
       channelRef.current = null
       
-      // Clear health check immediately
+      // Clear all intervals immediately
       if (healthCheckIntervalRef.current) {
         clearInterval(healthCheckIntervalRef.current)
         healthCheckIntervalRef.current = null
       }
       
-      // Clear token refresh
       if (tokenRefreshIntervalRef.current) {
         clearInterval(tokenRefreshIntervalRef.current)
         tokenRefreshIntervalRef.current = null
       }
       
-      // Unsubscribe first, then remove
-      oldChannel.unsubscribe().then(() => {
+      if (presenceCleanupIntervalRef.current) {
+        clearInterval(presenceCleanupIntervalRef.current)
+        presenceCleanupIntervalRef.current = null
+      }
+      
+      if (presenceUpdateIntervalRef.current) {
+        clearInterval(presenceUpdateIntervalRef.current)
+        presenceUpdateIntervalRef.current = null
+      }
+      currentPresenceRef.current = null
+      
+      // Only unsubscribe if channel is in a subscribed state
+      if (oldChannel.state === 'joined' || oldChannel.state === 'joining') {
+        oldChannel.unsubscribe().then(() => {
+          supabase.removeChannel(oldChannel)
+        })
+      } else {
+        // Channel is already closed or in error state, just remove it
         supabase.removeChannel(oldChannel)
-      })
+      }
     }
 
     projectIdRef.current = projectId
 
-    // Create channel with unique name to prevent conflicts
-    const channelName = `project-${projectId}-${Date.now()}-${Math.random().toString(36).substring(2)}`
+    // Use fixed channel name per project for consistent presence
+    const channelName = `project-realtime-${projectId}`
+    
+    // This check is now done above, so we can skip it here
+    
+    // Final check before creating new channel
+    const finalCheck = supabase.getChannels().find(ch => 
+      ch.topic === `realtime:${channelName}` || ch.topic === channelName
+    )
+    
+    if (finalCheck) {
+      console.log('[Realtime] Channel appeared during execution, reusing:', finalCheck.state)
+      channelRef.current = finalCheck
+      projectIdRef.current = projectId
+      
+      if (finalCheck.state === 'joined') {
+        setState(prev => ({ ...prev, isSubscribed: true, error: null }))
+        loadInitialData(projectId)
+      }
+      isSubscribingRef.current = false
+      return
+    }
+    
+    console.log('[Realtime] Creating new channel:', channelName)
+    
     const channel = supabase
       .channel(channelName, {
         config: {
@@ -557,7 +769,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       .on('broadcast', { event: 'interview-update' }, ({ payload }) => {
         handleBroadcastUpdate(payload)
       })
-      .subscribe((status, error) => {
+    
+    console.log('[Realtime] About to subscribe. Channel state before subscribe:', channel.state)
+    console.log('[Realtime] Channel reference:', channel)
+    
+    channel.subscribe((status, error) => {
         // Development logging
         if (process.env.NODE_ENV === 'development') {
           console.log('[Realtime] Channel status:', status, 'Project:', projectId)
@@ -566,9 +782,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         if (status === 'SUBSCRIBED') {
           setState(prev => ({ ...prev, isSubscribed: true, error: null }))
           reconnectAttemptsRef.current = 0 // Reset reconnect attempts
+          isSubscribingRef.current = false
           // Load initial data
           loadInitialData(projectId)
+          // Setup presence cleanup
+          setupPresenceCleanup(channel)
         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          isSubscribingRef.current = false
           setState(prev => ({ 
             ...prev, 
             isSubscribed: false, 
@@ -595,12 +815,18 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
                   const oldChannel = channelRef.current
                   channelRef.current = null
                   
-                  // Unsubscribe first, then remove and reconnect
-                  oldChannel.unsubscribe().then(() => {
+                  // Check channel state before trying to unsubscribe
+                  if (oldChannel.state === 'joined' || oldChannel.state === 'joining') {
+                    oldChannel.unsubscribe().then(() => {
+                      supabase.removeChannel(oldChannel)
+                      // Now attempt to reconnect with fresh state
+                      subscribeToProject(projectId)
+                    })
+                  } else {
+                    // Channel is already closed, just remove and reconnect
                     supabase.removeChannel(oldChannel)
-                    // Now attempt to reconnect with fresh state
                     subscribeToProject(projectId)
-                  })
+                  }
                 } else {
                   // No channel ref, just reconnect
                   subscribeToProject(projectId)
@@ -617,6 +843,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             console.log('[Realtime] Connection timed out, attempting to reconnect')
           }
           
+          isSubscribingRef.current = false
           setState(prev => ({ 
             ...prev, 
             isSubscribed: false, 
@@ -640,90 +867,39 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
               tokenRefreshIntervalRef.current = null
             }
             
-            // Unsubscribe first, then remove and reconnect
-            oldChannel.unsubscribe().then(() => {
+            // Check channel state before trying to unsubscribe
+            if (oldChannel.state === 'joined' || oldChannel.state === 'joining') {
+              oldChannel.unsubscribe().then(() => {
+                supabase.removeChannel(oldChannel)
+                // Reset attempts for timeout reconnect
+                reconnectAttemptsRef.current = 0
+                subscribeToProject(projectId)
+              })
+            } else {
+              // Channel is already closed, just remove and reconnect
               supabase.removeChannel(oldChannel)
-              // Reset attempts for timeout reconnect
               reconnectAttemptsRef.current = 0
               subscribeToProject(projectId)
-            })
+            }
           }
         }
       })
 
+    console.log('[Realtime] Setting channelRef.current to new channel')
     channelRef.current = channel
     
-    // Set up JWT token refresh for Realtime
-    // According to docs, we should refresh tokens to prevent disconnection
-    if (tokenRefreshIntervalRef.current) {
-      clearInterval(tokenRefreshIntervalRef.current)
-    }
-    
-    tokenRefreshIntervalRef.current = setInterval(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.access_token && channelRef.current) {
-          // Update the channel's auth token
-          supabase.realtime.setAuth(session.access_token)
-          
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Realtime] JWT token refreshed')
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[Realtime] Failed to refresh JWT token:', error)
-        }
-      }
-    }, 30 * 60 * 1000) // Refresh every 30 minutes (JWT typically expires in 1 hour)
-    
-    // Set up health check
-    if (healthCheckIntervalRef.current) {
-      clearInterval(healthCheckIntervalRef.current)
-    }
-    
-    healthCheckIntervalRef.current = setInterval(() => {
-      if (channelRef.current && projectIdRef.current === projectId) {
-        const state = channelRef.current.state
-        
-        // Development logging
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Realtime] Health check - Channel state:', state)
-        }
-        
-        // Only reconnect if truly disconnected, not if temporarily interrupted
-        if (state === 'closed' || state === 'errored') {
-          console.log('[Realtime] Health check detected disconnection, attempting to reconnect')
-          
-          // Channel disconnected, create new subscription
-          const oldChannel = channelRef.current
-          channelRef.current = null
-          
-          // Clear health check to avoid duplicate calls
-          if (healthCheckIntervalRef.current) {
-            clearInterval(healthCheckIntervalRef.current)
-            healthCheckIntervalRef.current = null
-          }
-          
-          // Clear token refresh
-          if (tokenRefreshIntervalRef.current) {
-            clearInterval(tokenRefreshIntervalRef.current)
-            tokenRefreshIntervalRef.current = null
-          }
-          
-          // Unsubscribe first, then remove and reconnect
-          oldChannel.unsubscribe().then(() => {
-            supabase.removeChannel(oldChannel)
-            // Don't reset attempts here - use existing count
-            subscribeToProject(projectId)
-          })
-        }
-      }
-    }, 30000) // Check every 30 seconds
-  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, state.isLoading, state.interviews.length])
+    // Set up health checks and token refresh
+    setupHealthCheck(channel, projectId)
+    setupTokenRefresh()
+  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, setupHealthCheck, setupTokenRefresh, setupPresenceCleanup, state.interviews.length])
 
   // Unsubscribe
   const unsubscribe = useCallback(() => {
+    console.log('[Realtime] Unsubscribe called')
+    
+    // Reset subscribing flag
+    isSubscribingRef.current = false
+    
     // Clear any pending cleanup first
     if (cleanupTimeoutRef.current) {
       clearTimeout(cleanupTimeoutRef.current)
@@ -748,11 +924,42 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       tokenRefreshIntervalRef.current = null
     }
     
+    // Clear presence cleanup
+    if (presenceCleanupIntervalRef.current) {
+      clearInterval(presenceCleanupIntervalRef.current)
+      presenceCleanupIntervalRef.current = null
+    }
+    
+    // Clear presence update
+    if (presenceUpdateIntervalRef.current) {
+      clearInterval(presenceUpdateIntervalRef.current)
+      presenceUpdateIntervalRef.current = null
+    }
+    currentPresenceRef.current = null
+    
     if (channelRef.current) {
-      supabase.removeChannel(channelRef.current)
+      const channel = channelRef.current
       channelRef.current = null
       projectIdRef.current = null
       reconnectAttemptsRef.current = 0
+      
+      // Remove channel safely
+      try {
+        if (channel.state === 'joined' || channel.state === 'joining') {
+          channel.unsubscribe().then(() => {
+            supabase.removeChannel(channel)
+          }).catch(err => {
+            console.error('[Realtime] Error during unsubscribe:', err)
+            // Try to remove anyway
+            supabase.removeChannel(channel)
+          })
+        } else {
+          supabase.removeChannel(channel)
+        }
+      } catch (err) {
+        console.error('[Realtime] Error removing channel:', err)
+      }
+      
       setState({
         interviews: [],
         notes: {},
@@ -777,14 +984,39 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
 
     try {
-      await channelRef.current.track({
+      const presenceData = {
         interview_id: interviewId,
         user_id: data.userId,
         user_name: data.userName,
         email: data.email,
         ...data,
         online_at: new Date().toISOString(),
-      })
+      }
+      
+      await channelRef.current.track(presenceData)
+      currentPresenceRef.current = presenceData
+      
+      // Set up periodic presence update
+      if (presenceUpdateIntervalRef.current) {
+        clearInterval(presenceUpdateIntervalRef.current)
+      }
+      
+      presenceUpdateIntervalRef.current = setInterval(async () => {
+        if (channelRef.current?.state === 'joined' && currentPresenceRef.current) {
+          try {
+            const updatedPresence = {
+              ...currentPresenceRef.current,
+              online_at: new Date().toISOString(),
+            }
+            await channelRef.current.track(updatedPresence)
+            currentPresenceRef.current = updatedPresence
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('[Realtime] Failed to update presence:', error)
+            }
+          }
+        }
+      }, 30 * 1000) // Update every 30 seconds
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('[Realtime] Failed to track presence:', error)
@@ -795,6 +1027,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   // Untrack presence
   const untrackPresence = useCallback(async () => {
     if (!channelRef.current) return
+    
+    // Clear presence update interval
+    if (presenceUpdateIntervalRef.current) {
+      clearInterval(presenceUpdateIntervalRef.current)
+      presenceUpdateIntervalRef.current = null
+    }
+    currentPresenceRef.current = null
     
     // Check if channel is subscribed before untracking
     if (channelRef.current.state !== 'joined') {

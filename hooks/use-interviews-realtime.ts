@@ -114,7 +114,9 @@ export function useInterviewDetailRealtime(interviewId: string) {
 
   // Track user presence when viewing interview
   useEffect(() => {
-    if (interviewId && user && profile) {
+    // Only track presence if we have a valid interviewId
+    if (interviewId && interviewId.length > 0 && user && profile) {
+      console.log('[Realtime] Tracking presence for interview:', interviewId)
       trackPresence(interviewId, {
         userId: user.id,
         userName: profile.name || 'Unknown User',
@@ -123,10 +125,15 @@ export function useInterviewDetailRealtime(interviewId: string) {
         timestamp: new Date().toISOString(),
       })
       
-      // Untrack presence when leaving the interview
+      // Untrack presence when leaving the interview or interviewId changes
       return () => {
+        console.log('[Realtime] Untracking presence for interview:', interviewId)
         untrackPresence()
       }
+    } else if (!interviewId || interviewId.length === 0) {
+      // If no interviewId, make sure to untrack any existing presence
+      console.log('[Realtime] No interview selected, untracking presence')
+      untrackPresence()
     }
   }, [interviewId, user, profile, trackPresence, untrackPresence])
 
