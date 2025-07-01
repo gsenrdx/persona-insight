@@ -179,27 +179,20 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     }
     
     return (
-      <div>
-        {presence.length > 0 && (
-          <PresenceIndicator 
-            viewers={presence}
-            currentUserId={profile?.id}
-            className="mb-4"
-          />
-        )}
-        <InterviewDetail 
-          interview={selectedInterview}
-          onBack={() => {
-            // Clear presence before navigating back
-            console.log('[Realtime] Navigating back from interview detail')
-            // URL에서 interview 쿼리 파라미터 제거
-            const url = new URL(window.location.href)
-            url.searchParams.delete('interview')
-            router.replace(url.pathname + url.search, { scroll: false })
-          }}
-          onDelete={handleDeleteInterview}
-        />
-      </div>
+      <InterviewDetail 
+        interview={selectedInterview}
+        presence={presence}
+        currentUserId={profile?.id}
+        onBack={() => {
+          // Clear presence before navigating back
+          console.log('[Realtime] Navigating back from interview detail')
+          // URL에서 interview 쿼리 파라미터 제거
+          const url = new URL(window.location.href)
+          url.searchParams.delete('interview')
+          router.replace(url.pathname + url.search, { scroll: false })
+        }}
+        onDelete={handleDeleteInterview}
+      />
     )
   }
 

@@ -33,7 +33,8 @@ const InterviewRealtimeContext = createContext<InterviewRealtimeContextValue | n
 // Transform functions outside component to avoid recreating
 const transformInterviewRow = (row: InterviewRow & { 
   created_by_profile?: any,
-  interview_notes?: any
+  interview_notes?: any,
+  ai_persona_definition?: any
 }): Interview => {
   return {
     id: row.id,
@@ -59,6 +60,7 @@ const transformInterviewRow = (row: InterviewRow & {
     hmw_questions: row.hmw_questions as any,
     ai_persona_match: row.ai_persona_match,
     ai_persona_explanation: row.ai_persona_explanation,
+    ai_persona_definition: row.ai_persona_definition,
     created_by_profile: row.created_by_profile,
     note_count: row.interview_notes?.[0]?.count || 0,
   }
@@ -110,7 +112,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     
     try {
-      // Fetch interviews with creator profile and note count
+      // Fetch interviews with creator profile, note count, and persona definition
       const { data: interviews, error: interviewsError } = await supabase
         .from('interviews')
         .select(`
@@ -119,7 +121,14 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             id,
             name
           ),
-          interview_notes(count)
+          interview_notes(count),
+          ai_persona_definition:persona_definitions!ai_persona_match(
+            id,
+            name_ko,
+            name_en,
+            description,
+            tags
+          )
         `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
@@ -199,7 +208,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       case 'INSERT':
       case 'UPDATE':
         if (newRow) {
-          // Fetch complete interview data with profile
+          // Fetch complete interview data with profile and persona definition
           const { data: fullInterview, error } = await supabase
             .from('interviews')
             .select(`
@@ -208,7 +217,14 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
                 id,
                 name
               ),
-              interview_notes(count)
+              interview_notes(count),
+              ai_persona_definition:persona_definitions!ai_persona_match(
+                id,
+                name_ko,
+                name_en,
+                description,
+                tags
+              )
             `)
             .eq('id', newRow.id)
             .single()

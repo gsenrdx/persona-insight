@@ -6,15 +6,18 @@ import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
+import { PresenceIndicatorCompact } from '@/components/ui/presence-indicator'
 
 interface InterviewDetailProps {
   interview: Interview
   onBack: () => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  presence?: any[]
+  currentUserId?: string
 }
 
-export default function InterviewDetail({ interview, onBack }: InterviewDetailProps) {
+export default function InterviewDetail({ interview, onBack, presence = [], currentUserId }: InterviewDetailProps) {
   const [activeTab, setActiveTab] = useState('insights')
   const scriptViewerRef = useRef<any>(null)
 
@@ -59,6 +62,18 @@ export default function InterviewDetail({ interview, onBack }: InterviewDetailPr
                   <span>{interview.interviewee_profile[0].demographics.age_group}</span>
                   <span>·</span>
                   <span>{interview.interviewee_profile[0].demographics.gender}</span>
+                </>
+              )}
+              {presence && presence.length > 0 && (
+                <>
+                  <span>·</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">현재 보는 중:</span>
+                    <PresenceIndicatorCompact 
+                      viewers={presence}
+                      currentUserId={currentUserId}
+                    />
+                  </div>
                 </>
               )}
             </div>

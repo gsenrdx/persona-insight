@@ -215,17 +215,16 @@ export function PresenceIndicatorCompact({
 
   return (
     <TooltipProvider delayDuration={100}>
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <div className={cn(
-            "flex items-center gap-1 group cursor-pointer",
-            className
-          )}>
-            <div className="flex -space-x-1.5">
-              {allViewers.slice(0, 3).map((viewer, index) => (
+      <div className={cn(
+        "flex items-center gap-1",
+        className
+      )}>
+        <div className="flex -space-x-1.5">
+          {allViewers.slice(0, 3).map((viewer, index) => (
+            <Tooltip key={viewer.userId} delayDuration={0}>
+              <TooltipTrigger asChild>
                 <Avatar 
-                  key={viewer.userId}
-                  className="h-6 w-6 border border-white shadow-sm transition-transform group-hover:scale-110"
+                  className="h-6 w-6 border border-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
                   style={{ zIndex: 3 - index }}
                 >
                   <AvatarFallback 
@@ -237,55 +236,74 @@ export function PresenceIndicatorCompact({
                     {getInitials(viewer.displayName)}
                   </AvatarFallback>
                 </Avatar>
-              ))}
-              {allViewers.length > 3 && (
+              </TooltipTrigger>
+              <TooltipContent 
+                side="bottom" 
+                className="bg-gray-900 text-white px-3 py-2 rounded-lg"
+                sideOffset={8}
+              >
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">
+                    {viewer.displayName}
+                    {viewer.isCurrentUser && ' (나)'}
+                  </p>
+                  {viewer.email && (
+                    <p className="text-xs text-gray-300">{viewer.email}</p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+          {allViewers.length > 3 && (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
                 <div 
-                  className="h-6 w-6 rounded-full bg-gray-200 border border-white shadow-sm flex items-center justify-center transition-transform group-hover:scale-110"
+                  className="h-6 w-6 rounded-full bg-gray-200 border border-white shadow-sm flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
                   style={{ zIndex: 0 }}
                 >
                   <span className="text-[10px] font-medium text-gray-600">
                     +{allViewers.length - 3}
                   </span>
                 </div>
-              )}
-            </div>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent 
-          side="bottom" 
-          className="bg-gray-900 text-white px-3 py-2 rounded-lg max-w-xs"
-          sideOffset={8}
-        >
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-300 mb-1">
-              {allViewers.length}명이 보는 중
-            </p>
-            {allViewers.map(viewer => (
-              <div key={viewer.userId} className="flex items-center gap-2">
-                <Avatar className="h-5 w-5">
-                  <AvatarFallback 
-                    className={cn(
-                      getAvatarColor(viewer.userId),
-                      "text-white text-[9px] font-medium"
-                    )}
-                  >
-                    {getInitials(viewer.displayName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">
-                    {viewer.displayName}
-                    {viewer.isCurrentUser && ' (나)'}
+              </TooltipTrigger>
+              <TooltipContent 
+                side="bottom" 
+                className="bg-gray-900 text-white px-3 py-2 rounded-lg max-w-xs"
+                sideOffset={8}
+              >
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-300 mb-1">
+                    추가 {allViewers.length - 3}명이 보는 중
                   </p>
-                  {viewer.email && (
-                    <p className="text-[10px] text-gray-400 truncate">{viewer.email}</p>
-                  )}
+                  {allViewers.slice(3).map(viewer => (
+                    <div key={viewer.userId} className="flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarFallback 
+                          className={cn(
+                            getAvatarColor(viewer.userId),
+                            "text-white text-[9px] font-medium"
+                          )}
+                        >
+                          {getInitials(viewer.displayName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">
+                          {viewer.displayName}
+                          {viewer.isCurrentUser && ' (나)'}
+                        </p>
+                        {viewer.email && (
+                          <p className="text-[10px] text-gray-400 truncate">{viewer.email}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </TooltipContent>
-      </Tooltip>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

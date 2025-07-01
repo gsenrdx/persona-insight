@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Interview, InsightItem } from '@/types/interview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import InterviewSummarySidebar from './interview-summary-sidebar'
-import { Lightbulb, AlertCircle, HelpCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface InterviewInsightsProps {
@@ -72,14 +72,23 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
         
         {/* 근거 문장들 - 토글 가능 */}
         {evidenceSentences.length > 0 && isExpanded && (
-          <div className="ml-6 mt-3 space-y-2">
+          <div className="ml-4 mt-2 space-y-3">
             {evidenceSentences.map((sentence, idx) => (
               <div 
                 key={`evidence-${idx}`}
-                className="text-xs text-gray-600 bg-gray-50/70 rounded-lg p-3 border border-gray-100"
+                className={cn(
+                  "relative pl-4 before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full",
+                  sentence.speaker === 'question' 
+                    ? "before:bg-blue-400" 
+                    : "before:bg-gray-300"
+                )}
               >
-                {sentence.speaker === 'question' && <span className="text-gray-500 mr-2 font-medium">Q.</span>}
-                <span className="italic leading-relaxed">{sentence.cleaned_sentence}</span>
+                <blockquote className="text-sm text-gray-600 leading-relaxed">
+                  {sentence.speaker === 'question' && (
+                    <span className="text-gray-500 font-medium mr-1.5">Q.</span>
+                  )}
+                  "{sentence.cleaned_sentence}"
+                </blockquote>
               </div>
             ))}
           </div>
@@ -96,45 +105,23 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
       {/* 오른쪽 인사이트 영역 */}
       <div className="flex-1 bg-white">
           <div className="max-w-4xl mx-auto px-8 py-8">
-            {/* 상단 2단 구조 - 핵심 시사점과 HMW */}
-            <div className="grid grid-cols-2 gap-10 mb-10">
-              {/* 핵심 시사점 */}
-              <div>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
-                  <h3 className="text-lg font-semibold text-gray-900">핵심 시사점</h3>
-                </div>
-                {key_takeaways && key_takeaways.length > 0 ? (
-                  <div className="space-y-3">
-                    {key_takeaways.map((takeaway, index) => (
-                      <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-gray-400">
-                        {takeaway}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">분석된 시사점이 없습니다</p>
-                )}
+            {/* 핵심 시사점 - 1단 구조 */}
+            <div className="mb-10">
+              <div className="flex items-center gap-2.5 mb-5">
+                <Lightbulb className="w-5 h-5 text-amber-500" />
+                <h3 className="text-lg font-semibold text-gray-900">핵심 시사점</h3>
               </div>
-
-              {/* HMW Questions */}
-              <div>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <HelpCircle className="w-5 h-5 text-purple-500" />
-                  <h3 className="text-lg font-semibold text-gray-900">How Might We...?</h3>
+              {key_takeaways && key_takeaways.length > 0 ? (
+                <div className="space-y-3">
+                  {key_takeaways.map((takeaway, index) => (
+                    <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-gray-400">
+                      {takeaway}
+                    </p>
+                  ))}
                 </div>
-                {hmw_questions && hmw_questions.length > 0 ? (
-                  <div className="space-y-3">
-                    {hmw_questions.map((hmw, index) => (
-                      <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-gray-400">
-                        {hmw.hmw_questions}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">HMW 질문이 없습니다</p>
-                )}
-              </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">분석된 시사점이 없습니다</p>
+              )}
             </div>
 
             {/* 하단 2단 구조 - Pain Points와 Needs */}
@@ -179,8 +166,7 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
             {/* 모든 데이터가 없는 경우 */}
             {(!key_takeaways || key_takeaways.length === 0) && 
              (!primary_pain_points || primary_pain_points.length === 0) && 
-             (!primary_needs || primary_needs.length === 0) && 
-             (!hmw_questions || hmw_questions.length === 0) && (
+             (!primary_needs || primary_needs.length === 0) && (
               <div className="col-span-2 text-center py-24">
                 <p className="text-gray-500 text-base">
                   아직 분석된 인사이트가 없습니다.
