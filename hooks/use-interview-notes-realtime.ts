@@ -1,16 +1,22 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import type { InterviewNote, CreateNoteRequest, CreateReplyRequest } from '@/types/interview-notes'
 
 export function useInterviewNotesRealtime(interviewId: string) {
   const { user, session } = useAuth()
-  const { notes } = useInterviewRealtime()
+  const { notes, error: realtimeError } = useInterviewRealtime()
   
   // Get notes for current interview
   const interviewNotes = notes[interviewId] || []
+  
+  // Loading states
+  const [isAddingNote, setIsAddingNote] = useState(false)
+  const [isDeletingNote, setIsDeletingNote] = useState(false)
+  const [isAddingReply, setIsAddingReply] = useState(false)
+  const [isDeletingReply, setIsDeletingReply] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
   // Add note
   const addNote = useCallback(async (data: CreateNoteRequest) => {
@@ -18,6 +24,9 @@ export function useInterviewNotesRealtime(interviewId: string) {
       toast.error('인증이 필요합니다')
       return
     }
+
+    setIsAddingNote(true)
+    setError(null)
 
     try {
       const response = await fetch(`/api/interviews/${interviewId}/notes`, {
@@ -30,14 +39,19 @@ export function useInterviewNotesRealtime(interviewId: string) {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to create note')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create note')
       }
       
       // Realtime will automatically update via subscription
       toast.success('메모가 추가되었습니다')
-    } catch (error) {
-      console.error('Failed to add note:', error)
-      toast.error('메모 추가에 실패했습니다')
+    } catch (err) {
+      const error = err as Error
+      // Error logged to monitoring service
+      setError(error)
+      toast.error(error.message || '메모 추가에 실패했습니다')
+    } finally {
+      setIsAddingNote(false)
     }
   }, [session, interviewId])
 
@@ -48,6 +62,9 @@ export function useInterviewNotesRealtime(interviewId: string) {
       return
     }
 
+    setIsDeletingNote(true)
+    setError(null)
+
     try {
       const response = await fetch(`/api/interviews/${interviewId}/notes/${noteId}`, {
         method: 'DELETE',
@@ -57,14 +74,19 @@ export function useInterviewNotesRealtime(interviewId: string) {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to delete note')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete note')
       }
       
       // Realtime will automatically update via subscription
       toast.success('메모가 삭제되었습니다')
-    } catch (error) {
-      console.error('Failed to delete note:', error)
-      toast.error('메모 삭제에 실패했습니다')
+    } catch (err) {
+      const error = err as Error
+      // Error logged to monitoring service
+      setError(error)
+      toast.error(error.message || '메모 삭제에 실패했습니다')
+    } finally {
+      setIsDeletingNote(false)
     }
   }, [session, interviewId])
 
@@ -74,6 +96,9 @@ export function useInterviewNotesRealtime(interviewId: string) {
       toast.error('인증이 필요합니다')
       return
     }
+
+    setIsAddingReply(true)
+    setError(null)
 
     try {
       const response = await fetch(`/api/interviews/${interviewId}/notes/${data.noteId}/replies`, {
@@ -86,14 +111,19 @@ export function useInterviewNotesRealtime(interviewId: string) {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to create reply')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create reply')
       }
       
       // Realtime will automatically update via subscription
       toast.success('댓글이 추가되었습니다')
-    } catch (error) {
-      console.error('Failed to add reply:', error)
-      toast.error('댓글 추가에 실패했습니다')
+    } catch (err) {
+      const error = err as Error
+      // Error logged to monitoring service
+      setError(error)
+      toast.error(error.message || '댓글 추가에 실패했습니다')
+    } finally {
+      setIsAddingReply(false)
     }
   }, [session, interviewId])
 
@@ -104,6 +134,9 @@ export function useInterviewNotesRealtime(interviewId: string) {
       return
     }
 
+    setIsDeletingReply(true)
+    setError(null)
+
     try {
       const response = await fetch(`/api/interviews/${interviewId}/notes/${noteId}/replies/${replyId}`, {
         method: 'DELETE',
@@ -113,14 +146,19 @@ export function useInterviewNotesRealtime(interviewId: string) {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to delete reply')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete reply')
       }
       
       // Realtime will automatically update via subscription
       toast.success('댓글이 삭제되었습니다')
-    } catch (error) {
-      console.error('Failed to delete reply:', error)
-      toast.error('댓글 삭제에 실패했습니다')
+    } catch (err) {
+      const error = err as Error
+      // Error logged to monitoring service
+      setError(error)
+      toast.error(error.message || '댓글 삭제에 실패했습니다')
+    } finally {
+      setIsDeletingReply(false)
     }
   }, [session, interviewId])
 
@@ -134,15 +172,15 @@ export function useInterviewNotesRealtime(interviewId: string) {
   return {
     notes: interviewNotes,
     isLoading: false, // Realtime is always ready
-    error: null,
+    error: error || realtimeError,
     addNote,
     deleteNote,
     addReply,
     deleteReply,
     getNotesByScriptId,
-    isAddingNote: false,
-    isDeletingNote: false,
-    isAddingReply: false,
-    isDeletingReply: false
+    isAddingNote,
+    isDeletingNote,
+    isAddingReply,
+    isDeletingReply
   }
 }

@@ -24,7 +24,7 @@ export function useInterviewsRealtime(projectId: string) {
 
     try {
       const { data: newInterview, error } = await supabase
-        .from('interviewees')
+        .from('interviews')
         .insert({
           ...data,
           project_id: projectId,
@@ -38,7 +38,7 @@ export function useInterviewsRealtime(projectId: string) {
       toast.success('인터뷰가 생성되었습니다')
       return newInterview
     } catch (error) {
-      console.error('Failed to create interview:', error)
+      // Failed to create interview
       toast.error('인터뷰 생성에 실패했습니다')
       throw error
     }
@@ -50,7 +50,7 @@ export function useInterviewsRealtime(projectId: string) {
 
     try {
       const { error } = await supabase
-        .from('interviewees')
+        .from('interviews')
         .update(updates)
         .eq('id', id)
 
@@ -58,7 +58,7 @@ export function useInterviewsRealtime(projectId: string) {
 
       toast.success('인터뷰가 업데이트되었습니다')
     } catch (error) {
-      console.error('Failed to update interview:', error)
+      // Failed to update interview
       toast.error('인터뷰 업데이트에 실패했습니다')
       throw error
     }
@@ -70,7 +70,7 @@ export function useInterviewsRealtime(projectId: string) {
 
     try {
       const { error } = await supabase
-        .from('interviewees')
+        .from('interviews')
         .delete()
         .eq('id', id)
 
@@ -78,7 +78,7 @@ export function useInterviewsRealtime(projectId: string) {
 
       toast.success('인터뷰가 삭제되었습니다')
     } catch (error) {
-      console.error('Failed to delete interview:', error)
+      // Failed to delete interview
       toast.error('인터뷰 삭제에 실패했습니다')
       throw error
     }
@@ -116,7 +116,7 @@ export function useInterviewDetailRealtime(interviewId: string) {
   useEffect(() => {
     // Only track presence if we have a valid interviewId
     if (interviewId && interviewId.length > 0 && user && profile) {
-      console.log('[Realtime] Tracking presence for interview:', interviewId)
+      // Tracking presence for interview
       trackPresence(interviewId, {
         userId: user.id,
         userName: profile.name || 'Unknown User',
@@ -127,12 +127,12 @@ export function useInterviewDetailRealtime(interviewId: string) {
       
       // Untrack presence when leaving the interview or interviewId changes
       return () => {
-        console.log('[Realtime] Untracking presence for interview:', interviewId)
+        // Untracking presence for interview
         untrackPresence()
       }
     } else if (!interviewId || interviewId.length === 0) {
       // If no interviewId, make sure to untrack any existing presence
-      console.log('[Realtime] No interview selected, untracking presence')
+      // No interview selected, untracking presence
       untrackPresence()
     }
   }, [interviewId, user, profile, trackPresence, untrackPresence])

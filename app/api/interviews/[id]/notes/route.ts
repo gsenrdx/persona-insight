@@ -88,6 +88,29 @@ export async function POST(
       )
     }
 
+    // Validate scriptItemIds is array
+    if (!Array.isArray(scriptItemIds) || scriptItemIds.length === 0) {
+      return NextResponse.json(
+        { error: 'scriptItemIds must be a non-empty array' },
+        { status: 400 }
+      )
+    }
+
+    // Validate content length
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'content must be a non-empty string' },
+        { status: 400 }
+      )
+    }
+
+    if (content.length > 2000) {
+      return NextResponse.json(
+        { error: 'content must not exceed 2000 characters' },
+        { status: 400 }
+      )
+    }
+
 
     // 메모 생성
     const { data: note, error } = await supabase

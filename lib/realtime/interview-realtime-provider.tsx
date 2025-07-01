@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { Interview } from '@/types/interview'
@@ -73,12 +73,13 @@ const transformNoteRow = (row: InterviewNoteRow & {
   return {
     id: row.id,
     interview_id: row.interview_id,
-    user_id: row.user_id,
+    script_item_ids: row.script_item_ids || [],
     content: row.content,
+    created_by: row.created_by,
+    company_id: row.company_id,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    metadata: row.metadata || {},
-    script_item_ids: row.script_item_ids || [],
+    is_deleted: row.is_deleted || false,
     created_by_profile: row.created_by_profile,
     replies: row.replies?.filter(r => !r.is_deleted) || [],
   }
@@ -99,13 +100,15 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
-  const maxReconnectAttempts = 5
+  const maxReconnectAttempts = 3 // 표준적인 재시도 횟수
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const presenceCleanupIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const presenceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const currentPresenceRef = useRef<any>(null)
   const isSubscribingRef = useRef(false)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isPollingRef = useRef(false)
 
   // Load initial data
   const loadInitialData = useCallback(async (projectId: string) => {
@@ -196,6 +199,37 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         isLoading: false,
       }))
     }
+  }, [])
+
+  // Start polling fallback when realtime fails
+  const startPolling = useCallback((projectId: string) => {
+    // Prevent duplicate polling
+    if (isPollingRef.current || !projectId) return
+    
+    // Starting fallback polling for project
+    
+    isPollingRef.current = true
+    
+    // Initial poll immediately
+    loadInitialData(projectId)
+    
+    // Set up polling interval (10 seconds)
+    pollingIntervalRef.current = setInterval(() => {
+      if (projectIdRef.current === projectId) {
+        loadInitialData(projectId)
+      }
+    }, 10000) // 10 seconds - standard polling interval
+  }, [loadInitialData])
+
+  // Stop polling
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    isPollingRef.current = false
+    
+    // Stopped fallback polling
   }, [])
 
   // Handle interview changes
@@ -338,7 +372,18 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
   }, [])
 
-  // Handle reply changes
+  // Create note ID to interview ID map for O(1) lookup
+  const noteToInterviewMap = useMemo(() => {
+    const map = new Map<string, string>()
+    Object.entries(state.notes).forEach(([interviewId, notes]) => {
+      notes.forEach(note => {
+        map.set(note.id, interviewId)
+      })
+    })
+    return map
+  }, [state.notes])
+
+  // Handle reply changes with optimized lookup
   const handleReplyChange = useCallback(async (
     payload: RealtimePostgresChangesPayload<InterviewNoteReplyRow>
   ) => {
@@ -364,27 +409,33 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
 
           if (!error && fullReply) {
             setState(prev => {
-              const notes = { ...prev.notes }
+              // Use map for O(1) lookup
+              const interviewId = noteToInterviewMap.get(fullReply.note_id)
+              if (!interviewId) return prev
               
-              // Find the note across all interviews
-              for (const interviewId in notes) {
-                const noteIndex = notes[interviewId].findIndex(n => n.id === fullReply.note_id)
-                if (noteIndex >= 0) {
-                  const note = notes[interviewId][noteIndex]
-                  
-                  if (eventType === 'INSERT') {
-                    note.replies = [...(note.replies || []), fullReply]
-                  } else {
-                    const replyIndex = note.replies?.findIndex(r => r.id === fullReply.id)
-                    if (replyIndex !== undefined && replyIndex >= 0 && note.replies) {
-                      note.replies[replyIndex] = fullReply
-                    }
-                  }
-                  
-                  notes[interviewId][noteIndex] = { ...note }
-                  break
+              const notes = { ...prev.notes }
+              const noteList = notes[interviewId]
+              if (!noteList) return prev
+              
+              const noteIndex = noteList.findIndex(n => n.id === fullReply.note_id)
+              if (noteIndex < 0) return prev
+              
+              const updatedNotes = [...noteList]
+              const note = { ...updatedNotes[noteIndex] }
+              
+              if (eventType === 'INSERT') {
+                note.replies = [...(note.replies || []), fullReply]
+              } else {
+                const replies = [...(note.replies || [])]
+                const replyIndex = replies.findIndex(r => r.id === fullReply.id)
+                if (replyIndex >= 0) {
+                  replies[replyIndex] = fullReply
+                  note.replies = replies
                 }
               }
+              
+              updatedNotes[noteIndex] = note
+              notes[interviewId] = updatedNotes
 
               return { ...prev, notes }
             })
@@ -395,25 +446,30 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       case 'DELETE':
         if (oldRow) {
           setState(prev => {
-            const notes = { ...prev.notes }
+            // Use map for O(1) lookup
+            const interviewId = noteToInterviewMap.get(oldRow.note_id)
+            if (!interviewId) return prev
             
-            // Find and remove the reply
-            for (const interviewId in notes) {
-              const noteIndex = notes[interviewId].findIndex(n => n.id === oldRow.note_id)
-              if (noteIndex >= 0) {
-                const note = notes[interviewId][noteIndex]
-                note.replies = note.replies?.filter(r => r.id !== oldRow.id) || []
-                notes[interviewId][noteIndex] = { ...note }
-                break
-              }
-            }
+            const notes = { ...prev.notes }
+            const noteList = notes[interviewId]
+            if (!noteList) return prev
+            
+            const noteIndex = noteList.findIndex(n => n.id === oldRow.note_id)
+            if (noteIndex < 0) return prev
+            
+            const updatedNotes = [...noteList]
+            const note = { ...updatedNotes[noteIndex] }
+            note.replies = (note.replies || []).filter(r => r.id !== oldRow.id)
+            
+            updatedNotes[noteIndex] = note
+            notes[interviewId] = updatedNotes
 
             return { ...prev, notes }
           })
         }
         break
     }
-  }, [])
+  }, [noteToInterviewMap])
 
   // Handle presence sync
   const handlePresenceSync = useCallback((presenceState: any) => {
@@ -490,12 +546,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           supabase.realtime.setAuth(session.access_token)
           
           if (process.env.NODE_ENV === 'development') {
-            console.log('[Realtime] JWT token refreshed')
+            // JWT token refreshed
           }
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('[Realtime] Failed to refresh JWT token:', error)
+          // Failed to refresh JWT token
         }
       }
     }, 30 * 60 * 1000) // Refresh every 30 minutes
@@ -514,12 +570,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         
         // Development logging
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Realtime] Health check - Channel state:', state)
+          // Health check - Channel state
         }
         
         // Only reconnect if truly disconnected, not if temporarily interrupted
         if (state === 'closed' || state === 'errored') {
-          console.log('[Realtime] Health check detected disconnection, attempting to reconnect')
+          // Health check detected disconnection, attempting to reconnect
           
           // Channel disconnected, create new subscription
           const oldChannel = channelRef.current
@@ -563,15 +619,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
 
   // Subscribe to project
   const subscribeToProject = useCallback((projectId: string) => {
-    console.log('[Realtime] subscribeToProject called for:', projectId)
-    console.log('[Realtime] Current channelRef:', channelRef.current)
-    console.log('[Realtime] Current projectIdRef:', projectIdRef.current)
-    console.log('[Realtime] isSubscribing:', isSubscribingRef.current)
-    console.log('[Realtime] All channels:', supabase.getChannels().map(ch => ({ topic: ch.topic, state: ch.state })))
+    // Development logging disabled for production
     
     // Prevent concurrent subscriptions
     if (isSubscribingRef.current) {
-      console.log('[Realtime] Already subscribing, skipping')
+      // Already subscribing, skipping
       return
     }
     
@@ -587,7 +639,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       
       // Development logging
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Realtime] Current channel state:', channelState, 'for project:', projectId)
+        // Current channel state for project
       }
       
       if (channelState === 'joined') {
@@ -624,11 +676,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     )
     
     if (existingProjectChannel) {
-      console.log('[Realtime] Found existing channel for project:', existingProjectChannel.state)
+      // Found existing channel for project
       
       if (existingProjectChannel.state === 'joined') {
         // Channel is already joined, just reuse it
-        console.log('[Realtime] Reusing existing joined channel')
+        // Reusing existing joined channel
         channelRef.current = existingProjectChannel
         projectIdRef.current = projectId
         setState(prev => ({ ...prev, isSubscribed: true, error: null }))
@@ -643,21 +695,21 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         isSubscribingRef.current = false
         return
       } else if (existingProjectChannel.state === 'joining') {
-        console.log('[Realtime] Channel is already joining, setting ref and waiting')
+        // Channel is already joining, setting ref and waiting
         channelRef.current = existingProjectChannel
         projectIdRef.current = projectId
         isSubscribingRef.current = false
         return
       } else {
         // Channel exists but in bad state, remove it
-        console.log('[Realtime] Removing existing channel in bad state:', existingProjectChannel.state)
+        // Removing existing channel in bad state
         supabase.removeChannel(existingProjectChannel)
       }
     }
     
     // Check if we're already subscribed to this project via channelRef
     if (channelRef.current && projectIdRef.current === projectId) {
-      console.log('[Realtime] Already have channelRef for this project, but channel not found in getChannels()')
+      // Already have channelRef for this project, but channel not found in getChannels()
       // This shouldn't happen, but if it does, clear the ref
       channelRef.current = null
     }
@@ -690,6 +742,16 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       }
       currentPresenceRef.current = null
       
+      // Clear state data to prevent memory leaks when switching projects
+      setState({
+        interviews: [],
+        notes: {},
+        presence: {},
+        isSubscribed: false,
+        isLoading: true,
+        error: null,
+      })
+      
       // Only unsubscribe if channel is in a subscribed state
       if (oldChannel.state === 'joined' || oldChannel.state === 'joining') {
         oldChannel.unsubscribe().then(() => {
@@ -714,7 +776,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     )
     
     if (finalCheck) {
-      console.log('[Realtime] Channel appeared during execution, reusing:', finalCheck.state)
+      // Channel appeared during execution, reusing
       channelRef.current = finalCheck
       projectIdRef.current = projectId
       
@@ -726,7 +788,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       return
     }
     
-    console.log('[Realtime] Creating new channel:', channelName)
+    // Creating new channel
     
     const channel = supabase
       .channel(channelName, {
@@ -786,19 +848,22 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         handleBroadcastUpdate(payload)
       })
     
-    console.log('[Realtime] About to subscribe. Channel state before subscribe:', channel.state)
-    console.log('[Realtime] Channel reference:', channel)
+    // About to subscribe
     
     channel.subscribe((status, error) => {
         // Development logging
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Realtime] Channel status:', status, 'Project:', projectId)
+          // Channel status update
         }
         
         if (status === 'SUBSCRIBED') {
           setState(prev => ({ ...prev, isSubscribed: true, error: null }))
           reconnectAttemptsRef.current = 0 // Reset reconnect attempts
           isSubscribingRef.current = false
+          
+          // Stop polling if it was running (realtime recovered)
+          stopPolling()
+          
           // Load initial data
           loadInitialData(projectId)
           // Setup presence cleanup
@@ -817,7 +882,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             reconnectAttemptsRef.current++
             
             if (process.env.NODE_ENV === 'development') {
-              console.log(`[Realtime] Reconnect attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts} in ${delay}ms`)
+              // Reconnect attempt
             }
             
             if (reconnectTimeoutRef.current) {
@@ -851,12 +916,17 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             }, delay)
           } else {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[Realtime] Max reconnect attempts reached')
+              // Max reconnect attempts reached
+            }
+            
+            // Start polling fallback after max reconnect attempts
+            if (projectIdRef.current === projectId) {
+              startPolling(projectId)
             }
           }
         } else if (status === 'TIMED_OUT') {
           if (process.env.NODE_ENV === 'development') {
-            console.log('[Realtime] Connection timed out, attempting to reconnect')
+            // Connection timed out, attempting to reconnect
           }
           
           isSubscribingRef.current = false
@@ -901,17 +971,17 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         }
       })
 
-    console.log('[Realtime] Setting channelRef.current to new channel')
+    // Setting channelRef.current to new channel
     channelRef.current = channel
     
     // Set up health checks and token refresh
     setupHealthCheck(channel, projectId)
     setupTokenRefresh()
-  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, setupHealthCheck, setupTokenRefresh, setupPresenceCleanup, state.interviews.length])
+  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, setupHealthCheck, setupTokenRefresh, setupPresenceCleanup, state.interviews.length, startPolling, stopPolling])
 
   // Unsubscribe
   const unsubscribe = useCallback(() => {
-    console.log('[Realtime] Unsubscribe called')
+    // Unsubscribe called
     
     // Reset subscribing flag
     isSubscribingRef.current = false
@@ -953,6 +1023,9 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
     currentPresenceRef.current = null
     
+    // Stop polling if running
+    stopPolling()
+    
     if (channelRef.current) {
       const channel = channelRef.current
       channelRef.current = null
@@ -965,7 +1038,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           channel.unsubscribe().then(() => {
             supabase.removeChannel(channel)
           }).catch(err => {
-            console.error('[Realtime] Error during unsubscribe:', err)
+            // Error during unsubscribe
             // Try to remove anyway
             supabase.removeChannel(channel)
           })
@@ -973,7 +1046,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           supabase.removeChannel(channel)
         }
       } catch (err) {
-        console.error('[Realtime] Error removing channel:', err)
+        // Error removing channel
       }
       
       setState({
@@ -994,7 +1067,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     // Check if channel is subscribed before tracking
     if (channelRef.current.state !== 'joined') {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[Realtime] Cannot track presence - channel not joined')
+        // Cannot track presence - channel not joined
       }
       return
     }
@@ -1028,14 +1101,14 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             currentPresenceRef.current = updatedPresence
           } catch (error) {
             if (process.env.NODE_ENV === 'development') {
-              console.error('[Realtime] Failed to update presence:', error)
+              // Failed to update presence
             }
           }
         }
       }, 30 * 1000) // Update every 30 seconds
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('[Realtime] Failed to track presence:', error)
+        // Failed to track presence
       }
     }
   }, [])
@@ -1060,7 +1133,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       await channelRef.current.untrack()
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('[Realtime] Failed to untrack presence:', error)
+        // Failed to untrack presence
       }
     }
   }, [])
@@ -1072,7 +1145,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     // Check if channel is subscribed before broadcasting
     if (channelRef.current.state !== 'joined') {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[Realtime] Cannot broadcast - channel not joined')
+        // Cannot broadcast - channel not joined
       }
       return
     }
@@ -1085,7 +1158,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       })
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('[Realtime] Failed to broadcast event:', error)
+        // Failed to broadcast event
       }
     }
   }, [])

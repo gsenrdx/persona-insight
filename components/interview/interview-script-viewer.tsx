@@ -7,6 +7,7 @@ import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, Chev
 import { cn } from '@/lib/utils'
 import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes-realtime'
 import { useAuth } from '@/hooks/use-auth'
+import FloatingMemoButton from '@/components/ui/floating-memo-button'
 
 interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
@@ -16,6 +17,60 @@ interface InterviewScriptViewerProps {
 
 
 export default function InterviewScriptViewer({ script, interview, className }: InterviewScriptViewerProps) {
+  // 노션 스타일 텍스트 선택 하이라이트를 위한 스타일 삽입
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      /* 노션 스타일 텍스트 선택 하이라이트 */
+      .interview-script-content ::selection {
+        background-color: rgba(35, 131, 226, 0.28);
+        color: inherit;
+      }
+      
+      .interview-script-content ::-moz-selection {
+        background-color: rgba(35, 131, 226, 0.28);
+        color: inherit;
+      }
+      
+      /* 노션 스타일 댓글 하이라이트 - 심플 버전 */
+      .notion-comment-highlight {
+        background-color: rgba(255, 235, 137, 0.3);
+        border-radius: 2px;
+        padding: 2px 0;
+        transition: background-color 0.15s ease;
+      }
+      
+      .notion-comment-highlight:hover {
+        background-color: rgba(255, 235, 137, 0.5);
+      }
+      
+      /* 다크 모드 대응 */
+      @media (prefers-color-scheme: dark) {
+        .interview-script-content ::selection {
+          background-color: rgba(35, 131, 226, 0.4);
+          color: inherit;
+        }
+        
+        .interview-script-content ::-moz-selection {
+          background-color: rgba(35, 131, 226, 0.4);
+          color: inherit;
+        }
+        
+        .notion-comment-highlight {
+          background-color: rgba(255, 235, 137, 0.15);
+        }
+        
+        .notion-comment-highlight:hover {
+          background-color: rgba(255, 235, 137, 0.25);
+        }
+      }
+    `
+    document.head.appendChild(style)
+    
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
   const [searchTerm, setSearchTerm] = useState('')
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null)
   const [memoInput, setMemoInput] = useState('')
@@ -91,6 +146,22 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     await deleteReply({ noteId, replyId })
   }
 
+  const handleFloatingMemoAdd = (text: string, range: Range) => {
+    // 선택된 텍스트가 포함된 스크립트 아이템 찾기
+    const scriptElement = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+      ? range.commonAncestorContainer.parentElement
+      : range.commonAncestorContainer as Element
+    
+    const scriptContainer = scriptElement?.closest('[data-script-id]')
+    if (scriptContainer) {
+      const scriptId = scriptContainer.getAttribute('data-script-id')
+      if (scriptId) {
+        setMemoInput('')
+        setEditingMemoId(scriptId)
+      }
+    }
+  }
+
 
   const highlightText = (text: string, category?: string) => {
     const parts = searchTerm 
@@ -150,7 +221,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   }
 
   return (
-    <div className={cn("h-full overflow-auto bg-white", className)}>
+    <div className={cn("h-full overflow-auto bg-white interview-script-content", className)}>
       {/* 메인 콘텐츠 영역 */}
       <div className="relative overflow-hidden">
         {/* 스크립트 영역 */}
@@ -243,7 +314,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                         )}
 
                         {/* 대화 내용 */}
-                        <div className="relative">
+                        <div className="relative group">
                           <div 
                             data-script-id={scriptId}
                             className={cn(
@@ -251,20 +322,45 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                               item.speaker === 'question' 
                                 ? "text-gray-600" 
                                 : "text-gray-700",
-                              memo && "bg-yellow-50 px-2 py-1 rounded border-l-2 border-yellow-300"
+                              memo && "notion-comment-highlight"
                             )}
                           >
                             {highlightText(item.cleaned_sentence, item.category || undefined)}
                           </div>
                           
-                          {/* 호버 시 메모 추가 버튼 */}
-                          {!memo && !editingMemoId && (
+                          {/* 호버 시 세로 도트 버튼 */}
+                          {!editingMemoId && (
                             <button
-                              onClick={() => setEditingMemoId(scriptId)}
-                              className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                              onClick={() => {
+                                // 문장 전체 선택
+                                const scriptElement = document.querySelector(`[data-script-id="${scriptId}"]`)
+                                if (scriptElement) {
+                                  const range = document.createRange()
+                                  range.selectNodeContents(scriptElement)
+                                  const selection = window.getSelection()
+                                  selection?.removeAllRanges()
+                                  selection?.addRange(range)
+                                  
+                                  // 선택 후 약간의 지연을 주어 플로팅 버튼이 나타나도록 함
+                                  setTimeout(() => {
+                                    // mouseup 이벤트를 수동으로 트리거하여 플로팅 버튼 표시
+                                    const event = new MouseEvent('mouseup', {
+                                      bubbles: true,
+                                      cancelable: true,
+                                      view: window
+                                    })
+                                    document.dispatchEvent(event)
+                                  }, 10)
+                                }
+                              }}
+                              className="absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 hover:bg-gray-100 rounded"
                               title="메모 추가"
                             >
-                              <MessageSquare className="w-3.5 h-3.5" />
+                              <svg className="w-3 h-4 text-gray-400" viewBox="0 0 12 16" fill="currentColor">
+                                <circle cx="6" cy="2" r="1.5" />
+                                <circle cx="6" cy="8" r="1.5" />
+                                <circle cx="6" cy="14" r="1.5" />
+                              </svg>
                             </button>
                           )}
                         </div>
@@ -493,7 +589,14 @@ export default function InterviewScriptViewer({ script, interview, className }: 
           </div>
         </div>
 
-
+        {/* 플로팅 메모 버튼 */}
+        <FloatingMemoButton 
+          onAddMemo={handleFloatingMemoAdd}
+          onAskMiso={(text) => {
+            // TODO: MISO 질문 기능 구현
+            console.log("MISO에게 질문:", text)
+          }}
+        />
       </div>
     </div>
   )

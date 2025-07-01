@@ -42,6 +42,7 @@ export interface CreateNoteRequest {
 }
 
 export interface CreateReplyRequest {
+  noteId: string
   content: string
 }
 
