@@ -497,11 +497,16 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const handlePresenceSync = useCallback((presenceState: any) => {
     const presence: Record<string, any[]> = {}
     const now = Date.now()
-    const PRESENCE_TIMEOUT = 60000 // 60 seconds timeout
+    const PRESENCE_TIMEOUT = 90000 // 90 seconds timeout (3x update interval)
     
     Object.entries(presenceState).forEach(([key, presences]: [string, any]) => {
       (presences as any[]).forEach(p => {
-        const { interview_id, user_id, user_name, email, online_at, ...data } = p
+        const { interview_id, user_id, user_name, email, online_at, heartbeat, ...data } = p
+        // Skip heartbeat-only presence updates
+        if (heartbeat && !interview_id) {
+          return
+        }
+        
         if (interview_id) {
           if (!presence[interview_id]) {
             presence[interview_id] = []
@@ -597,31 +602,36 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         
         // Send heartbeat to keep connection alive
         if (state === 'joined') {
-          // Send a presence heartbeat to keep the connection active
-          channelRef.current.track({
-            online_at: new Date().toISOString(),
-            heartbeat: true
-          }).catch((error) => {
-            // If heartbeat fails, connection might be degraded
-            if (channelRef.current && projectIdRef.current === projectId) {
-              // Force reconnect on heartbeat failure
-              const oldChannel = channelRef.current
-              channelRef.current = null
-              supabase.removeChannel(oldChannel)
-              setTimeout(() => {
-                subscribeToProject(projectId)
-              }, 100)
-            }
-          })
+          // Only update existing presence data if we have it
+          if (currentPresenceRef.current) {
+            // Update existing presence without overwriting
+            channelRef.current.track({
+              ...currentPresenceRef.current,
+              online_at: new Date().toISOString(),
+            }).catch((error) => {
+              // If heartbeat fails, connection might be degraded
+              if (channelRef.current && projectIdRef.current === projectId) {
+                // Force reconnect on heartbeat failure
+                const oldChannel = channelRef.current
+                channelRef.current = null
+                supabase.removeChannel(oldChannel)
+                setTimeout(() => {
+                  subscribeToProject(projectId)
+                }, 100)
+              }
+            })
+          }
           
           // Check for stale connection (no activity for 2 minutes)
           const timeSinceLastActivity = Date.now() - lastActivityRef.current
           if (timeSinceLastActivity > 2 * 60 * 1000) {
             // Force refresh if no activity for 2 minutes
             lastActivityRef.current = Date.now()
-            channelRef.current.track({
-              online_at: new Date().toISOString(),
-              force_refresh: true
+            // Just ping the channel without modifying presence
+            channelRef.current.send({
+              type: 'broadcast',
+              event: 'ping',
+              payload: { timestamp: new Date().toISOString() }
             }).catch(() => {})
           }
         }
@@ -667,7 +677,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           }, 100)
         }
       }
-    }, 15000) // Check every 15 seconds for better connection stability
+    }, 30000) // Check every 30 seconds to reduce overhead
   }, [])
 
   // Subscribe to project
@@ -1232,11 +1242,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         if (channelRef.current?.state !== 'joined') {
           subscribeToProject(projectIdRef.current)
         } else {
-          // Send a heartbeat if connected
-          channelRef.current.track({
-            online_at: new Date().toISOString(),
-            heartbeat: true
-          }).catch(() => {})
+          // Update presence if we have existing data
+          if (currentPresenceRef.current) {
+            channelRef.current.track({
+              ...currentPresenceRef.current,
+              online_at: new Date().toISOString(),
+            }).catch(() => {})
+          }
         }
       }
     }
