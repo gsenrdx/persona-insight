@@ -17,7 +17,7 @@ export default function CompanyBranding({ className }: CompanyBrandingProps) {
   
   return (
     <span className={cn("text-xs text-muted-foreground", className)}>
-      by {companyName}
+      {companyName}
     </span>
   )
 } 

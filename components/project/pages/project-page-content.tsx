@@ -10,12 +10,14 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { AppLayout } from "@/components/layout/app-layout"
 import { PersonaCriteriaModal } from '@/components/modal'
+import { Plus } from 'lucide-react'
 import { ProjectHeader } from '../sections/project-header'
 import { ProjectGrid } from '../sections/project-grid'
 import { ProjectSearchBar } from '../components/project-search-bar'
 import { CreateProjectDialog } from '../components/create-project-dialog'
 import { ProjectSkeleton } from '../components/project-skeleton'
-import { useQueries } from '@tanstack/react-query'
+import { JoinProjectDialog } from '../components/join-project-dialog'
+import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import { projectsApi as projectService } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
@@ -33,6 +35,7 @@ interface ProjectEditData {
 export function ProjectPageContent() {
   const router = useRouter()
   const { profile } = useAuth()
+  const queryClient = useQueryClient()
   const { data: projects = [], isLoading: loading, error, refetch } = useProjects({
     companyId: profile?.company_id ?? undefined,
     userId: profile?.id ?? undefined
@@ -43,6 +46,8 @@ export function ProjectPageContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPersonaCriteriaModal, setShowPersonaCriteriaModal] = useState(false)
+  const [showJoinDialog, setShowJoinDialog] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<ProjectWithMembership | null>(null)
   
   // 편집 관련
   const [editingProject, setEditingProject] = useState<ProjectEditData | null>(null)
@@ -50,10 +55,16 @@ export function ProjectPageContent() {
   // 초대 관련 (추후 구현)
   const [inviteProject, setInviteProject] = useState<ProjectWithMembership | null>(null)
 
-  // 프로젝트 필터링
+  // 프로젝트 필터링 및 분류
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
+  // 참여한 프로젝트와 참여하지 않은 프로젝트 분리
+  const joinedProjects = filteredProjects.filter(project => project.user_role !== null)
+  const notJoinedProjects = filteredProjects.filter(project => 
+    project.visibility === 'public' && project.user_role === null
   )
 
   // 화면에 보이는 프로젝트들만 프리페칭 (최대 6개)
@@ -126,7 +137,69 @@ export function ProjectPageContent() {
 
   // 프로젝트 선택 (프로젝트 상세 페이지로 이동)
   const handleSelectProject = async (project: ProjectWithMembership) => {
-    router.push(`/projects/${project.id}`)
+    // 공개 프로젝트이고 멤버가 아닌 경우 참여 모달 표시
+    if (project.visibility === 'public' && !project.user_role) {
+      setSelectedProject(project)
+      setShowJoinDialog(true)
+    } else {
+      router.push(`/projects/${project.id}`)
+    }
+  }
+
+  // 프로젝트 참여
+  const handleJoinProject = async (projectId: string) => {
+    if (!profile?.id) {
+      toast.error('로그인이 필요합니다.')
+      return
+    }
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      toast.error('인증 토큰을 찾을 수 없습니다')
+      return
+    }
+
+    const response = await fetch(`/api/projects/${projectId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ user_id: profile.id })
+    })
+
+    if (!response.ok) {
+      throw new Error('프로젝트 참여에 실패했습니다')
+    }
+
+    const result = await response.json()
+    
+    // 성공 토스트를 먼저 표시
+    toast.success('프로젝트에 참여했습니다!')
+    
+    // Optimistic update - 프로젝트 목록 캐시 업데이트
+    const queryKey = queryKeys.projects.byCompanyAndUser(profile.company_id!, profile.id)
+    queryClient.setQueryData(queryKey, (oldData: ProjectWithMembership[] | undefined) => {
+      if (!oldData) return oldData
+      
+      // 해당 프로젝트를 찾아서 user_role 업데이트
+      return oldData.map(project => 
+        project.id === projectId 
+          ? { ...project, user_role: 'member' as const, member_count: (project.member_count || 0) + 1 }
+          : project
+      )
+    })
+    
+    // 다른 캐시들도 무효화
+    await queryClient.invalidateQueries({ 
+      queryKey: queryKeys.projects.detail(projectId) 
+    })
+    await queryClient.invalidateQueries({ 
+      queryKey: queryKeys.projects.member(projectId) 
+    })
+    
+    // 프로젝트 상세 페이지로 이동
+    router.push(`/projects/${projectId}`)
   }
 
   // 프로젝트 편집
@@ -169,14 +242,54 @@ export function ProjectPageContent() {
           onChange={setSearchQuery}
         />
 
-        <ProjectGrid
-          projects={filteredProjects}
-          searchQuery={searchQuery}
-          onEditProject={handleEditProject}
-          onInviteProject={setInviteProject}
-          onSelectProject={handleSelectProject}
-          onCreateProject={() => setShowCreateForm(true)}
-        />
+        {/* 참여한 프로젝트 */}
+        {joinedProjects.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">내 프로젝트</h2>
+            <ProjectGrid
+              projects={joinedProjects}
+              searchQuery={searchQuery}
+              onEditProject={handleEditProject}
+              onInviteProject={setInviteProject}
+              onSelectProject={handleSelectProject}
+              onCreateProject={() => setShowCreateForm(true)}
+            />
+          </div>
+        )}
+
+        {/* 참여하지 않은 공개 프로젝트 */}
+        {notJoinedProjects.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">참여 가능한 프로젝트</h2>
+            <ProjectGrid
+              projects={notJoinedProjects}
+              searchQuery={searchQuery}
+              onEditProject={handleEditProject}
+              onInviteProject={setInviteProject}
+              onSelectProject={handleSelectProject}
+              onCreateProject={() => setShowCreateForm(true)}
+              showJoinBadge={true}
+            />
+          </div>
+        )}
+
+        {/* 검색 결과가 없을 때 */}
+        {filteredProjects.length === 0 && (
+          <div className="text-center py-20">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchQuery ? '검색 결과가 없습니다' : '프로젝트가 없습니다'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {searchQuery ? '다른 검색어를 시도해보세요' : '첫 번째 프로젝트를 생성해보세요'}
+            </p>
+            {!searchQuery && (
+              <Button onClick={() => setShowCreateForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                새 프로젝트
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 프로젝트 생성 다이얼로그 */}
@@ -194,6 +307,14 @@ export function ProjectPageContent() {
       <PersonaCriteriaModal 
         open={showPersonaCriteriaModal}
         onOpenChange={setShowPersonaCriteriaModal}
+      />
+
+      {/* 프로젝트 참여 다이얼로그 */}
+      <JoinProjectDialog
+        open={showJoinDialog}
+        onOpenChange={setShowJoinDialog}
+        project={selectedProject}
+        onJoin={handleJoinProject}
       />
     </AppLayout>
   )

@@ -40,7 +40,8 @@ export async function GET(request: Request) {
         interview_count: Number(project.interview_count) || 0,
         persona_count: Number(project.persona_count) || 0,
         top_members: project.top_members || [],
-        membership: project.user_membership || null
+        membership: project.user_membership || null,
+        user_role: project.user_membership?.role || null
       }))
 
       return NextResponse.json({
@@ -148,6 +149,7 @@ export async function GET(request: Request) {
       return {
         ...project,
         membership,
+        user_role: membership?.role || null, // 현재 사용자의 역할 추가
         member_count: memberCount,
         interview_count: interviewCount,
         persona_count: personaCount,

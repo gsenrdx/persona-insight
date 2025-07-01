@@ -31,7 +31,7 @@ export function AppLayout({
         <header className="container mx-auto px-4 py-8 relative z-10">
           <div className="flex justify-between items-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-baseline">
+              <div className="space-y-1">
                 <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Persona Insight</h2>
                 <CompanyBranding />
               </div>

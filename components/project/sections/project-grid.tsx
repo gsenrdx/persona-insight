@@ -11,6 +11,7 @@ interface ProjectGridProps {
   onInviteProject: (project: ProjectWithMembership) => void
   onSelectProject: (project: ProjectWithMembership) => void
   onCreateProject: () => void
+  showJoinBadge?: boolean
 }
 
 export function ProjectGrid({
@@ -19,26 +20,9 @@ export function ProjectGrid({
   onEditProject,
   onInviteProject,
   onSelectProject,
-  onCreateProject
+  onCreateProject,
+  showJoinBadge = false
 }: ProjectGridProps) {
-  if (projects.length === 0) {
-    return (
-      <div className="text-center py-20">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {searchQuery ? '검색 결과가 없습니다' : '프로젝트가 없습니다'}
-        </h3>
-        <p className="text-gray-500 mb-6">
-          {searchQuery ? '다른 검색어를 시도해보세요' : '첫 번째 프로젝트를 생성해보세요'}
-        </p>
-        {!searchQuery && (
-          <Button onClick={onCreateProject}>
-            <Plus className="h-4 w-4 mr-2" />
-            새 프로젝트
-          </Button>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -49,6 +33,7 @@ export function ProjectGrid({
           onEdit={onEditProject}
           onInvite={onInviteProject}
           onSelect={onSelectProject}
+          showJoinBadge={showJoinBadge}
         />
       ))}
     </div>

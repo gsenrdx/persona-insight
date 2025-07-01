@@ -89,6 +89,7 @@ export interface ProjectWithMembership extends Project {
     role: ProjectMemberRole
     joined_at: string
   }
+  user_role?: ProjectMemberRole | null  // 현재 사용자의 역할
   member_count?: number
   interview_count?: number
   persona_count?: number

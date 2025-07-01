@@ -8,8 +8,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { InviteMemberDialog } from '../components/invite-member-dialog'
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Settings, 
@@ -27,7 +40,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import { projectsApi } from '@/lib/api'
 
@@ -67,9 +80,12 @@ interface ProjectSettingsProps {
 export default function ProjectSettings({ project, onProjectUpdate }: ProjectSettingsProps) {
   const router = useRouter()
   const { profile } = useAuth()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [changingMemberRole, setChangingMemberRole] = useState<string | null>(null)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
   
   const [editData, setEditData] = useState({
     name: project.name,
@@ -89,6 +105,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       return response.data as ProjectMember[]
     }
   })
+
 
   // 현재 사용자의 역할 확인
   const currentUserMember = members.find(m => m.user_id === profile?.id)
@@ -124,6 +141,37 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     }
   }
 
+  const handleRoleChange = async (memberId: string, newRole: 'admin' | 'member') => {
+    if (!canEdit) return
+    
+    setChangingMemberRole(memberId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
+      
+      const response = await fetch(`/api/projects/${project.id}/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ role: newRole })
+      })
+
+      if (!response.ok) {
+        throw new Error('역할 변경에 실패했습니다')
+      }
+
+      toast.success('멤버 역할이 변경되었습니다')
+      // Refetch members
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.member(project.id) })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '역할 변경에 실패했습니다')
+    } finally {
+      setChangingMemberRole(null)
+    }
+  }
+
   const handleDelete = async () => {
     if (!canDelete) return
     
@@ -147,6 +195,36 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
       setLoading(false)
       setDeleteDialogOpen(false)
     }
+  }
+
+  const handleInviteMembers = async (userIds: string[]) => {
+    if (!profile?.id || !project) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      toast.error('인증 토큰을 찾을 수 없습니다')
+      throw new Error('Authentication required')
+    }
+
+    // Add members to project
+    for (const userId of userIds) {
+      const { error } = await supabase
+        .from('project_members')
+        .insert({
+          project_id: project.id,
+          user_id: userId,
+          role: 'member',
+          joined_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Failed to add member:', error)
+        throw error
+      }
+    }
+
+    // Refresh members list
+    await queryClient.invalidateQueries({ queryKey: queryKeys.projects.member(project.id) })
   }
 
   const getRoleBadge = (role: string) => {
@@ -249,32 +327,46 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
               </div>
               <div className="col-span-9">
                 {editMode ? (
-                  <Select 
-                    value={editData.visibility} 
-                    onValueChange={(value) => setEditData(prev => ({ ...prev, visibility: value as 'public' | 'private' }))}
-                  >
-                    <SelectTrigger className="max-w-md">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">
-                        <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4" />
-                          <span>공개</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="private">
-                        <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4" />
-                          <span>비공개</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-3 max-w-md">
+                    <Select 
+                      value={editData.visibility} 
+                      onValueChange={(value) => setEditData(prev => ({ ...prev, visibility: value as 'public' | 'private' }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            <span>공개</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="private">
+                          <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            <span>비공개</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-muted-foreground">
+                      {editData.visibility === 'public' 
+                        ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
+                        : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="flex items-center gap-2 py-2">
-                    {project.visibility === 'public' ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                    <span className="text-sm text-gray-900">{project.visibility === 'public' ? '공개' : '비공개'}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {project.visibility === 'public' ? <Globe className="w-4 h-4 text-green-600" /> : <Lock className="w-4 h-4 text-gray-600" />}
+                      <span className="text-sm font-medium text-gray-900">{project.visibility === 'public' ? '공개' : '비공개'}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {project.visibility === 'public' 
+                        ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
+                        : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -309,7 +401,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                 </p>
               </div>
               {canEdit && (
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => setShowInviteDialog(true)}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   멤버 초대
                 </Button>
@@ -322,10 +414,11 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                 <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-2"></div>
                 <p className="text-sm text-muted-foreground">멤버를 로딩 중...</p>
               </div>
-            ) : members.length > 0 ? (
+            ) : (
               <div className="space-y-3">
-                {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                {/* 관리자 및 소유자 표시 */}
+                {members.filter(m => m.role === 'owner' || m.role === 'admin').map((member) => (
+                  <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={member.profile.avatar_url} />
@@ -341,15 +434,93 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                         <p className="text-xs text-muted-foreground">{member.profile.email}</p>
                       </div>
                     </div>
-                    <div>{getRoleBadge(member.role)}</div>
+                    <div className="flex items-center gap-2">
+                      {getRoleBadge(member.role)}
+                      {canEdit && member.role !== 'owner' && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={changingMemberRole === member.id}>
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuRadioGroup value={member.role} onValueChange={(value) => handleRoleChange(member.id, value as 'admin' | 'member')}>
+                              <DropdownMenuRadioItem value="admin">
+                                <Shield className="w-4 h-4 mr-2" />
+                                관리자
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="member">
+                                <Users className="w-4 h-4 mr-2" />
+                                멤버
+                              </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-muted-foreground mb-1">아직 멤버가 없습니다</p>
-                <p className="text-xs text-muted-foreground/80">이 프로젝트에 협업할 멤버를 초대해보세요</p>
+                
+                {/* 일반 멤버가 있는 경우 표시 */}
+                {members.filter(m => m.role === 'member').length > 0 && (
+                  <>
+                    <div className="py-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">개별 멤버</p>
+                    </div>
+                    {members.filter(m => m.role === 'member').map((member) => (
+                      <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={member.profile.avatar_url} />
+                            <AvatarFallback className="text-xs font-medium bg-gray-100 text-gray-600">
+                              {member.profile.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{member.profile.name}</p>
+                            <p className="text-xs text-muted-foreground">{member.profile.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getRoleBadge(member.role)}
+                          {canEdit && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={changingMemberRole === member.id}>
+                                  <ChevronDown className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuRadioGroup value={member.role} onValueChange={(value) => handleRoleChange(member.id, value as 'admin' | 'member')}>
+                                  <DropdownMenuRadioItem value="admin">
+                                    <Shield className="w-4 h-4 mr-2" />
+                                    관리자
+                                  </DropdownMenuRadioItem>
+                                  <DropdownMenuRadioItem value="member">
+                                    <Users className="w-4 h-4 mr-2" />
+                                    멤버
+                                  </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                
+                {members.length === 0 && (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground mb-1">아직 멤버가 없습니다</p>
+                    <p className="text-xs text-muted-foreground/80">
+                      {project.visibility === 'public' 
+                        ? '공개 프로젝트에 참여한 멤버가 없습니다' 
+                        : '이 프로젝트에 협업할 멤버를 초대해보세요'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -397,6 +568,15 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
           </div>
         )}
       </div>
+
+      {/* Invite Member Dialog */}
+      <InviteMemberDialog
+        open={showInviteDialog}
+        onOpenChange={setShowInviteDialog}
+        projectId={project.id}
+        currentMembers={members.map(m => m.user_id)}
+        onInvite={handleInviteMembers}
+      />
     </div>
   )
 }
