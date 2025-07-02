@@ -78,9 +78,9 @@ export function ProjectLayout({
         </aside>
         
         {/* 메인 콘텐츠 영역 */}
-        <div className="flex-1 flex flex-col lg:ml-64">
+        <div className="flex-1 flex flex-col lg:ml-64 h-screen">
           {/* 상단 헤더 바 */}
-          <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+          <header className="h-16 bg-white border-b border-gray-200 flex-shrink-0">
             <div className="h-full flex items-center justify-between px-4 lg:px-8">
               <div className="flex items-center gap-4">
                 <button
@@ -110,12 +110,10 @@ export function ProjectLayout({
           
           {/* 콘텐츠 */}
           <main className={cn(
-            "flex-1 p-6 lg:p-8 overflow-hidden flex flex-col",
+            "flex-1 overflow-hidden flex flex-col min-h-0",
             className
           )}>
-            <div className="flex-1 flex flex-col">
-              {children}
-            </div>
+            {children}
           </main>
         </div>
       </div>

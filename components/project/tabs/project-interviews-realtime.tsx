@@ -241,7 +241,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   return (
     <div className="flex flex-col h-full">
       {/* 상단 헤더 - 고정 */}
-      <div className="flex-shrink-0 pb-6">
+      <div className="flex-shrink-0 px-6 lg:px-8 pt-6 lg:pt-8 pb-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h2>
@@ -264,9 +264,9 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
       </div>
 
       {/* 인터뷰 테이블 - 스크롤 가능 영역 */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0">
         {error ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="bg-white p-12 text-center">
           <p className="text-gray-500 mb-4">{error.message}</p>
           <Button 
             variant="outline"
