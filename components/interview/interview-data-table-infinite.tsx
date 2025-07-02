@@ -152,9 +152,9 @@ export function InterviewDataTableInfinite({
     return (
       <div className="w-full h-full overflow-auto">
         {/* 검색 바 스켈레톤 */}
-        <div className="sticky top-0 bg-white z-10 pb-4">
-          <div className="relative flex-1 max-w-sm">
-            <div className="h-9 w-full animate-pulse bg-gray-100 rounded-md" />
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="relative max-w-md">
+            <div className="h-10 w-full animate-pulse bg-gray-100 rounded-md" />
           </div>
         </div>
         
@@ -228,11 +228,13 @@ export function InterviewDataTableInfinite({
   // 빈 상태
   if (!isLoading && interviews.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 h-full flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center py-16">
-          <FileText className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">아직 인터뷰가 없습니다</h3>
-          <p className="mt-2 text-sm text-gray-500">
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center py-12">
+          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <FileText className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">아직 인터뷰가 없습니다</h3>
+          <p className="text-sm text-gray-500">
             첫 번째 인터뷰를 추가해보세요
           </p>
         </div>
@@ -246,14 +248,14 @@ export function InterviewDataTableInfinite({
   return (
     <div className="w-full h-full flex flex-col">
       {/* 검색 바 - 고정 */}
-      <div className="flex-shrink-0 sticky top-0 bg-white z-10 pb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
           <Input
-            placeholder="인터뷰 검색..."
+            placeholder="제목, 생성자, 인터뷰이 정보로 검색..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pl-8"
+            className="pl-10 pr-4 h-10 bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
           />
         </div>
       </div>
@@ -261,12 +263,12 @@ export function InterviewDataTableInfinite({
       {/* 테이블 - 스크롤 영역 */}
       <div className="flex-1 overflow-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-white z-10">
+          <TableHeader className="sticky top-0 bg-gray-50 z-10 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="border-b border-gray-200">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="bg-white">
+                    <TableHead key={header.id} className="bg-gray-50 font-medium text-gray-700">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -286,7 +288,7 @@ export function InterviewDataTableInfinite({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
                     onClick={(e) => {
                       const target = e.target as HTMLElement
                       if (!target.closest('[role="menuitem"]') && !target.closest('button')) {
@@ -331,7 +333,7 @@ export function InterviewDataTableInfinite({
         
         {/* 총 개수 표시 */}
         {filteredRows.length > 0 && (
-          <div className="px-4 py-3 text-sm text-gray-600 border-t">
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 text-sm text-gray-600">
             {visibleRows >= processedData.length 
               ? `총 ${processedData.length}개 인터뷰`
               : `${Math.min(visibleRows, processedData.length)}개 표시 중 (총 ${processedData.length}개)`

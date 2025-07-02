@@ -28,16 +28,16 @@ export const createInterviewColumns = (
       const sorted = column.getIsSorted()
       return (
         <button
-          className="flex items-center gap-1 hover:text-gray-900 transition-colors group"
+          className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-600 hover:text-gray-900 transition-colors group"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           제목
           {sorted === "asc" ? (
-            <ArrowUp className="h-3 w-3 text-blue-600" />
+            <ArrowUp className="h-3 w-3 text-blue-500" />
           ) : sorted === "desc" ? (
-            <ArrowDown className="h-3 w-3 text-blue-600" />
+            <ArrowDown className="h-3 w-3 text-blue-500" />
           ) : (
-            <ChevronsUpDown className="h-3 w-3 text-gray-400 group-hover:text-gray-600" />
+            <ChevronsUpDown className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
           )}
         </button>
       )
@@ -48,12 +48,12 @@ export const createInterviewColumns = (
       
       return (
         <div className="flex items-center gap-2">
-          <span className="font-medium">{row.getValue("title") || "제목 없음"}</span>
+          <span className="font-medium text-gray-900">{row.getValue("title") || "제목 없음"}</span>
           <div className="flex items-center gap-2">
             {noteCount > 0 && (
-              <div className="flex items-center gap-1 text-gray-500">
+              <div className="flex items-center gap-1 text-gray-400">
                 <MessageSquare className="h-3.5 w-3.5" />
-                <span className="text-xs">{noteCount}</span>
+                <span className="text-xs font-medium">{noteCount}</span>
               </div>
             )}
             {viewers.length > 0 && (
@@ -69,21 +69,21 @@ export const createInterviewColumns = (
   },
   {
     accessorKey: "status",
-    header: "상태",
+    header: () => <span className="text-xs font-medium uppercase tracking-wider text-gray-600">상태</span>,
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       const metadata = row.original.metadata as any
       const statusMap = {
-        completed: { label: "완료", className: "bg-green-100 text-green-700 border-green-200" },
-        processing: { label: "분석중", className: "bg-blue-100 text-blue-700 border-blue-200" },
-        pending: { label: "대기중", className: "bg-gray-100 text-gray-700 border-gray-200" },
-        failed: { label: "실패", className: "bg-red-100 text-red-700 border-red-200" },
+        completed: { label: "완료", className: "bg-green-50 text-green-700 border-green-200 ring-1 ring-green-600/10" },
+        processing: { label: "분석중", className: "bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-600/10" },
+        pending: { label: "대기중", className: "bg-gray-50 text-gray-700 border-gray-200 ring-1 ring-gray-600/10" },
+        failed: { label: "실패", className: "bg-red-50 text-red-700 border-red-200 ring-1 ring-red-600/10" },
       }
       const config = statusMap[status as keyof typeof statusMap] || { label: status, className: "bg-gray-100 text-gray-700" }
       
       return (
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.className}`}>
             {status === "processing" && (
               <Loader2 className="h-3 w-3 animate-spin" />
             )}
@@ -114,7 +114,7 @@ export const createInterviewColumns = (
   },
   {
     id: "interviewee",
-    header: "인터뷰이",
+    header: () => <span className="text-xs font-medium uppercase tracking-wider text-gray-600">인터뷰이</span>,
     cell: ({ row }) => {
       const demographics = row.original.interviewee_profile?.[0]?.demographics
       if (!demographics) return <span className="text-muted-foreground">-</span>
@@ -129,16 +129,16 @@ export const createInterviewColumns = (
       const sorted = column.getIsSorted()
       return (
         <button
-          className="flex items-center gap-1 hover:text-gray-900 transition-colors group"
+          className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-600 hover:text-gray-900 transition-colors group"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           생성일
           {sorted === "asc" ? (
-            <ArrowUp className="h-3 w-3 text-blue-600" />
+            <ArrowUp className="h-3 w-3 text-blue-500" />
           ) : sorted === "desc" ? (
-            <ArrowDown className="h-3 w-3 text-blue-600" />
+            <ArrowDown className="h-3 w-3 text-blue-500" />
           ) : (
-            <ChevronsUpDown className="h-3 w-3 text-gray-400 group-hover:text-gray-600" />
+            <ChevronsUpDown className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
           )}
         </button>
       )
@@ -153,7 +153,7 @@ export const createInterviewColumns = (
   },
   {
     id: "created_by",
-    header: "생성자",
+    header: () => <span className="text-xs font-medium uppercase tracking-wider text-gray-600">생성자</span>,
     cell: ({ row }) => {
       const createdByProfile = row.original.created_by_profile
       return (
