@@ -92,12 +92,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     notes: {},
     presence: {},
     isSubscribed: false,
-    isLoading: true, // 초기 로딩 상태를 true로 설정
+    isLoading: true, // 초기 로딩 상태를 true로 설정 - 첫 구독이 완료되면 false로 변경
     error: null,
   })
   
   const channelRef = useRef<RealtimeChannel | null>(null)
   const projectIdRef = useRef<string | null>(null)
+  const mountedRef = useRef(false)
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastLoadedProjectIdRef = useRef<string | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -726,8 +727,9 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       }
     }
 
-    // Set subscribing flag
+    // Set subscribing flag and loading state
     isSubscribingRef.current = true
+    setState(prev => ({ ...prev, isLoading: true }))
     
     // First check if we have an existing channel for this project
     const allChannels = supabase.getChannels()
@@ -1228,6 +1230,15 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
   }, [])
 
+  // Monitor mount status
+  useEffect(() => {
+    mountedRef.current = true
+    
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  
   // Monitor network status and visibility changes
   useEffect(() => {
     const handleOnline = () => {
