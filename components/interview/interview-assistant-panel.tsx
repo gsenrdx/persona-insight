@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { X, MessageSquare, Hash, ListOrdered, ChevronLeft, Lightbulb, Target, Search } from 'lucide-react'
-import { ScriptSection } from '@/types/interview'
+import { X, Hash, ChevronLeft, Lightbulb, Target } from 'lucide-react'
 import { Interview, CleanedScriptItem } from '@/types/interview'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -13,10 +12,7 @@ interface InterviewAssistantPanelProps {
   onClose: () => void
   interview?: Interview | null
   script?: CleanedScriptItem[]
-  activeSection?: string | null
-  onSectionClick?: (sectionName: string) => void
   session?: any
-  hideToc?: boolean
   context?: 'interview' | 'insights'
   insightData?: any
 }
@@ -26,19 +22,16 @@ export default function InterviewAssistantPanel({
   onClose,
   interview,
   script = [],
-  activeSection,
-  onSectionClick,
   session,
-  hideToc = false,
   context = 'interview',
   insightData
 }: InterviewAssistantPanelProps) {
-  const [currentView, setCurrentView] = useState<'main' | 'toc' | 'answer'>('main')
+  const [currentView, setCurrentView] = useState<'main' | 'answer'>('main')
   const [currentQuestion, setCurrentQuestion] = useState('')
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [conversationId, setConversationId] = useState<string | null>(null)
 
   const handleQuickAction = async (action: string) => {
     let prompt = ''
@@ -84,7 +77,8 @@ export default function InterviewAssistantPanel({
           question: prompt,
           selectedText: null,
           interviewId: interview?.id,
-          fullScript: script
+          fullScript: script,
+          conversationId: conversationId
         })
       })
       
@@ -113,6 +107,11 @@ export default function InterviewAssistantPanel({
               
               try {
                 const parsed = JSON.parse(data)
+                
+                // conversation_id 저장
+                if (parsed.conversation_id && !conversationId) {
+                  setConversationId(parsed.conversation_id)
+                }
                 
                 // workflow_finished 이벤트 처리
                 if (parsed.event === 'workflow_finished' && parsed.data?.status === 'failed') {
@@ -148,6 +147,12 @@ export default function InterviewAssistantPanel({
           if (data !== '[DONE]') {
             try {
               const parsed = JSON.parse(data)
+              
+              // conversation_id 저장
+              if (parsed.conversation_id && !conversationId) {
+                setConversationId(parsed.conversation_id)
+              }
+              
               // MISO API 응답 형식에 맞게 처리
               if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
                 assistantMessage = parsed.answer
@@ -179,11 +184,7 @@ export default function InterviewAssistantPanel({
     
     const userMessage = chatInput
     setChatInput('')
-    await sendQuestion(userMessage)
-  }
-
-  const sendQuestion = async (question: string) => {
-    setCurrentQuestion(question)
+    setCurrentQuestion(userMessage)
     setCurrentAnswer('')
     setIsLoading(true)
     
@@ -195,12 +196,13 @@ export default function InterviewAssistantPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: question,
+          question: userMessage,
           selectedText: null,
           interviewId: interview?.id,
           fullScript: script,
           context: context,
-          insightData: insightData
+          insightData: insightData,
+          conversationId: conversationId
         })
       })
       
@@ -230,6 +232,11 @@ export default function InterviewAssistantPanel({
               
               try {
                 const parsed = JSON.parse(data)
+                
+                // conversation_id 저장
+                if (parsed.conversation_id && !conversationId) {
+                  setConversationId(parsed.conversation_id)
+                }
                 
                 // workflow_finished 이벤트 처리
                 if (parsed.event === 'workflow_finished' && parsed.data?.status === 'failed') {
@@ -265,6 +272,12 @@ export default function InterviewAssistantPanel({
           if (data !== '[DONE]') {
             try {
               const parsed = JSON.parse(data)
+              
+              // conversation_id 저장
+              if (parsed.conversation_id && !conversationId) {
+                setConversationId(parsed.conversation_id)
+              }
+              
               // MISO API 응답 형식에 맞게 처리
               if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
                 assistantMessage = parsed.answer
@@ -289,6 +302,7 @@ export default function InterviewAssistantPanel({
       setIsLoading(false)
     }
   }
+
 
   // script_sections가 없어도 패널은 표시되도록 함
 
@@ -345,22 +359,6 @@ export default function InterviewAssistantPanel({
                 </div>
               </button>
               
-              {!hideToc && interview?.script_sections && (
-                <button 
-                  onClick={() => setCurrentView('toc')}
-                  className="group bg-white border border-gray-200 rounded-lg p-3 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-md bg-green-50 flex items-center justify-center flex-shrink-0">
-                      <ListOrdered className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">목차</p>
-                      <p className="text-xs text-gray-500">섹션 탐색</p>
-                    </div>
-                  </div>
-                </button>
-              )}
               
               <button 
                 onClick={() => handleQuickAction('insights')}
@@ -431,7 +429,7 @@ export default function InterviewAssistantPanel({
             </form>
           </div>
         </>
-      ) : currentView === 'answer' ? (
+      ) : (
         <>
           {/* 답변 헤더 */}
           <div className="px-5 py-4 border-b border-gray-200">
@@ -441,6 +439,7 @@ export default function InterviewAssistantPanel({
                   setCurrentView('main')
                   setCurrentQuestion('')
                   setCurrentAnswer('')
+                  setConversationId(null) // 대화 ID 초기화
                 }}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
@@ -523,28 +522,6 @@ export default function InterviewAssistantPanel({
                 </div>
               </div>
               
-              {/* 추가 질문 제안 */}
-              {!isLoading && currentAnswer && (
-                <div className="mt-8 pt-6 border-t border-gray-100">
-                  <p className="text-sm font-medium text-gray-700 mb-3">추가로 궁금한 점이 있으신가요?</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => sendQuestion('더 자세히 설명해주세요')}
-                      className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      더 자세히 설명해주세요
-                    </button>
-                    <button
-                      onClick={() => sendQuestion('예시를 들어주세요')}
-                      className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      예시를 들어주세요
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           
@@ -578,95 +555,6 @@ export default function InterviewAssistantPanel({
                 </button>
               </div>
             </form>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* 목차 헤더 */}
-          <div className="px-5 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setCurrentView('main')}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-500" />
-                </button>
-                <h3 className="text-base font-semibold text-gray-900">목차</h3>
-              </div>
-              <button 
-                onClick={onClose}
-                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-          </div>
-          
-          {/* 검색 바 */}
-          <div className="p-4">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="검색..."
-              className="w-full px-3 py-2 text-sm bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
-            />
-          </div>
-          
-          {/* 목차 리스트 */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            <div className="space-y-1">
-              {interview?.script_sections ? (
-                (interview.script_sections as ScriptSection[])
-                .filter(section => section.is_main_content)
-                .filter(section => 
-                  searchQuery ? section.sector_name.toLowerCase().includes(searchQuery.toLowerCase()) : true
-                )
-                .map((section, index) => {
-                  const isActive = activeSection === section.sector_name
-                  
-                  return (
-                    <button
-                      key={section.sector_name}
-                      onClick={() => {
-                        onSectionClick(section.sector_name)
-                        onClose()
-                      }}
-                      className={cn(
-                        "w-full text-left px-3 py-2.5 rounded-lg",
-                        "transition-all duration-200",
-                        "flex items-center gap-3",
-                        "text-sm",
-                        isActive 
-                          ? "bg-blue-50 text-blue-700" 
-                          : "hover:bg-gray-50 text-gray-700"
-                      )}
-                    >
-                      <span className={cn(
-                        "w-6 h-6 rounded-md flex items-center justify-center text-xs font-medium flex-shrink-0",
-                        isActive 
-                          ? "bg-blue-600 text-white" 
-                          : "bg-gray-200 text-gray-600"
-                      )}>
-                        {index + 1}
-                      </span>
-                      
-                      <span className={cn(
-                        "flex-1",
-                        isActive ? "font-medium" : ""
-                      )}>
-                        {section.sector_name}
-                      </span>
-                    </button>
-                  )
-                })
-              ) : (
-                <p className="text-center text-gray-500 text-sm py-8">
-                  목차 정보가 없습니다.
-                </p>
-              )}
-            </div>
           </div>
         </>
       )}

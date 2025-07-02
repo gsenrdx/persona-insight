@@ -46,9 +46,10 @@ interface Project {
 interface ProjectInterviewsProps {
   project: Project
   selectedInterviewId?: string | null
+  onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
 }
 
-export default function ProjectInterviewsRealtime({ project, selectedInterviewId }: ProjectInterviewsProps) {
+export default function ProjectInterviewsRealtime({ project, selectedInterviewId, onSectionsChange }: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
   const { data: members } = useProjectMembers(project.id)
@@ -344,6 +345,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
             router.replace(url.pathname + url.search, { scroll: false })
           }}
           onDelete={handleDeleteInterview}
+          onSectionsChange={onSectionsChange}
         />
       </div>
     )

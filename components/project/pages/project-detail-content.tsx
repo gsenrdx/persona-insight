@@ -25,6 +25,9 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
   
   const [activeView, setActiveView] = useState('interviews')
+  const [scriptSections, setScriptSections] = useState<any[] | null>(null)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
   
   // 전체 로딩 상태 - 인증 로딩 상태도 포함
   const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
@@ -44,6 +47,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     const url = new URL(window.location.href)
     url.searchParams.delete('interview')
     router.replace(url.pathname + url.search, { scroll: false })
+  }
+
+  // 스크립트 섹션 정보가 변경될 때
+  const handleSectionsChange = (sections: any[] | null, active: string | null, scrollFn: ((sectionName: string) => void) | null) => {
+    setScriptSections(sections)
+    setActiveSection(active)
+    setScrollToSection(() => scrollFn)
   }
 
   const getHeaderTitle = () => {
@@ -66,13 +76,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
     switch (activeView) {
       case 'interviews':
-        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
+        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
       case 'insights':
         return <ProjectInsights project={project} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
       default:
-        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} />
+        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
     }
   }
 
@@ -154,6 +164,9 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         onViewChange={handleViewChange}
         projectName={project?.name}
         headerTitle={getHeaderTitle()}
+        scriptSections={scriptSections}
+        activeSection={activeSection}
+        onSectionClick={scrollToSection}
       >
         {renderContent()}
       </ProjectLayout>

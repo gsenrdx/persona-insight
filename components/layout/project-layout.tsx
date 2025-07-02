@@ -17,6 +17,9 @@ interface ProjectLayoutProps {
   onViewChange: (view: string) => void
   className?: string
   headerTitle?: string
+  scriptSections?: any[]
+  activeSection?: string | null
+  onSectionClick?: (sectionName: string) => void
 }
 
 export function ProjectLayout({ 
@@ -25,9 +28,13 @@ export function ProjectLayout({
   activeView,
   onViewChange,
   className,
-  headerTitle
+  headerTitle,
+  scriptSections,
+  activeSection,
+  onSectionClick
 }: ProjectLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  
   
   return (
     <AuthGuard>
@@ -74,6 +81,11 @@ export function ProjectLayout({
             }}
             projectName={projectName}
             className="flex-1 relative z-10"
+            scriptSections={scriptSections}
+            activeSection={activeSection}
+            onSectionClick={(sectionName) => {
+              onSectionClick?.(sectionName)
+            }}
           />
         </aside>
         

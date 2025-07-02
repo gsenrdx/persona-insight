@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return new Response('MISO_INTERVIEW_AGENT_API_KEY is not configured.', { status: 500 });
   }
 
-  const { question, selectedText, context, interviewId, fullScript } = await req.json()
+  const { question, selectedText, context, interviewId, fullScript, conversationId } = await req.json()
 
   if (!question) {
     return new Response('질문이 제공되지 않았습니다.', { status: 400 })
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
           full_context: fullContext
         },
         mode: 'streaming',
+        conversation_id: conversationId || '',
         user: 'persona-insight-interview-analyzer',
         files: []
       })

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { CleanedScriptItem, ScriptSection } from '@/types/interview'
 import { Interview } from '@/types/interview'
-import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, Hash } from 'lucide-react'
+import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, ListOrdered } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -15,15 +15,42 @@ interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
   interview?: Interview
   className?: string
+  onSectionsChange?: (sections: ScriptSection[] | null, activeSection: string | null, scrollToSection: (sectionName: string) => void) => void
 }
 
 
-export default function InterviewScriptViewer({ script, interview, className }: InterviewScriptViewerProps) {
+export default function InterviewScriptViewer({ script, interview, className, onSectionsChange }: InterviewScriptViewerProps) {
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
+  
+  // scrollToSection 함수를 먼저 정의
+  const scrollToSection = useCallback((sectionName: string) => {
+    const safeId = sectionName.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')
+    const element = document.getElementById(`section-${safeId}`)
+    
+    if (element) {
+      // 즉시 이동 (애니메이션 없이)
+      element.scrollIntoView({ behavior: 'instant', block: 'start' });
+      
+      // 오프셋 조정도 즉시
+      if (scriptContainerRef.current) {
+        const container = scriptContainerRef.current;
+        container.scrollTop = container.scrollTop - 80; // 80px 위로 조정
+      }
+    }
+  }, [])
+  
+  // 섹션 정보와 스크롤 함수를 상위 컴포넌트로 전달
+  useEffect(() => {
+    if (onSectionsChange) {
+      const sections = interview?.script_sections as ScriptSection[] || null
+      onSectionsChange(sections, activeSection, scrollToSection)
+    }
+  }, [interview?.script_sections, activeSection, onSectionsChange, scrollToSection])
+
   // 노션 스타일 텍스트 선택 하이라이트를 위한 스타일 삽입
   useEffect(() => {
     const style = document.createElement('style')
@@ -290,51 +317,55 @@ export default function InterviewScriptViewer({ script, interview, className }: 
 
   // 스크롤 위치에 따른 현재 섹션 감지
   useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout
+    let lastActiveSection = activeSection // 현재 activeSection을 로컬 변수로 추적
+    
     const handleScroll = () => {
-      if (!scriptContainerRef.current || !interview?.script_sections) return
+      if (scrollTimeout) clearTimeout(scrollTimeout)
       
-      const container = scriptContainerRef.current
-      const scrollTop = container.scrollTop
-      const sections = interview.script_sections as ScriptSection[]
-      
-      // 현재 보이는 섹션 찾기
-      for (const section of sections) {
-        const sectionElement = sectionRefs.current[section.sector_name]
-        if (sectionElement) {
-          const rect = sectionElement.getBoundingClientRect()
-          const containerRect = container.getBoundingClientRect()
+      scrollTimeout = setTimeout(() => {
+        if (!interview?.script_sections) {
+          return
+        }
+        
+        const sections = interview.script_sections as ScriptSection[]
+        let currentSection = null
+        
+        // 현재 보이는 섹션 찾기 - 역순으로 검사 (아래에서 위로)
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const section = sections[i]
+          const safeId = section.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')
+          const element = document.getElementById(`section-${safeId}`)
           
-          if (rect.top >= containerRect.top && rect.top <= containerRect.top + 200) {
-            setActiveSection(section.sector_name)
-            break
+          if (element) {
+            const rect = element.getBoundingClientRect()
+            
+            // 뷰포트 상단에서 200px 이내에 있으면 활성화
+            if (rect.top <= 200 && rect.bottom > 0) {
+              currentSection = section.sector_name
+              break
+            }
           }
         }
-      }
+        
+        if (currentSection && currentSection !== lastActiveSection) {
+          lastActiveSection = currentSection
+          setActiveSection(currentSection)
+        }
+      }, 50) // 50ms throttle
     }
     
-    const container = scriptContainerRef.current
-    if (container) {
-      container.addEventListener('scroll', handleScroll)
-      return () => container.removeEventListener('scroll', handleScroll)
-    }
-  }, [interview?.script_sections])
-  
-  // 목차 클릭 시 스크롤
-  const scrollToSection = (sectionName: string) => {
-    const safeId = sectionName.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')
-    const element = document.getElementById(`section-${safeId}`)
+    // document에 스크롤 리스너 추가
+    document.addEventListener('scroll', handleScroll, true)
     
-    if (element && scriptContainerRef.current) {
-      const container = scriptContainerRef.current;
-      const elementRect = element.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      
-      const yOffset = -80; // 80px 위로 오프셋
-      const scrollTop = container.scrollTop + (elementRect.top - containerRect.top) + yOffset;
-      
-      container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+    // 초기 한 번 실행
+    setTimeout(handleScroll, 100)
+    
+    return () => {
+      document.removeEventListener('scroll', handleScroll, true)
+      if (scrollTimeout) clearTimeout(scrollTimeout)
     }
-  }
+  }, [interview?.script_sections, activeSection])
   
   return (
     <div className={cn(
@@ -342,12 +373,13 @@ export default function InterviewScriptViewer({ script, interview, className }: 
       aiQuestionBarOpen && "ai-selection-active maintain-selection",
       className
     )}>
+      
       {/* 메인 콘텐츠 영역 */}
       <div className="flex-1 relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
-          {/* 헤더 영역 - 제목과 검색 바 */}
-          <div className="px-8 py-4 border-b border-gray-100">
+            {/* 헤더 영역 - 제목과 검색 바 */}
+            <div className="px-8 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
@@ -416,6 +448,12 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                   const sections = interview?.script_sections as ScriptSection[] || [];
                   let lastSectionName = '';
                   
+                  // 섹션 인덱스를 찾기 위한 맵
+                  const sectionIndexMap = new Map();
+                  sections.forEach((section, idx) => {
+                    sectionIndexMap.set(section.sector_name, idx + 1);
+                  });
+                  
                   return filteredScript.map((item, index) => {
                     const scriptId = item.id.join('-')
                     const memo = memosByScriptId[scriptId]
@@ -441,6 +479,9 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                         {isNewSection && (
                           <div 
                             id={`section-${currentSection.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')}`}
+                            ref={(el) => {
+                              if (el) sectionRefs.current[currentSection.sector_name] = el
+                            }}
                             className={cn(
                             "section-header mb-4 pb-2 border-b",
                             currentSection.is_main_content 
@@ -448,12 +489,14 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                               : "border-gray-100"
                           )}>
                             <div className="flex items-center gap-2">
-                              <Hash className={cn(
-                                "w-4 h-4",
+                              <span className={cn(
+                                "w-6 h-6 rounded flex items-center justify-center text-xs font-bold",
                                 currentSection.is_main_content
-                                  ? "text-gray-600"
-                                  : "text-gray-400"
-                              )} />
+                                  ? "bg-gray-200 text-gray-700"
+                                  : "bg-gray-100 text-gray-500"
+                              )}>
+                                {sectionIndexMap.get(currentSection.sector_name)}
+                              </span>
                               <h3 className={cn(
                                 "font-medium",
                                 currentSection.is_main_content
@@ -943,8 +986,6 @@ export default function InterviewScriptViewer({ script, interview, className }: 
             onClose={() => setFloatingPanelOpen(false)}
             interview={interview}
             script={script}
-            activeSection={activeSection}
-            onSectionClick={scrollToSection}
             session={session}
           />
         </>

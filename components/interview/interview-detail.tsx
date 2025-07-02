@@ -15,15 +15,46 @@ interface InterviewDetailProps {
   onDelete?: (id: string) => void
   presence?: any[]
   currentUserId?: string
+  onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
 }
 
-export default function InterviewDetail({ interview, onBack, presence = [], currentUserId }: InterviewDetailProps) {
-  const [activeTab, setActiveTab] = useState('insights')
+export default function InterviewDetail({ interview, onBack, presence = [], currentUserId, onSectionsChange }: InterviewDetailProps) {
+  const [activeTab, setActiveTab] = useState('insights') // 인사이트 탭을 기본값으로
   const scriptViewerRef = useRef<any>(null)
+  const [scriptSections, setScriptSections] = useState<any[] | null>(null)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
+
+  // 스크립트 뷰어에서 섹션 정보가 변경될 때
+  const handleScriptSectionsChange = (sections: any[] | null, active: string | null, scrollFn: (sectionName: string) => void) => {
+    setScriptSections(sections)
+    setActiveSection(active)
+    setScrollToSection(() => scrollFn)
+    
+    // 스크립트 탭이 활성화된 경우에만 상위 컴포넌트로 전달
+    if (onSectionsChange && activeTab === 'script') {
+      onSectionsChange(sections, active, scrollFn)
+    }
+  }
+  
+  // 탭이 변경될 때 목차 정보 업데이트
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    
+    if (onSectionsChange) {
+      if (tab === 'script' && scriptSections) {
+        // 스크립트 탭으로 전환 시 목차 정보 전달
+        onSectionsChange(scriptSections, activeSection, scrollToSection)
+      } else {
+        // 다른 탭으로 전환 시 목차 정보 제거
+        onSectionsChange(null, null, null)
+      }
+    }
+  }
 
   // 인사이트에서 근거 문장 클릭 시 스크립트 탭으로 이동
   const handleEvidenceClick = (scriptIds: number[]) => {
-    setActiveTab('script')
+    handleTabChange('script')
     // TODO: 스크립트 뷰어에서 해당 ID로 스크롤하는 기능 추가
   }
 
@@ -82,7 +113,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
           {/* 탭 네비게이션 - 우측 배치 */}
           <div className="flex items-center gap-6 ml-8">
             <button
-              onClick={() => setActiveTab('insights')}
+              onClick={() => handleTabChange('insights')}
               className={cn(
                 "text-sm transition-all",
                 activeTab === 'insights' 
@@ -94,7 +125,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
             </button>
             <span className="text-gray-300">|</span>
             <button
-              onClick={() => setActiveTab('script')}
+              onClick={() => handleTabChange('script')}
               className={cn(
                 "text-sm transition-all",
                 activeTab === 'script' 
@@ -122,10 +153,10 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
         
         {activeTab === 'script' && (
           <InterviewScriptViewer 
-            ref={scriptViewerRef}
             script={interview.cleaned_script || []} 
             interview={interview}
             className="h-full"
+            onSectionsChange={handleScriptSectionsChange}
           />
         )}
       </div>
