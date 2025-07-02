@@ -68,8 +68,8 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     deleteInterview 
   } = useInterviewsRealtime(project.id, isProjectAdmin)
   
-  // subscribeToProject 함수 가져오기
-  const { subscribeToProject } = useInterviewRealtime()
+  // subscribeToProject와 forceRefreshData 함수 가져오기
+  const { subscribeToProject, forceRefreshData } = useInterviewRealtime()
   
   // 전체 presence 정보 가져오기
   const allPresence = useAllPresence()
@@ -187,7 +187,12 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
       if (result.success) {
         toast.success('인터뷰가 제출되었습니다. 실시간으로 업데이트됩니다.')
         setShowAddInterviewModal(false)
-        // Realtime을 통해 자동으로 업데이트됨
+        
+        // 임시: 인터뷰 추가 직후 한 번만 강제로 데이터 새로고침
+        // API에서 브로드캐스트로 추가 새로고침이 트리거됨
+        setTimeout(() => {
+          forceRefreshData()
+        }, 100)
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '처리 중 오류가 발생했습니다')
@@ -297,6 +302,11 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         url.searchParams.delete('interview')
         router.replace(url.pathname + url.search, { scroll: false })
       }
+      
+      // 임시: 삭제 후 강제 새로고침 (REPLICA IDENTITY DEFAULT에서 DELETE 이벤트 문제)
+      setTimeout(() => {
+        forceRefreshData()
+      }, 500)
     } catch (error) {
       // 에러는 hook 내부에서 처리됨
     }

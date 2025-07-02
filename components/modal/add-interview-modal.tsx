@@ -33,16 +33,21 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
     });
 
     if (validFiles.length > 0) {
-      const newInterviews = validFiles.map(file => ({
-        id: `${Date.now()}-${Math.random()}`,
-        type: 'file' as const,
-        name: file.name,
-        content: file,
-        title: "" // 사용자가 직접 입력하도록 빈 문자열로 설정
-      }));
+      const newInterviews = validFiles.map(file => {
+        // 파일명에서 확장자 제거하여 기본 제목으로 사용
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+        
+        return {
+          id: `${Date.now()}-${Math.random()}`,
+          type: 'file' as const,
+          name: file.name,
+          content: file,
+          title: nameWithoutExtension // 파일명을 기본 제목으로 설정
+        };
+      });
       
       setInterviews(prev => [...prev, ...newInterviews]);
-      toast.info('파일이 추가되었습니다. 각 인터뷰의 제목을 입력해주세요.');
+      toast.success(`${validFiles.length}개의 파일이 추가되었습니다.`);
     }
   }, []);
 

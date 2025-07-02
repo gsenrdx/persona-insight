@@ -37,6 +37,7 @@ interface InterviewRealtimeContextValue extends InterviewRealtimeState {
   untrackPresence: () => void
   broadcastEvent: (event: string, payload: any) => void
   getConnectionQuality: () => ConnectionQuality
+  forceRefreshData: () => void
 }
 
 const InterviewRealtimeContext = createContext<InterviewRealtimeContextValue | null>(null)
@@ -381,7 +382,8 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
               let interviews = [...prev.interviews]
               
               if (eventType === 'INSERT') {
-                interviews.push(transformInterviewRow(fullInterview))
+                // INSERT의 경우 최신 순으로 정렬하기 위해 앞에 추가
+                interviews.unshift(transformInterviewRow(fullInterview))
               } else {
                 const index = interviews.findIndex(i => i.id === fullInterview.id)
                 if (index >= 0) {
@@ -391,17 +393,59 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
 
               return { ...prev, interviews }
             })
+          } else if (eventType === 'INSERT' && error) {
+            // INSERT 실패 시에도 기본 정보로 추가 (processing 상태 표시를 위해)
+            setState(prev => {
+              const basicInterview: Interview = {
+                id: newRow.id,
+                company_id: newRow.company_id,
+                project_id: newRow.project_id,
+                raw_text: newRow.raw_text,
+                cleaned_script: null,
+                metadata: newRow.metadata as any,
+                summary: null,
+                title: newRow.title || '제목 없음',
+                interview_date: newRow.interview_date || null,
+                persona_id: null,
+                status: newRow.status as Interview['status'],
+                created_by: newRow.created_by || '',
+                created_at: newRow.created_at || new Date().toISOString(),
+                updated_at: newRow.updated_at || new Date().toISOString(),
+                session_info: null,
+                interviewee_profile: null,
+                interview_quality_assessment: null,
+                key_takeaways: null,
+                primary_pain_points: null,
+                primary_needs: null,
+                hmw_questions: null,
+                script_sections: null,
+                ai_persona_match: null,
+                ai_persona_explanation: null,
+                ai_persona_definition: undefined,
+                confirmed_persona_definition_id: null,
+                confirmed_persona_definition: undefined,
+                created_by_profile: undefined,
+                note_count: 0,
+              }
+              
+              return { 
+                ...prev, 
+                interviews: [basicInterview, ...prev.interviews] 
+              }
+            })
           }
         }
         break
         
       case 'DELETE':
         if (oldRow) {
+          console.log('DELETE event received:', { id: oldRow.id, oldRow })
           setState(prev => {
             // 삭제할 인터뷰가 실제로 존재하는지 확인
             const interviewExists = prev.interviews.some(i => i.id === oldRow.id)
             
             if (interviewExists) {
+              console.log('Removing interview from list:', oldRow.id)
               return {
                 ...prev,
                 interviews: prev.interviews.filter(i => i.id !== oldRow.id),
@@ -412,8 +456,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
               }
             }
             
+            console.log('Interview not found in list:', oldRow.id)
             return prev
           })
+        } else {
+          console.log('DELETE event received but no oldRow data')
         }
         break
     }
@@ -1098,6 +1145,24 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       .on('broadcast', { event: 'interview-update' }, ({ payload }) => {
         handleBroadcastUpdate(payload)
       })
+      .on('broadcast', { event: 'interview-added' }, ({ payload }) => {
+        // 인터뷰 추가 이벤트 수신 시 데이터 새로고침
+        if (payload?.action === 'refresh' && payload?.projectId === projectId) {
+          // 이미 목록에 있는지 확인 (중복 방지)
+          setState(prev => {
+            const exists = prev.interviews.some(i => i.id === payload.interviewId)
+            if (!exists) {
+              console.log('New interview detected, refreshing data...')
+              // 약간의 지연 후 데이터 로드 (DB 쓰기 지연 고려)
+              setTimeout(() => {
+                lastLoadedProjectIdRef.current = null
+                loadInitialData(projectId)
+              }, 500)
+            }
+            return prev
+          })
+        }
+      })
     
     // About to subscribe
     
@@ -1602,6 +1667,15 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
   }, [unsubscribe])
 
+  // Force refresh data
+  const forceRefreshData = useCallback(() => {
+    if (projectIdRef.current) {
+      // Reset the loaded flag to force reload
+      lastLoadedProjectIdRef.current = null
+      loadInitialData(projectIdRef.current)
+    }
+  }, [loadInitialData])
+
   return (
     <InterviewRealtimeContext.Provider
       value={{
@@ -1612,6 +1686,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         untrackPresence,
         broadcastEvent,
         getConnectionQuality,
+        forceRefreshData,
       }}
     >
       {children}

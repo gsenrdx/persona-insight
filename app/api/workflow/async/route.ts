@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
     }, 1000) // 1초 지연
 
     // 3. 즉시 응답 반환
-    return new Response(JSON.stringify({
+    const response = new Response(JSON.stringify({
       success: true,
       interview_id: interviewId,
       status: 'processing',
@@ -186,6 +186,28 @@ export async function POST(req: NextRequest) {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })
+    
+    // 4. 응답 후 실시간 브로드캐스트 (비동기)
+    setTimeout(async () => {
+      try {
+        // Supabase 채널로 직접 브로드캐스트
+        const channel = supabase.channel(`project-realtime-${projectId}`)
+        await channel.send({
+          type: 'broadcast',
+          event: 'interview-added',
+          payload: { 
+            interviewId, 
+            projectId,
+            action: 'refresh'
+          }
+        })
+        channel.unsubscribe()
+      } catch (error) {
+        console.error('Failed to broadcast interview-added event:', error)
+      }
+    }, 0)
+    
+    return response
 
   } catch (error: any) {
     return new Response(JSON.stringify({
