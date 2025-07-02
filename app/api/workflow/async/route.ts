@@ -101,7 +101,11 @@ export async function POST(req: NextRequest) {
         status: 'processing',
         created_by: userId,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: {
+          processing_started_at: new Date().toISOString(),
+          file_name: fileName
+        }
       }])
       .select('id, status')
 
@@ -118,22 +122,59 @@ export async function POST(req: NextRequest) {
     const interviewId = insertedData?.[0]?.id
 
     // 2. 백그라운드 처리 시작 (비동기)
-    // Next.js에서는 fetch를 사용하여 자체 API를 호출
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin}/api/workflow/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authorization
-      },
-      body: JSON.stringify({
-        interviewId,
-        maskedContent: text,
-        userName,
-        projectId
-      })
-    }).catch(() => {
-      // 백그라운드 처리 실패 시 무시 (사용자에게는 영향 없음)
-    })
+    // 지연 시간을 두고 처리하여 웹소켓 업데이트가 먼저 전파되도록 함
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin}/api/workflow/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authorization
+          },
+          body: JSON.stringify({
+            interviewId,
+            maskedContent: text,
+            userName,
+            projectId
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          console.error(`Background processing failed with status ${response.status}:`, errorData)
+          
+          await supabase
+            .from('interviews')
+            .update({
+              status: 'failed',
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...insertedData?.[0]?.metadata,
+                error: errorData.error || 'Background processing failed',
+                message: errorData.message || response.statusText,
+                failed_at: new Date().toISOString()
+              }
+            })
+            .eq('id', interviewId)
+        }
+      } catch (error: any) {
+        console.error('Background processing error:', error)
+        
+        await supabase
+          .from('interviews')
+          .update({
+            status: 'failed',
+            updated_at: new Date().toISOString(),
+            metadata: {
+              ...insertedData?.[0]?.metadata,
+              error: error.name || 'NetworkError',
+              message: error.message || 'Background processing failed',
+              failed_at: new Date().toISOString()
+            }
+          })
+          .eq('id', interviewId)
+      }
+    }, 1000) // 1초 지연
 
     // 3. 즉시 응답 반환
     return new Response(JSON.stringify({

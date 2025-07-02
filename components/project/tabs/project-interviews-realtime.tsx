@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Plus, RotateCw, Wifi, WifiOff, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useInterviewsRealtime, useInterviewDetailRealtime } from '@/hooks/use-interviews-realtime'
+import { useProjectMembers } from '@/hooks/use-projects'
 import { Interview } from '@/types/interview'
 import { InterviewDataTable } from '@/components/interview/interview-data-table-clean'
+import { useInterviewStatusMonitor } from '@/hooks/use-interview-status-monitor'
 import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
@@ -41,6 +43,11 @@ interface ProjectInterviewsProps {
 export default function ProjectInterviewsRealtime({ project, selectedInterviewId }: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
+  const { data: members } = useProjectMembers(project.id)
+  
+  // Check if current user is admin
+  const currentUserMember = members?.find(m => m.user_id === profile?.id)
+  const isProjectAdmin = currentUserMember?.role === 'admin' || currentUserMember?.role === 'owner'
   
   // Realtime 훅 사용
   const { 
@@ -50,7 +57,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     createInterview, 
     updateInterview, 
     deleteInterview 
-  } = useInterviewsRealtime(project.id)
+  } = useInterviewsRealtime(project.id, isProjectAdmin)
   
   // 전체 presence 정보 가져오기
   const allPresence = useAllPresence()
@@ -64,6 +71,41 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   } = useInterviewDetailRealtime(selectedInterviewId || '')
   
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
+  
+  // 인터뷰 재시도 처리
+  const handleRetry = useCallback(async (interviewId: string) => {
+    if (!session?.access_token) {
+      toast.error('다시 로그인해주세요.')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/workflow/retry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ interviewId })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || '재시도에 실패했습니다.')
+      }
+
+      const result = await response.json()
+      toast.success(result.message || '인터뷰 처리를 다시 시작했습니다.')
+    } catch (error: any) {
+      toast.error(error.message || '재시도 중 오류가 발생했습니다.')
+    }
+  }, [session])
+  
+  // 상태 모니터링
+  const { statusCounts, hasProcessing } = useInterviewStatusMonitor({ 
+    interviews,
+    onRetry: handleRetry
+  })
   
   // Clean up presence when component unmounts or when leaving interview detail
   useEffect(() => {
@@ -234,6 +276,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         <InterviewDataTable
           interviews={interviews}
           currentUserId={profile?.id}
+          isAdmin={isProjectAdmin}
           onView={(id) => {
             const interview = interviews.find(i => i.id === id)
             
@@ -251,6 +294,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
             router.push(url.pathname + url.search, { scroll: false })
           }}
           onDelete={handleDeleteInterview}
+          onRetry={handleRetry}
           isLoading={isLoading}
           presence={allPresence}
         />

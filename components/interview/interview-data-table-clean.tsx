@@ -34,6 +34,8 @@ interface InterviewDataTableProps {
   isLoading?: boolean
   currentUserId?: string
   presence?: Record<string, any[]>
+  onRetry?: (id: string) => void
+  isAdmin?: boolean
 }
 
 export function InterviewDataTable({
@@ -43,6 +45,8 @@ export function InterviewDataTable({
   isLoading,
   currentUserId,
   presence,
+  onRetry,
+  isAdmin,
 }: InterviewDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "created_at", desc: true },
@@ -55,8 +59,8 @@ export function InterviewDataTable({
   })
 
   const columns = React.useMemo(
-    () => createInterviewColumns(onView, onDelete, currentUserId, presence),
-    [onView, onDelete, currentUserId, presence]
+    () => createInterviewColumns(onView, onDelete, currentUserId, presence, onRetry, isAdmin),
+    [onView, onDelete, currentUserId, presence, onRetry, isAdmin]
   )
 
   // 데이터가 변경될 때 페이지 인덱스가 범위를 벗어날 경우만 리셋

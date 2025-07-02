@@ -38,6 +38,18 @@ export async function POST(req: NextRequest) {
   )
 
   try {
+    // 0. 처리 시작을 알리기 위해 metadata 업데이트
+    await supabase
+      .from('interviews')
+      .update({
+        updated_at: new Date().toISOString(),
+        metadata: {
+          processing_started_at: new Date().toISOString(),
+          processing_attempt: 1
+        }
+      })
+      .eq('id', interviewId)
+
     // 1. 프로젝트 및 회사 정보 조회
     const { data: interview, error: interviewError } = await supabase
       .from('interviews')
@@ -110,19 +122,30 @@ export async function POST(req: NextRequest) {
     
     if (!workflowResponse.ok) {
       const errorMessage = await workflowResponse.text().catch(() => '')
+      console.error(`MISO API error for interview ${interviewId}:`, {
+        status: workflowResponse.status,
+        statusText: workflowResponse.statusText,
+        error: errorMessage
+      })
       
       // 실패 상태로 업데이트
       await supabase
         .from('interviews')
         .update({
           status: 'failed',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          metadata: {
+            error: 'MISO API error',
+            status: workflowResponse.status,
+            message: errorMessage || workflowResponse.statusText
+          }
         })
         .eq('id', interviewId)
 
       return new Response(JSON.stringify({
         error: 'MISO API 오류',
-        message: errorMessage || '외부 API 호출에 실패했습니다.'
+        message: errorMessage || '외부 API 호출에 실패했습니다.',
+        status: workflowResponse.status
       }), { 
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -172,19 +195,28 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error: any) {
+    console.error(`Processing error for interview ${interviewId}:`, error)
+    
     // 오류 발생 시 상태 업데이트
+    const errorInfo = {
+      error: error.name || 'ProcessingError',
+      message: error.message || '분석 중 오류가 발생했습니다.',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }
+    
     await supabase
       .from('interviews')
       .update({
         status: 'failed',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: errorInfo
       })
       .eq('id', interviewId)
 
     if (error.name === 'AbortError') {
       return new Response(JSON.stringify({
         error: '시간 초과',
-        message: '분석 시간이 초과되었습니다.'
+        message: '분석 시간이 초과되었습니다. (5분)'
       }), {
         status: 408,
         headers: { 'Content-Type': 'application/json' }

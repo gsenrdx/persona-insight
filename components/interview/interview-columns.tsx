@@ -11,14 +11,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare, Eye, Loader2 } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, ChevronsUpDown, MessageSquare, Eye, Loader2, RotateCw } from "lucide-react"
 import { PresenceIndicatorCompact } from "@/components/ui/presence-indicator"
 
 export const createInterviewColumns = (
   onView: (id: string) => void,
   onDelete?: (id: string) => void,
   currentUserId?: string,
-  presence?: Record<string, any[]>
+  presence?: Record<string, any[]>,
+  onRetry?: (id: string) => void,
+  isAdmin?: boolean
 ): ColumnDef<Interview>[] => [
   {
     accessorKey: "title",
@@ -70,6 +72,7 @@ export const createInterviewColumns = (
     header: "상태",
     cell: ({ row }) => {
       const status = row.getValue("status") as string
+      const metadata = row.original.metadata as any
       const statusMap = {
         completed: { label: "완료", className: "bg-green-100 text-green-700 border-green-200" },
         processing: { label: "분석중", className: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -79,12 +82,33 @@ export const createInterviewColumns = (
       const config = statusMap[status as keyof typeof statusMap] || { label: status, className: "bg-gray-100 text-gray-700" }
       
       return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>
-          {status === "processing" && (
-            <Loader2 className="h-3 w-3 animate-spin" />
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border ${config.className}`}>
+            {status === "processing" && (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            )}
+            {config.label}
+          </span>
+          {status === "failed" && onRetry && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRetry(row.original.id)
+              }}
+              title="다시 시도"
+            >
+              <RotateCw className="h-3 w-3" />
+            </Button>
           )}
-          {config.label}
-        </span>
+          {metadata?.processing_attempt > 1 && (
+            <span className="text-xs text-gray-500">
+              ({metadata.processing_attempt}회)
+            </span>
+          )}
+        </div>
       )
     },
   },
@@ -156,7 +180,7 @@ export const createInterviewColumns = (
             <DropdownMenuItem onClick={() => onView(interview.id)}>
               상세보기
             </DropdownMenuItem>
-            {onDelete && currentUserId && interview.created_by === currentUserId && (
+            {onDelete && currentUserId && (interview.created_by === currentUserId || isAdmin) && (
               <DropdownMenuItem 
                 onClick={() => onDelete(interview.id)}
                 className="text-destructive"

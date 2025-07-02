@@ -5,7 +5,7 @@ import { Interview, InterviewStatus } from '@/types/interview'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 
-export function useInterviewsRealtime(projectId: string) {
+export function useInterviewsRealtime(projectId: string, isAdmin?: boolean) {
   const { user } = useAuth()
   const { interviews, isSubscribed, isLoading, error, subscribeToProject, unsubscribe } = useInterviewRealtime()
 
@@ -69,10 +69,18 @@ export function useInterviewsRealtime(projectId: string) {
     if (!user) throw new Error('Not authenticated')
 
     try {
-      const { error, count } = await supabase
+      // Build the delete query
+      let query = supabase
         .from('interviews')
         .delete()
         .eq('id', id)
+      
+      // If not admin, only allow deleting own interviews
+      if (!isAdmin) {
+        query = query.eq('created_by', user.id)
+      }
+      
+      const { error, count } = await query
         .select('id', { count: 'exact', head: true })
 
       if (error) throw error
@@ -95,7 +103,7 @@ export function useInterviewsRealtime(projectId: string) {
       toast.error('인터뷰 삭제에 실패했습니다')
       throw error
     }
-  }, [user, projectId, subscribeToProject])
+  }, [user, projectId, subscribeToProject, isAdmin])
 
   // Update interview status
   const updateStatus = useCallback(async (id: string, status: InterviewStatus) => {
