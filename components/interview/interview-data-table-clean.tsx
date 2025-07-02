@@ -49,11 +49,23 @@ export function InterviewDataTable({
   ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const columns = React.useMemo(
     () => createInterviewColumns(onView, onDelete, currentUserId, presence),
     [onView, onDelete, currentUserId, presence]
   )
+
+  // 데이터가 변경될 때 페이지 인덱스가 범위를 벗어날 경우만 리셋
+  React.useEffect(() => {
+    const pageCount = Math.ceil(interviews.length / pagination.pageSize)
+    if (pagination.pageIndex >= pageCount && pageCount > 0) {
+      setPagination(prev => ({ ...prev, pageIndex: pageCount - 1 }))
+    }
+  }, [interviews.length, pagination.pageSize, pagination.pageIndex])
 
   const table = useReactTable({
     data: interviews,
@@ -65,11 +77,13 @@ export function InterviewDataTable({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
     globalFilterFn: "includesString",
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      pagination,
     },
   })
 

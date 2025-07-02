@@ -190,19 +190,67 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           notesByInterview[note.interview_id].push(transformNoteRow(note))
         })
 
-        setState(prev => ({
-          ...prev,
-          interviews: interviews?.map(transformInterviewRow) || [],
-          notes: notesByInterview,
-          isLoading: false,
-        }))
+        setState(prev => {
+          const newInterviews = interviews?.map(transformInterviewRow) || []
+          
+          // 데이터가 실제로 변경되었는지 확인
+          const hasInterviewChanges = 
+            prev.interviews.length !== newInterviews.length ||
+            prev.interviews.some((prevInterview, index) => {
+              const newInterview = newInterviews[index]
+              return !newInterview || 
+                     prevInterview.id !== newInterview.id ||
+                     prevInterview.updated_at !== newInterview.updated_at ||
+                     prevInterview.status !== newInterview.status
+            })
+          
+          // 노트 변경사항 확인
+          const hasNoteChanges = Object.keys(notesByInterview).length !== Object.keys(prev.notes).length ||
+            Object.keys(notesByInterview).some(key => {
+              const prevNotes = prev.notes[key] || []
+              const newNotes = notesByInterview[key] || []
+              return prevNotes.length !== newNotes.length
+            })
+          
+          // 변경사항이 없으면 기존 상태 유지
+          if (!hasInterviewChanges && !hasNoteChanges) {
+            return { ...prev, isLoading: false }
+          }
+          
+          return {
+            ...prev,
+            interviews: newInterviews,
+            notes: notesByInterview,
+            isLoading: false,
+          }
+        })
       } else {
-        setState(prev => ({
-          ...prev,
-          interviews: interviews?.map(transformInterviewRow) || [],
-          notes: {},
-          isLoading: false,
-        }))
+        setState(prev => {
+          const newInterviews = interviews?.map(transformInterviewRow) || []
+          
+          // 데이터가 실제로 변경되었는지 확인
+          const hasChanges = 
+            prev.interviews.length !== newInterviews.length ||
+            prev.interviews.some((prevInterview, index) => {
+              const newInterview = newInterviews[index]
+              return !newInterview || 
+                     prevInterview.id !== newInterview.id ||
+                     prevInterview.updated_at !== newInterview.updated_at ||
+                     prevInterview.status !== newInterview.status
+            })
+          
+          // 변경사항이 없으면 기존 상태 유지
+          if (!hasChanges) {
+            return { ...prev, isLoading: false }
+          }
+          
+          return {
+            ...prev,
+            interviews: newInterviews,
+            notes: {},
+            isLoading: false,
+          }
+        })
       }
     } catch (error) {
       setState(prev => ({ 
