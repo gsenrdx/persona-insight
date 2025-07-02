@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useInterviewsRealtime, useInterviewDetailRealtime } from '@/hooks/use-interviews-realtime'
 import { useProjectMembers } from '@/hooks/use-projects'
 import { Interview } from '@/types/interview'
-import { InterviewDataTable } from '@/components/interview/interview-data-table-clean'
+import { InterviewDataTableInfinite } from '@/components/interview/interview-data-table-infinite'
 import { useInterviewStatusMonitor } from '@/hooks/use-interview-status-monitor'
 import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
@@ -239,30 +239,33 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
 
   // 인터뷰 목록
   return (
-    <div className="space-y-6">
-      {/* 상단 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h2>
-          <p className="text-sm text-gray-500 mt-1">총 {interviews.length}개의 인터뷰가 등록되어 있습니다</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <RealtimeConnectionStatus 
-            projectId={project.id}
-            onRefresh={handleRefresh}
-          />
-          <button
-            onClick={() => setShowAddInterviewModal(true)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            인터뷰 추가
-          </button>
+    <div className="flex flex-col h-full">
+      {/* 상단 헤더 - 고정 */}
+      <div className="flex-shrink-0 pb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900">인터뷰 관리</h2>
+            <p className="text-sm text-gray-500 mt-1">총 {interviews.length}개의 인터뷰가 등록되어 있습니다</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <RealtimeConnectionStatus 
+              projectId={project.id}
+              onRefresh={handleRefresh}
+            />
+            <button
+              onClick={() => setShowAddInterviewModal(true)}
+              className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              인터뷰 추가
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 인터뷰 테이블 */}
-      {error ? (
+      {/* 인터뷰 테이블 - 스크롤 가능 영역 */}
+      <div className="flex-1 overflow-hidden">
+        {error ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <p className="text-gray-500 mb-4">{error.message}</p>
           <Button 
@@ -273,7 +276,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           </Button>
         </div>
       ) : (
-        <InterviewDataTable
+        <InterviewDataTableInfinite
           interviews={interviews}
           currentUserId={profile?.id}
           isAdmin={isProjectAdmin}
@@ -298,7 +301,8 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           isLoading={isLoading}
           presence={allPresence}
         />
-      )}
+        )}
+      </div>
 
       {/* 인터뷰 추가 모달 */}
       <AddInterviewModal
