@@ -11,6 +11,8 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
 } from "@tanstack/react-table"
 import {
   Table,
@@ -22,10 +24,12 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { createInterviewColumns } from "./interview-columns"
-import { FileText, Search, Loader2, Sparkles } from "lucide-react"
+import { FileText, Search, Loader2, Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "react-intersection-observer"
+import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
 
 interface InterviewDataTableInfiniteProps {
   interviews: Interview[]
@@ -64,6 +68,27 @@ export function InterviewDataTableInfinite({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [visibleRows, setVisibleRows] = React.useState(ITEMS_PER_PAGE)
+  const [showMyInterviewsOnly, setShowMyInterviewsOnly] = React.useState(false)
+  const hasActiveFilters = columnFilters.length > 0 || showMyInterviewsOnly || globalFilter
+  
+  // 페르소나 정의 목록 가져오기
+  const { data: personaDefinitions } = usePersonaDefinitions()
+  
+  // 생성자 목록 추출
+  const creators = React.useMemo(() => {
+    const creatorMap = new Map<string, { id: string; name: string }>()
+    
+    interviews.forEach(interview => {
+      if (interview.created_by && interview.created_by_profile?.name) {
+        creatorMap.set(interview.created_by, {
+          id: interview.created_by,
+          name: interview.created_by_profile.name
+        })
+      }
+    })
+    
+    return Array.from(creatorMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [interviews])
 
   // Intersection observer for infinite scroll
   const { ref, inView } = useInView({
@@ -114,14 +139,21 @@ export function InterviewDataTableInfinite({
         const recommendedPersona = interview?.ai_persona_definition?.name_ko || interview?.ai_persona_match
         onAssignPersona(interviewId, recommendedPersona)
       } : undefined,
-      projectId
+      projectId,
+      personaDefinitions,
+      creators
     ),
-    [onView, onDelete, currentUserId, onRetry, isAdmin, onAssignPersona, projectId, interviews]
+    [onView, onDelete, currentUserId, onRetry, isAdmin, onAssignPersona, projectId, interviews, personaDefinitions, creators]
   )
 
   // Memoize filtered and sorted data
   const processedData = React.useMemo(() => {
     let data = [...interviews]
+    
+    // Apply "my interviews only" filter
+    if (showMyInterviewsOnly && currentUserId) {
+      data = data.filter(interview => interview.created_by === currentUserId)
+    }
     
     // Apply global filter
     if (globalFilter) {
@@ -151,7 +183,7 @@ export function InterviewDataTableInfinite({
     }
     
     return data
-  }, [interviews, globalFilter, sorting])
+  }, [interviews, globalFilter, sorting, showMyInterviewsOnly, currentUserId])
   
   const table = useReactTable({
     data: processedData.slice(0, visibleRows),
@@ -159,6 +191,10 @@ export function InterviewDataTableInfinite({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true, // Disable automatic pagination
     pageCount: -1, // Unknown page count for infinite scroll
     enableRowSelection: true,
@@ -188,37 +224,37 @@ export function InterviewDataTableInfinite({
             <thead className="sticky top-0 z-20 bg-white">
               <tr className="border-b border-gray-100">
                 {/* 체크박스 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 w-[40px] pl-0">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 w-[40px] pl-0">
                   <div className="h-4 w-4 animate-pulse bg-gray-100 rounded" />
                 </th>
                 {/* 처리 상태 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 px-2 w-[100px]">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 px-2 w-[100px]">
                   <div className="h-4 w-16 animate-pulse bg-gray-100 rounded" />
                 </th>
                 {/* 제목 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 px-2 w-[180px] max-w-[180px]">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 px-2 w-[180px] max-w-[180px]">
                   <div className="flex items-center gap-1">
                     <div className="h-4 w-8 animate-pulse bg-gray-100 rounded" />
                     <div className="h-3 w-3 animate-pulse bg-gray-100 rounded" />
                   </div>
                 </th>
                 {/* 페르소나 분류 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 px-2 w-[200px] hidden md:table-cell">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 px-2 w-[200px] hidden md:table-cell">
                   <div className="h-4 w-20 animate-pulse bg-gray-100 rounded" />
                 </th>
                 {/* 생성일시 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 px-2 w-[120px]">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 px-2 w-[120px]">
                   <div className="flex items-center gap-1">
                     <div className="h-4 w-12 animate-pulse bg-gray-100 rounded" />
                     <div className="h-3 w-3 animate-pulse bg-gray-100 rounded" />
                   </div>
                 </th>
                 {/* 생성자 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 px-2 w-[110px] hidden lg:table-cell">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 px-2 w-[110px] hidden lg:table-cell">
                   <div className="h-4 w-12 animate-pulse bg-gray-100 rounded" />
                 </th>
                 {/* 액션 컬럼 */}
-                <th className="text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3 pr-0 w-[40px]">
+                <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 pr-0 w-[40px]">
                   <div className="h-4 w-4 animate-pulse bg-gray-100 rounded" />
                 </th>
               </tr>
@@ -328,67 +364,89 @@ export function InterviewDataTableInfinite({
 
   return (
     <div className="h-full flex flex-col">
-      {/* 검색 바 - 고정 */}
-      <div className="flex-shrink-0 px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="검색..."
-              value={globalFilter ?? ""}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          {/* 선택된 항목이 있을 때 일괄 작업 버튼 표시 */}
-          {selectedRows.length > 0 && assignableSelectedCount > 0 && onBatchAssignPersona && (
-            <div className="flex items-center gap-3">
-              <Button
-                size="sm"
+      {/* 테이블 헤더 - 고정 */}
+      <div className="flex-shrink-0 px-6 lg:px-8 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          {/* 왼쪽: 검색 바 및 AI 버튼 */}
+          <div className="flex items-center gap-4 flex-1">
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="검색..."
+                value={globalFilter ?? ""}
+                onChange={(event) => setGlobalFilter(event.target.value)}
+                className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* AI 추천 반영 버튼 */}
+            {selectedRows.length > 0 && assignableSelectedCount > 0 && onBatchAssignPersona && (
+              <button
                 onClick={async () => {
-                  // 이미 반영된 항목을 제외한 선택된 ID만 추출
                   const selectedIds = selectedRows
                     .filter(row => !row.original.confirmed_persona_definition_id && row.original.ai_persona_match)
                     .map(row => row.original.id)
                   
-                  if (selectedIds.length === 0) {
-                    // 반영 가능한 항목이 없는 경우
-                    return
-                  }
+                  if (selectedIds.length === 0) return
                   
                   const result = await onBatchAssignPersona(selectedIds)
-                  // 성공적으로 반영된 경우 체크박스 해제
                   if (result && result.results && result.results.successCount > 0) {
                     table.toggleAllPageRowsSelected(false)
                   }
                 }}
                 disabled={isBatchAssigning}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white px-4 py-2 relative overflow-hidden group"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
-                <div className="flex items-center gap-2">
-                  {isBatchAssigning ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  <span className="font-medium">
-                    {isBatchAssigning ? '반영 중...' : 'AI 추천 반영'}
-                  </span>
-                  <span className="bg-blue-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold">
-                    {assignableSelectedCount}
-                  </span>
-                </div>
-              </Button>
-              <button
-                onClick={() => table.toggleAllPageRowsSelected(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1"
-              >
-                선택 해제
+                {isBatchAssigning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                <span>
+                  {isBatchAssigning ? '반영 중...' : 'AI 추천 반영'}
+                </span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold bg-white/20 rounded-full">
+                  {assignableSelectedCount}
+                </span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* 오른쪽: 필터 컨트롤 */}
+          <div className="flex items-center gap-4">
+            {/* 필터 초기화 */}
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setColumnFilters([])
+                  setShowMyInterviewsOnly(false)
+                  setGlobalFilter("")
+                }}
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+              >
+                필터 초기화
+              </button>
+            )}
+            
+            {/* 내 인터뷰만 보기 */}
+            {currentUserId && (
+              <div className="flex items-center gap-3">
+                <label 
+                  htmlFor="my-interviews-only" 
+                  className="text-sm text-gray-700 cursor-pointer select-none whitespace-nowrap font-medium"
+                >
+                  내 인터뷰만
+                </label>
+                <Switch
+                  id="my-interviews-only"
+                  checked={showMyInterviewsOnly}
+                  onCheckedChange={setShowMyInterviewsOnly}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -400,7 +458,7 @@ export function InterviewDataTableInfinite({
               {table.getHeaderGroups()[0].headers.map((header) => {
                 return (
                   <th key={header.id} className={cn(
-                    "text-left text-xs font-normal text-gray-500 whitespace-nowrap py-3",
+                    "text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3",
                     header.id === "select" ? "w-[40px] pl-0" : "",
                     header.id === "status" ? "px-2 w-[100px]" : "",
                     header.id === "title" ? "px-2 w-[180px] max-w-[180px]" : "",
@@ -431,7 +489,11 @@ export function InterviewDataTableInfinite({
                     className="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
                     onClick={(e) => {
                       const target = e.target as HTMLElement
-                      if (!target.closest('[role="menuitem"]') && !target.closest('button')) {
+                      // 체크박스, 버튼, 메뉴 아이템을 클릭한 경우에는 상세보기로 이동하지 않음
+                      if (!target.closest('[role="menuitem"]') && 
+                          !target.closest('button') && 
+                          !target.closest('input[type="checkbox"]') &&
+                          !target.closest('td:first-child')) { // 체크박스가 있는 첫 번째 td 전체 영역 제외
                         onView(row.original.id)
                       }
                     }}
