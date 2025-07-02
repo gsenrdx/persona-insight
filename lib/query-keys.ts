@@ -42,6 +42,7 @@ export const queryKeys = {
                 : ['personas', 'keywords'] as const,
     synthesis: () => ['personas', 'synthesis'] as const,
     synthesisJob: (jobId: string) => ['personas', 'synthesis', 'job', jobId] as const,
+    definitions: () => ['personas', 'definitions'] as const,
   },
 
   // === 인터뷰 관련 쿼리 키 === (일부 컴포넌트에서 여전히 사용중)

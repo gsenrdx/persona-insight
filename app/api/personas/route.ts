@@ -14,10 +14,10 @@ export async function GET(request: Request) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
     const offset = (page - 1) * limit
 
-    // company_id is required
-    if (!company_id) {
+    // company_id 또는 project_id 중 하나가 필요
+    if (!company_id && !project_id) {
       return NextResponse.json({
-        error: "company_id가 필요합니다",
+        error: "company_id 또는 project_id가 필요합니다",
         success: false
       }, { status: 400 })
     }
@@ -37,18 +37,24 @@ export async function GET(request: Request) {
         needs,
         insight,
         insight_quote,
-        created_at
+        created_at,
+        project_id,
+        company_id,
+        persona_age:persona_summary,
+        persona_gender:persona_style,
+        persona_job:persona_description,
+        persona_intro:persona_summary,
+        persona_image:thumbnail
       `, { count: 'exact' })
-      .eq('company_id', company_id)
       .eq('active', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    // Project filtering
+    // Company or Project filtering
     if (project_id) {
       query = query.eq('project_id', project_id)
-    } else {
-      query = query.is('project_id', null)
+    } else if (company_id) {
+      query = query.eq('company_id', company_id)
     }
 
     // Type filtering

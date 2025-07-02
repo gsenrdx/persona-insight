@@ -34,7 +34,8 @@ const InterviewRealtimeContext = createContext<InterviewRealtimeContextValue | n
 const transformInterviewRow = (row: InterviewRow & { 
   created_by_profile?: any,
   interview_notes?: any,
-  ai_persona_definition?: any
+  ai_persona_definition?: any,
+  confirmed_persona_definition?: any
 }): Interview => {
   return {
     id: row.id,
@@ -62,6 +63,8 @@ const transformInterviewRow = (row: InterviewRow & {
     ai_persona_match: row.ai_persona_match,
     ai_persona_explanation: row.ai_persona_explanation,
     ai_persona_definition: row.ai_persona_definition,
+    confirmed_persona_definition_id: row.confirmed_persona_definition_id,
+    confirmed_persona_definition: row.confirmed_persona_definition,
     created_by_profile: row.created_by_profile,
     note_count: row.interview_notes?.[0]?.count || 0,
   }
@@ -138,6 +141,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           ),
           interview_notes(count),
           ai_persona_definition:persona_definitions!ai_persona_match(
+            id,
+            name_ko,
+            name_en,
+            description,
+            tags
+          ),
+          confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey(
             id,
             name_ko,
             name_en,
@@ -316,6 +326,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
               ),
               interview_notes(count),
               ai_persona_definition:persona_definitions!ai_persona_match(
+                id,
+                name_ko,
+                name_en,
+                description,
+                tags
+              ),
+              confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey(
                 id,
                 name_ko,
                 name_en,

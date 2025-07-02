@@ -1,11 +1,11 @@
 // 페르소나 관련 타입 정의
 
-import { PersonaRow, PersonaInsert, PersonaUpdate } from './database'
+import { Database } from './supabase'
 
 // Supabase 테이블 기반 타입들
-export interface PersonaData extends PersonaRow {}
-export interface PersonaInsertData extends PersonaInsert {}
-export interface PersonaUpdateData extends PersonaUpdate {}
+export type PersonaData = Database['public']['Tables']['personas']['Row']
+export type PersonaInsertData = Database['public']['Tables']['personas']['Insert']
+export type PersonaUpdateData = Database['public']['Tables']['personas']['Update']
 
 export interface PersonaApiResponse {
   data: PersonaData[]

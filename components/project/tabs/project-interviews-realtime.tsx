@@ -7,6 +7,8 @@ import { Plus, RotateCw, Wifi, WifiOff, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useInterviewsRealtime, useInterviewDetailRealtime } from '@/hooks/use-interviews-realtime'
 import { useProjectMembers } from '@/hooks/use-projects'
+import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
+import { useAssignPersonaDefinitionToInterview } from '@/hooks/use-interviews'
 import { Interview } from '@/types/interview'
 import { InterviewDataTableInfinite } from '@/components/interview/interview-data-table-infinite'
 import { useInterviewStatusMonitor } from '@/hooks/use-interview-status-monitor'
@@ -23,6 +25,12 @@ const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod =>
   ssr: false,
   loading: () => null
 })
+
+const PersonaAssignmentModal = dynamic(() => import('@/components/modal/persona-assignment-modal').then(mod => ({ default: mod.PersonaAssignmentModal })), {
+  ssr: false,
+  loading: () => null
+})
+
 
 interface Project {
   id: string
@@ -59,6 +67,9 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     deleteInterview 
   } = useInterviewsRealtime(project.id, isProjectAdmin)
   
+  // subscribeToProject 함수 가져오기
+  const { subscribeToProject } = useInterviewRealtime()
+  
   // 전체 presence 정보 가져오기
   const allPresence = useAllPresence()
   
@@ -71,6 +82,13 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   } = useInterviewDetailRealtime(selectedInterviewId || '')
   
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
+  const [personaAssignmentModal, setPersonaAssignmentModal] = useState<{
+    open: boolean
+    interviewId: string
+    currentPersonaDefinitionId?: string | null
+    recommendedPersona?: string
+  }>({ open: false, interviewId: '' })
+  
   
   // 인터뷰 재시도 처리
   const handleRetry = useCallback(async (interviewId: string) => {
@@ -175,6 +193,98 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     }
   }
 
+  // 페르소나 정의 할당 mutation
+  const assignPersonaDefinitionMutation = useAssignPersonaDefinitionToInterview()
+
+  // 페르소나 정의 할당 핸들러
+  const handleAssignPersonaDefinition = async (personaDefinitionId: string) => {
+    if (!personaAssignmentModal.interviewId) return
+    
+    try {
+      await assignPersonaDefinitionMutation.mutateAsync({ 
+        interviewId: personaAssignmentModal.interviewId, 
+        personaDefinitionId 
+      })
+      toast.success('페르소나가 반영되었습니다.')
+      setPersonaAssignmentModal({ open: false, interviewId: '' })
+      
+      // 실시간 업데이트가 작동하지 않을 경우를 대비해 수동 새로고침
+      setTimeout(() => {
+        subscribeToProject(project.id)
+      }, 500)
+    } catch (error) {
+      toast.error('페르소나 반영에 실패했습니다.')
+    }
+  }
+
+  // 페르소나 할당 모달 열기
+  const handleOpenPersonaModal = (interviewId: string, recommendedPersona?: string) => {
+    const interview = interviews.find(i => i.id === interviewId)
+    setPersonaAssignmentModal({
+      open: true,
+      interviewId,
+      currentPersonaDefinitionId: interview?.ai_persona_match,
+      recommendedPersona: recommendedPersona || interview?.ai_persona_definition?.name_ko
+    })
+  }
+
+  // 일괄 페르소나 할당 처리 (모달 없이 직접 처리)
+  const [isBatchAssigning, setIsBatchAssigning] = useState(false)
+  
+  const handleBatchAssignPersona = async (interviewIds: string[]) => {
+    if (!session?.access_token || isBatchAssigning) return
+
+    // AI 추천이 있는 인터뷰만 필터링
+    const interviewsWithRecommendations = interviews
+      .filter(i => interviewIds.includes(i.id) && i.ai_persona_match && !i.confirmed_persona_definition_id)
+      .map(i => ({
+        interviewId: i.id,
+        personaDefinitionId: i.ai_persona_match!
+      }))
+
+    if (interviewsWithRecommendations.length === 0) {
+      toast.warning('AI 추천이 있는 미반영 인터뷰가 없습니다.')
+      return
+    }
+
+    setIsBatchAssigning(true)
+
+    try {
+      const response = await fetch('/api/interviews/batch-assign-persona', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ assignments: interviewsWithRecommendations })
+      })
+
+      if (!response.ok) {
+        throw new Error('일괄 반영에 실패했습니다.')
+      }
+
+      const result = await response.json()
+      
+      if (result.results.successCount > 0) {
+        toast.success(`${result.results.successCount}개 인터뷰에 페르소나가 반영되었습니다.`)
+      }
+      if (result.results.failedCount > 0) {
+        toast.error(`${result.results.failedCount}개 인터뷰 반영에 실패했습니다.`)
+      }
+
+      // 실시간 업데이트를 위한 수동 새로고침
+      setTimeout(() => {
+        subscribeToProject(project.id)
+      }, 500)
+
+      return result // 결과를 반환하여 테이블에서 사용할 수 있도록 함
+    } catch (error) {
+      toast.error('일괄 반영 중 오류가 발생했습니다.')
+    } finally {
+      setIsBatchAssigning(false)
+    }
+  }
+
   // 인터뷰 삭제 핸들러
   const handleDeleteInterview = async (interviewId: string) => {
     try {
@@ -221,19 +331,21 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     }
     
     return (
-      <InterviewDetail 
-        interview={selectedInterview}
-        presence={presence}
-        currentUserId={profile?.id}
-        onBack={() => {
-          // Clear presence before navigating back
-          // URL에서 interview 쿼리 파라미터 제거
-          const url = new URL(window.location.href)
-          url.searchParams.delete('interview')
-          router.replace(url.pathname + url.search, { scroll: false })
-        }}
-        onDelete={handleDeleteInterview}
-      />
+      <div className="h-full p-6 lg:p-8 overflow-auto">
+        <InterviewDetail 
+          interview={selectedInterview}
+          presence={presence}
+          currentUserId={profile?.id}
+          onBack={() => {
+            // Clear presence before navigating back
+            // URL에서 interview 쿼리 파라미터 제거
+            const url = new URL(window.location.href)
+            url.searchParams.delete('interview')
+            router.replace(url.pathname + url.search, { scroll: false })
+          }}
+          onDelete={handleDeleteInterview}
+        />
+      </div>
     )
   }
 
@@ -300,6 +412,10 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           onRetry={handleRetry}
           isLoading={isLoading}
           presence={allPresence}
+          onAssignPersona={handleOpenPersonaModal}
+          onBatchAssignPersona={handleBatchAssignPersona}
+          isBatchAssigning={isBatchAssigning}
+          projectId={project.id}
         />
         )}
       </div>
@@ -311,6 +427,17 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         onFilesSubmit={handleFilesSubmit}
         projectId={project.id}
       />
+
+      {/* 페르소나 할당 모달 */}
+      <PersonaAssignmentModal
+        open={personaAssignmentModal.open}
+        onOpenChange={(open) => setPersonaAssignmentModal(prev => ({ ...prev, open }))}
+        interviewId={personaAssignmentModal.interviewId}
+        currentPersonaDefinitionId={personaAssignmentModal.currentPersonaDefinitionId}
+        recommendedPersona={personaAssignmentModal.recommendedPersona}
+        onAssign={handleAssignPersonaDefinition}
+      />
+
     </div>
   )
 }

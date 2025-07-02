@@ -305,6 +305,58 @@ export function useUpdateInterview() {
 }
 
 /**
+ * 인터뷰에 페르소나 할당 (API 호출)
+ */
+export function useAssignPersonaDefinitionToInterview() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  
+  return useMutation({
+    mutationFn: async ({ 
+      interviewId, 
+      personaDefinitionId 
+    }: { 
+      interviewId: string; 
+      personaDefinitionId: string
+    }) => {
+      if (!user) throw new Error('로그인이 필요합니다')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
+      
+      const response = await fetch(`/api/interviews/${interviewId}/assign-persona`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ personaDefinitionId })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '페르소나 할당에 실패했습니다')
+      }
+
+      const result = await response.json()
+      return result.data
+    },
+    onSuccess: (updatedInterview, { interviewId }) => {
+      // 인터뷰 목록 무효화
+      queryClient.invalidateQueries(queryKeyUtils.invalidateAll('interviews'))
+      
+      // 해당 인터뷰 상세 정보 무효화
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.interviews.detail(interviewId) 
+      })
+    },
+    onError: (error: Error) => {
+      // 페르소나 할당 실패
+      console.error('페르소나 할당 오류:', error)
+    },
+  })
+}
+
+/**
  * 추출 기준 생성
  */
 export function useCreateExtractionCriteria() {

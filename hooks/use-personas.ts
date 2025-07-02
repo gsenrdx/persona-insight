@@ -32,7 +32,12 @@ export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: 
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
       const response = await personasApi.getPersonas(session.access_token, query)
-      return extractApiData(response)
+      const result = extractApiData(response)
+      // API가 페이지네이션 형식으로 반환하는 경우 처리
+      if (result && typeof result === 'object' && 'data' in result && Array.isArray(result.data)) {
+        return result.data
+      }
+      return result
     },
     enabled: options?.enabled !== undefined ? options.enabled : (!!user && (!!query.companyId || !!query.projectId)),
     staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지 (중복 호출 방지)

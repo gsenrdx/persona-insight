@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import { X, MessageSquare, Hash, ListOrdered, ChevronLeft, Lightbulb, Target, Search } from 'lucide-react'
 import { ScriptSection } from '@/types/interview'
 import { Interview, CleanedScriptItem } from '@/types/interview'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface InterviewAssistantPanelProps {
   isOpen: boolean
@@ -111,9 +113,27 @@ export default function InterviewAssistantPanel({
               
               try {
                 const parsed = JSON.parse(data)
-                if (parsed.answer) {
-                  assistantMessage += parsed.answer
+                
+                // workflow_finished 이벤트 처리
+                if (parsed.event === 'workflow_finished' && parsed.data?.status === 'failed') {
+                  setCurrentAnswer('죄송합니다. 작업 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
+                  setIsLoading(false)
+                  return
+                }
+                
+                // MISO API 응답 형식에 맞게 처리
+                if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
+                  assistantMessage = parsed.answer
                   setCurrentAnswer(assistantMessage)
+                } else {
+                  // 다양한 응답 형식 지원
+                  const content = parsed.answer || parsed.content || parsed.message || parsed.text || parsed.response || 
+                                parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content
+                  
+                  if (content && typeof content === 'string') {
+                    assistantMessage += content
+                    setCurrentAnswer(assistantMessage)
+                  }
                 }
               } catch (e) {
                 // Parse error - ignore
@@ -128,9 +148,19 @@ export default function InterviewAssistantPanel({
           if (data !== '[DONE]') {
             try {
               const parsed = JSON.parse(data)
-              if (parsed.answer) {
-                assistantMessage += parsed.answer
+              // MISO API 응답 형식에 맞게 처리
+              if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
+                assistantMessage = parsed.answer
                 setCurrentAnswer(assistantMessage)
+              } else {
+                // 다양한 응답 형식 지원
+                const content = parsed.answer || parsed.content || parsed.message || parsed.text || parsed.response || 
+                              parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content
+                
+                if (content && typeof content === 'string') {
+                  assistantMessage += content
+                  setCurrentAnswer(assistantMessage)
+                }
               }
             } catch (e) {}
           }
@@ -200,9 +230,27 @@ export default function InterviewAssistantPanel({
               
               try {
                 const parsed = JSON.parse(data)
-                if (parsed.answer) {
-                  assistantMessage += parsed.answer
+                
+                // workflow_finished 이벤트 처리
+                if (parsed.event === 'workflow_finished' && parsed.data?.status === 'failed') {
+                  setCurrentAnswer('죄송합니다. 작업 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
+                  setIsLoading(false)
+                  return
+                }
+                
+                // MISO API 응답 형식에 맞게 처리
+                if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
+                  assistantMessage = parsed.answer
                   setCurrentAnswer(assistantMessage)
+                } else {
+                  // 다양한 응답 형식 지원
+                  const content = parsed.answer || parsed.content || parsed.message || parsed.text || parsed.response || 
+                                parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content
+                  
+                  if (content && typeof content === 'string') {
+                    assistantMessage += content
+                    setCurrentAnswer(assistantMessage)
+                  }
                 }
               } catch (e) {
                 // Parse error - ignore
@@ -217,9 +265,19 @@ export default function InterviewAssistantPanel({
           if (data !== '[DONE]') {
             try {
               const parsed = JSON.parse(data)
-              if (parsed.answer) {
-                assistantMessage += parsed.answer
+              // MISO API 응답 형식에 맞게 처리
+              if (parsed.event === 'agent_message' && typeof parsed.answer === 'string') {
+                assistantMessage = parsed.answer
                 setCurrentAnswer(assistantMessage)
+              } else {
+                // 다양한 응답 형식 지원
+                const content = parsed.answer || parsed.content || parsed.message || parsed.text || parsed.response || 
+                              parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content
+                
+                if (content && typeof content === 'string') {
+                  assistantMessage += content
+                  setCurrentAnswer(assistantMessage)
+                }
               }
             } catch (e) {}
           }
@@ -430,31 +488,36 @@ export default function InterviewAssistantPanel({
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
                     </div>
                   ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <div className="whitespace-pre-wrap text-gray-700 text-[13px] leading-6">
-                        {currentAnswer.split('\n').map((line, i) => {
-                          // 별표(*) 처리
-                          if (line.trim().startsWith('*') || line.trim().startsWith('-')) {
-                            return (
-                              <div key={i} className="flex gap-2 mb-2">
-                                <span className="text-blue-500 mt-0.5">•</span>
-                                <span className="flex-1">{line.replace(/^[*-]\s*/, '')}</span>
-                              </div>
-                            )
-                          }
-                          // 번호 목록 처리
-                          if (line.match(/^\d+\./)) {
-                            return (
-                              <div key={i} className="flex gap-2 mb-2">
-                                <span className="text-blue-500 font-medium">{line.match(/^\d+\./)![0]}</span>
-                                <span className="flex-1">{line.replace(/^\d+\.\s*/, '')}</span>
-                              </div>
-                            )
-                          }
-                          // 일반 텍스트
-                          return line ? <p key={i} className="mb-2 last:mb-0">{line}</p> : <br key={i} />
-                        })}
-                      </div>
+                    <div className="prose prose-sm max-w-none text-gray-700">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="mb-3 last:mb-0 text-[13px] leading-6">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="text-[13px] leading-6">{children}</li>,
+                          h1: ({ children }) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                          strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          code: ({ children }) => <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>,
+                          pre: ({ children }) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 mb-3">
+                              {children}
+                            </blockquote>
+                          ),
+                          a: ({ children, href }) => (
+                            <a href={href} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">
+                              {children}
+                            </a>
+                          ),
+                          hr: () => <hr className="my-4 border-gray-200" />,
+                        }}
+                      >
+                        {currentAnswer}
+                      </ReactMarkdown>
                     </div>
                   )}
                 </div>

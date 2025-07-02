@@ -324,10 +324,15 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     const safeId = sectionName.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')
     const element = document.getElementById(`section-${safeId}`)
     
-    if (element) {
+    if (element && scriptContainerRef.current) {
+      const container = scriptContainerRef.current;
+      const elementRect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
       const yOffset = -80; // 80px 위로 오프셋
-      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+      const scrollTop = container.scrollTop + (elementRect.top - containerRect.top) + yOffset;
+      
+      container.scrollTo({ top: scrollTop, behavior: 'smooth' });
     }
   }
   
@@ -841,18 +846,19 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                           
                           try {
                             const data = JSON.parse(dataContent)
+                            console.log('MISO API Response:', data) // 디버깅용
                             
-                            // MISO API 응답 형식에 따라 적절한 필드 확인
-                            if (data.answer) {
-                              onStream(data.answer)
-                            } else if (data.choices?.[0]?.delta?.content) {
-                              // OpenAI 스타일 응답
-                              onStream(data.choices[0].delta.content)
-                            } else if (data.content) {
-                              // 직접 content 필드
-                              onStream(data.content)
+                            // 다양한 응답 필드 지원
+                            const content = data.answer || data.content || data.message || data.text || data.response || 
+                                          data.choices?.[0]?.delta?.content || data.choices?.[0]?.message?.content
+                            
+                            if (content) {
+                              onStream(content)
+                            } else {
+                              console.warn('Unknown response format:', data)
                             }
                           } catch (e) {
+                            console.error('JSON parsing failed:', dataContent, e)
                           }
                         }
                       }

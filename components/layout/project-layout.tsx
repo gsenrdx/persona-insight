@@ -110,7 +110,7 @@ export function ProjectLayout({
           
           {/* 콘텐츠 */}
           <main className={cn(
-            "flex-1 overflow-hidden flex flex-col min-h-0",
+            "flex-1 p-6 lg:p-8 overflow-hidden flex flex-col min-h-0",
             className
           )}>
             {children}

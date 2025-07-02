@@ -111,6 +111,8 @@ export interface Interview {
   // AI 페르소나 매칭 결과
   ai_persona_match?: string | null; // persona_definitions 테이블 참조 (외래키)
   ai_persona_explanation?: string | null;
+  // 사용자 확정 페르소나
+  confirmed_persona_definition_id?: string | null; // persona_definitions 테이블 참조 (외래키)
   // 관계 데이터
   created_by_profile?: {
     id: string;
@@ -123,6 +125,7 @@ export interface Interview {
     persona_title: string | null;
   };
   ai_persona_definition?: AIPersonaDefinition; // AI 페르소나 정의 관계 데이터
+  confirmed_persona_definition?: AIPersonaDefinition; // 확정된 페르소나 정의 관계 데이터
   note_count?: number;
   notes?: InterviewNote[];
 }
