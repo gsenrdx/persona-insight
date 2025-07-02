@@ -35,9 +35,9 @@ const PersonaAssignmentModal = dynamic(() => import('@/components/modal/persona-
 interface Project {
   id: string
   name: string
-  description: string
+  description: string | null
   company_id: string
-  created_by: string
+  created_by: string | null
   visibility: 'public' | 'private'
   join_method: 'open' | 'invite_only' | 'password'
   created_at: string
@@ -408,7 +408,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
             
             const url = new URL(window.location.href)
             url.searchParams.set('interview', id)
-            router.push(url.pathname + url.search, { scroll: false })
+            router.replace(url.pathname + url.search, { scroll: false })
           }}
           onDelete={handleDeleteInterview}
           onRetry={handleRetry}

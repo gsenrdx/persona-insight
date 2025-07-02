@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject, useProjectMembers } from '@/hooks/use-projects'
 import ProjectSettings from '@/components/project/tabs/project-settings'
-import ProjectInterviews from '@/components/project/tabs/project-interviews-realtime'
+import ProjectInterviewsRealtime from '@/components/project/tabs/project-interviews-realtime'
 import ProjectInsights from '@/components/project/tabs/project-insights'
 import { ProjectLayout } from '@/components/layout/project-layout'
 
@@ -76,13 +76,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
     switch (activeView) {
       case 'interviews':
-        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviewsRealtime project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
       case 'insights':
         return <ProjectInsights project={project} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
       default:
-        return <ProjectInterviews project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviewsRealtime project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
     }
   }
 

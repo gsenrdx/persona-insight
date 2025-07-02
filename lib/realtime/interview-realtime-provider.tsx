@@ -6,36 +6,47 @@ import { supabase } from '@/lib/supabase'
 import { Interview } from '@/types/interview'
 import { InterviewNote } from '@/types/interview-notes'
 import { Database } from '@/types/supabase'
+import { Profile, PersonaDefinition, InterviewNoteReply, PresenceData, ViewerInfo } from '@/types/realtime'
 
 type InterviewRow = Database['public']['Tables']['interviews']['Row']
 type InterviewNoteRow = Database['public']['Tables']['interview_notes']['Row']
 type InterviewNoteReplyRow = Database['public']['Tables']['interview_note_replies']['Row']
 
+// Connection quality tracking
+export interface ConnectionQuality {
+  lastSuccessfulPing: number
+  failedPings: number
+  averageLatency: number
+  isStable: boolean
+}
+
 interface InterviewRealtimeState {
   interviews: Interview[]
   notes: Record<string, InterviewNote[]>
-  presence: Record<string, any[]>
+  presence: Record<string, ViewerInfo[]>
   isSubscribed: boolean
   isLoading: boolean
   error: Error | null
+  connectionQuality?: ConnectionQuality
 }
 
 interface InterviewRealtimeContextValue extends InterviewRealtimeState {
   subscribeToProject: (projectId: string) => void
   unsubscribe: () => void
-  trackPresence: (interviewId: string, data: any) => void
+  trackPresence: (interviewId: string, data: Partial<PresenceData>) => void
   untrackPresence: () => void
   broadcastEvent: (event: string, payload: any) => void
+  getConnectionQuality: () => ConnectionQuality
 }
 
 const InterviewRealtimeContext = createContext<InterviewRealtimeContextValue | null>(null)
 
 // Transform functions outside component to avoid recreating
 const transformInterviewRow = (row: InterviewRow & { 
-  created_by_profile?: any,
-  interview_notes?: any,
-  ai_persona_definition?: any,
-  confirmed_persona_definition?: any
+  created_by_profile?: Profile,
+  interview_notes?: { count: number }[],
+  ai_persona_definition?: PersonaDefinition,
+  confirmed_persona_definition?: PersonaDefinition
 }): Interview => {
   return {
     id: row.id,
@@ -66,13 +77,13 @@ const transformInterviewRow = (row: InterviewRow & {
     confirmed_persona_definition_id: row.confirmed_persona_definition_id,
     confirmed_persona_definition: row.confirmed_persona_definition,
     created_by_profile: row.created_by_profile,
-    note_count: row.interview_notes?.[0]?.count || 0,
+    note_count: Array.isArray(row.interview_notes) && row.interview_notes[0]?.count || 0,
   }
 }
 
 const transformNoteRow = (row: InterviewNoteRow & { 
-  created_by_profile?: any,
-  replies?: any[]
+  created_by_profile?: Profile,
+  replies?: InterviewNoteReply[]
 }): InterviewNote => {
   return {
     id: row.id,
@@ -111,11 +122,21 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const presenceCleanupIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const presenceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const currentPresenceRef = useRef<any>(null)
+  const currentPresenceRef = useRef<PresenceData | null>(null)
   const isSubscribingRef = useRef(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const isPollingRef = useRef(false)
   const lastActivityRef = useRef<number>(Date.now())
+  const visibilityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastVisibilityStateRef = useRef<boolean>(true) // SSR safe - default to visible
+  const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const missedUpdatesCheckTimeRef = useRef<number>(Date.now())
+  const connectionQualityRef = useRef<ConnectionQuality>({
+    lastSuccessfulPing: Date.now(),
+    failedPings: 0,
+    averageLatency: 0,
+    isStable: true
+  })
 
   // Load initial data
   const loadInitialData = useCallback(async (projectId: string) => {
@@ -283,18 +304,30 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     // Initial poll immediately
     loadInitialData(projectId)
     
-    // Set up polling interval (10 seconds)
-    pollingIntervalRef.current = setInterval(() => {
-      if (projectIdRef.current === projectId) {
-        loadInitialData(projectId)
-      }
-    }, 10000) // 10 seconds - standard polling interval
+    // Adaptive polling interval based on activity
+    const getPollingInterval = () => {
+      const timeSinceLastActivity = Date.now() - lastActivityRef.current
+      if (timeSinceLastActivity < 60000) return 5000 // Active: 5s
+      if (timeSinceLastActivity < 300000) return 10000 // Semi-active: 10s
+      return 30000 // Inactive: 30s
+    }
+    
+    const scheduleNextPoll = () => {
+      pollingIntervalRef.current = setTimeout(() => {
+        if (projectIdRef.current === projectId && isPollingRef.current) {
+          loadInitialData(projectId)
+          scheduleNextPoll() // Schedule next poll with adaptive interval
+        }
+      }, getPollingInterval())
+    }
+    
+    scheduleNextPoll()
   }, [loadInitialData])
 
   // Stop polling
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
+      clearTimeout(pollingIntervalRef.current) // Changed from clearInterval to clearTimeout
       pollingIntervalRef.current = null
     }
     isPollingRef.current = false
@@ -464,11 +497,20 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   // Create note ID to interview ID map for O(1) lookup
   const noteToInterviewMap = useMemo(() => {
     const map = new Map<string, string>()
-    Object.entries(state.notes).forEach(([interviewId, notes]) => {
-      notes.forEach(note => {
+    const MAX_MAP_SIZE = 10000 // Prevent unbounded growth
+    let count = 0
+    
+    for (const [interviewId, notes] of Object.entries(state.notes)) {
+      for (const note of notes) {
+        if (count >= MAX_MAP_SIZE) {
+          console.warn('Note map size limit reached')
+          break
+        }
         map.set(note.id, interviewId)
-      })
-    })
+        count++
+      }
+      if (count >= MAX_MAP_SIZE) break
+    }
     return map
   }, [state.notes])
 
@@ -561,13 +603,13 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   }, [noteToInterviewMap])
 
   // Handle presence sync
-  const handlePresenceSync = useCallback((presenceState: any) => {
-    const presence: Record<string, any[]> = {}
+  const handlePresenceSync = useCallback((presenceState: Record<string, PresenceData[]>) => {
+    const presence: Record<string, ViewerInfo[]> = {}
     const now = Date.now()
     const PRESENCE_TIMEOUT = 90000 // 90 seconds timeout (3x update interval)
     
-    Object.entries(presenceState).forEach(([key, presences]: [string, any]) => {
-      (presences as any[]).forEach(p => {
+    Object.entries(presenceState).forEach(([key, presences]) => {
+      presences.forEach((p: PresenceData) => {
         const { interview_id, user_id, user_name, email, online_at, heartbeat, ...data } = p
         // Skip heartbeat-only presence updates
         if (heartbeat && !interview_id) {
@@ -604,7 +646,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   }, [])
 
   // Handle broadcast updates
-  const handleBroadcastUpdate = useCallback((payload: any) => {
+  const handleBroadcastUpdate = useCallback((_payload: any) => {
     // Handle custom broadcast events silently
   }, [])
   
@@ -620,7 +662,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       if (channel.state === 'joined') {
         // Trigger presence sync to clean up stale entries
         const presenceState = channel.presenceState()
-        handlePresenceSync(presenceState)
+        handlePresenceSync(presenceState as Record<string, PresenceData[]>)
       }
     }, 30 * 1000) // 30 seconds
   }, [handlePresenceSync])
@@ -677,6 +719,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
               online_at: new Date().toISOString(),
             }).catch((error) => {
               // If heartbeat fails, connection might be degraded
+              connectionQualityRef.current.failedPings++
+              
+              if (connectionQualityRef.current.failedPings > 3) {
+                connectionQualityRef.current.isStable = false
+              }
+              
               if (channelRef.current && projectIdRef.current === projectId) {
                 // Force reconnect on heartbeat failure
                 const oldChannel = channelRef.current
@@ -689,17 +737,45 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             })
           }
           
-          // Check for stale connection (no activity for 2 minutes)
+          // Check for stale connection (no activity for 1 minute)
           const timeSinceLastActivity = Date.now() - lastActivityRef.current
-          if (timeSinceLastActivity > 2 * 60 * 1000) {
-            // Force refresh if no activity for 2 minutes
+          if (timeSinceLastActivity > 60 * 1000) {
+            // Force refresh if no activity for 1 minute
             lastActivityRef.current = Date.now()
-            // Just ping the channel without modifying presence
+            
+            // Force reload data to catch any missed updates
+            loadInitialData(projectId)
+            
+            // Send ping to check connection
+            const pingStart = Date.now()
             channelRef.current.send({
               type: 'broadcast',
               event: 'ping',
               payload: { timestamp: new Date().toISOString() }
-            }).catch(() => {})
+            }).then(() => {
+              // Ping successful, update connection quality
+              const latency = Date.now() - pingStart
+              connectionQualityRef.current.lastSuccessfulPing = Date.now()
+              connectionQualityRef.current.failedPings = 0
+              connectionQualityRef.current.averageLatency = 
+                (connectionQualityRef.current.averageLatency * 0.8) + (latency * 0.2)
+              connectionQualityRef.current.isStable = true
+              
+              // Update state with connection quality
+              setState(prev => ({ ...prev, connectionQuality: { ...connectionQualityRef.current } }))
+            }).catch(() => {
+              // If ping fails, connection is likely dead
+              connectionQualityRef.current.failedPings++
+              connectionQualityRef.current.isStable = false
+              
+              // Force reconnect
+              const oldChannel = channelRef.current
+              channelRef.current = null
+              supabase.removeChannel(oldChannel)
+              setTimeout(() => {
+                subscribeToProject(projectId)
+              }, 100)
+            })
           }
         }
         
@@ -744,8 +820,8 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           }, 100)
         }
       }
-    }, 30000) // Check every 30 seconds to reduce overhead
-  }, [])
+    }, 15000) // Check every 15 seconds for better responsiveness
+  }, [loadInitialData])
 
   // Subscribe to project
   const subscribeToProject = useCallback((projectId: string) => {
@@ -762,6 +838,33 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       clearTimeout(cleanupTimeoutRef.current)
       cleanupTimeoutRef.current = null
     }
+    
+    // If switching to a different project, cleanup old connection first
+    if (projectIdRef.current && projectIdRef.current !== projectId && channelRef.current) {
+      // Switching to different project - cleanup old channel
+      const oldChannel = channelRef.current
+      channelRef.current = null
+      
+      try {
+        if (oldChannel.state === 'joined' || oldChannel.state === 'joining') {
+          oldChannel.unsubscribe()
+        }
+        supabase.removeChannel(oldChannel)
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+      
+      // Reset state
+      projectIdRef.current = null
+      setState({
+        interviews: [],
+        notes: {},
+        presence: {},
+        isSubscribed: false,
+        isLoading: true,
+        error: null,
+      })
+    }
 
     // If already subscribed to this project, check the channel state
     if (projectIdRef.current === projectId && channelRef.current) {
@@ -773,12 +876,20 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       }
       
       if (channelState === 'joined') {
-        // Already connected
+        // Already connected, just ensure state is in sync
+        setState(prev => ({ 
+          ...prev, 
+          isSubscribed: true, 
+          isLoading: false,
+          error: null 
+        }))
+        isSubscribingRef.current = false
         return
       }
       
       if (channelState === 'joining') {
         // Already trying to connect, wait
+        isSubscribingRef.current = false
         return
       }
       
@@ -788,7 +899,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         channelRef.current = null
         
         // Channel is already in a bad state, just remove it
-        supabase.removeChannel(oldChannel)
+        try {
+          supabase.removeChannel(oldChannel)
+        } catch (err) {
+          // Ignore errors during cleanup
+        }
       }
     }
 
@@ -811,14 +926,19 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         // Reusing existing joined channel
         channelRef.current = existingProjectChannel
         projectIdRef.current = projectId
-        setState(prev => ({ ...prev, isSubscribed: true, error: null }))
+        setState(prev => ({ 
+          ...prev, 
+          isSubscribed: true, 
+          isLoading: false,
+          error: null 
+        }))
         
         // Ensure health checks are running
         setupHealthCheck(existingProjectChannel, projectId)
         setupTokenRefresh()
         setupPresenceCleanup(existingProjectChannel)
         
-        // Load initial data if needed
+        // Load initial data to sync state
         loadInitialData(projectId)
         isSubscribingRef.current = false
         return
@@ -967,12 +1087,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
       )
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState()
-        handlePresenceSync(presenceState)
+        handlePresenceSync(presenceState as Record<string, PresenceData[]>)
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      .on('presence', { event: 'join' }, () => {
         // Silent join tracking
       })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      .on('presence', { event: 'leave' }, () => {
         // Silent leave tracking
       })
       .on('broadcast', { event: 'interview-update' }, ({ payload }) => {
@@ -987,7 +1107,8 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           setState(prev => ({ ...prev, isSubscribed: true, error: null }))
           reconnectAttemptsRef.current = 0 // Reset reconnect attempts
           isSubscribingRef.current = false
-          
+          connectionQualityRef.current.isStable = true
+          connectionQualityRef.current.failedPings = 0
           
           // Stop polling if it was running (realtime recovered)
           stopPolling()
@@ -1000,6 +1121,43 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
           setupHealthCheck(channel, projectId)
           // Setup token refresh
           setupTokenRefresh()
+          
+          // Set up connection stability check
+          if (connectionCheckIntervalRef.current) {
+            clearInterval(connectionCheckIntervalRef.current)
+          }
+          
+          connectionCheckIntervalRef.current = setInterval(() => {
+            if (channelRef.current && channelRef.current.state === 'joined') {
+              // Test the connection with a broadcast
+              const testStart = Date.now()
+              channelRef.current.send({
+                type: 'broadcast',
+                event: 'connection-check',
+                payload: { timestamp: new Date().toISOString() }
+              }).then(() => {
+                // Update connection quality metrics
+                const latency = Date.now() - testStart
+                connectionQualityRef.current.averageLatency = 
+                  (connectionQualityRef.current.averageLatency * 0.9) + (latency * 0.1)
+                
+                // Update state with connection quality
+                setState(prev => ({ ...prev, connectionQuality: { ...connectionQualityRef.current } }))
+              }).catch(() => {
+                // Connection test failed, likely disconnected
+                connectionQualityRef.current.failedPings++
+                connectionQualityRef.current.isStable = false
+                
+                // Force reconnect
+                if (projectIdRef.current === projectId) {
+                  const oldChannel = channelRef.current
+                  channelRef.current = null
+                  supabase.removeChannel(oldChannel)
+                  subscribeToProject(projectId)
+                }
+              })
+            }
+          }, 45000) // Check every 45 seconds
         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           isSubscribingRef.current = false
           setState(prev => ({ 
@@ -1073,13 +1231,12 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
             const oldChannel = channelRef.current
             channelRef.current = null
             
-            // Clear health check
+            // Clear intervals using helper
+            // Clear intervals
             if (healthCheckIntervalRef.current) {
               clearInterval(healthCheckIntervalRef.current)
               healthCheckIntervalRef.current = null
             }
-            
-            // Clear token refresh
             if (tokenRefreshIntervalRef.current) {
               clearInterval(tokenRefreshIntervalRef.current)
               tokenRefreshIntervalRef.current = null
@@ -1109,7 +1266,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     // Set up health checks and token refresh
     setupHealthCheck(channel, projectId)
     setupTokenRefresh()
-  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, setupHealthCheck, setupTokenRefresh, setupPresenceCleanup, state.interviews.length, startPolling, stopPolling])
+  }, [loadInitialData, handleInterviewChange, handleNoteChange, handleReplyChange, handlePresenceSync, handleBroadcastUpdate, setupHealthCheck, setupTokenRefresh, setupPresenceCleanup, startPolling, stopPolling])
 
   // Unsubscribe
   const unsubscribe = useCallback(() => {
@@ -1155,6 +1312,18 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
     currentPresenceRef.current = null
     
+    // Clear connection check
+    if (connectionCheckIntervalRef.current) {
+      clearInterval(connectionCheckIntervalRef.current)
+      connectionCheckIntervalRef.current = null
+    }
+    
+    // Clear visibility check
+    if (visibilityCheckIntervalRef.current) {
+      clearInterval(visibilityCheckIntervalRef.current)
+      visibilityCheckIntervalRef.current = null
+    }
+    
     // Stop polling if running
     stopPolling()
     
@@ -1193,7 +1362,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
   }, [])
 
   // Track presence
-  const trackPresence = useCallback(async (interviewId: string, data: any) => {
+  const trackPresence = useCallback(async (interviewId: string, data: Partial<PresenceData>) => {
     if (!channelRef.current) return
     
     // Check if channel is subscribed before tracking
@@ -1304,6 +1473,11 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
   }, [])
   
+  // Get connection quality
+  const getConnectionQuality = useCallback(() => {
+    return connectionQualityRef.current
+  }, [])
+  
   // Monitor network status and visibility changes
   useEffect(() => {
     const handleOnline = () => {
@@ -1314,33 +1488,79 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
     }
     
     const handleVisibilityChange = () => {
-      if (!document.hidden && projectIdRef.current) {
-        // Page became visible, check connection
+      const wasHidden = lastVisibilityStateRef.current
+      const isHidden = document.hidden
+      lastVisibilityStateRef.current = isHidden
+      
+      if (!isHidden && wasHidden && projectIdRef.current) {
+        // Page became visible after being hidden
+        missedUpdatesCheckTimeRef.current = Date.now()
+        
+        // Always reload data when coming back from background
+        loadInitialData(projectIdRef.current)
+        
+        // Check connection state
         if (channelRef.current?.state !== 'joined') {
+          // Force reconnect
           subscribeToProject(projectIdRef.current)
         } else {
-          // Update presence if we have existing data
-          if (currentPresenceRef.current) {
-            channelRef.current.track({
-              ...currentPresenceRef.current,
-              online_at: new Date().toISOString(),
-            }).catch(() => {})
-          }
+          // Connection appears joined but might be stale
+          // Send a test broadcast to verify connection
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'visibility-check',
+            payload: { timestamp: new Date().toISOString() }
+          }).catch(() => {
+            // Connection is actually dead, force reconnect
+            if (projectIdRef.current) {
+              const oldChannel = channelRef.current
+              channelRef.current = null
+              if (oldChannel) {
+                supabase.removeChannel(oldChannel)
+              }
+              subscribeToProject(projectIdRef.current)
+            }
+          })
         }
+      } else if (isHidden) {
+        // Page is going to background
+        // Start more aggressive polling as a fallback
+        if (projectIdRef.current && !isPollingRef.current) {
+          startPolling(projectIdRef.current)
+        }
+      }
+    }
+    
+    const handleFocus = () => {
+      if (projectIdRef.current) {
+        // Window gained focus, reload data to catch any missed updates
+        loadInitialData(projectIdRef.current)
       }
     }
     
     // Add event listeners
     window.addEventListener('online', handleOnline)
-    window.addEventListener('focus', handleOnline)
+    window.addEventListener('focus', handleFocus)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Set up visibility monitoring interval
+    visibilityCheckIntervalRef.current = setInterval(() => {
+      if (document.hidden && projectIdRef.current && !isPollingRef.current) {
+        // Tab is hidden and polling isn't running, start it
+        startPolling(projectIdRef.current)
+      }
+    }, 30000) // Check every 30 seconds
     
     return () => {
       window.removeEventListener('online', handleOnline)
-      window.removeEventListener('focus', handleOnline)
+      window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      
+      if (visibilityCheckIntervalRef.current) {
+        clearInterval(visibilityCheckIntervalRef.current)
+      }
     }
-  }, [subscribeToProject])
+  }, [subscribeToProject, loadInitialData, startPolling])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1363,13 +1583,22 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         tokenRefreshIntervalRef.current = null
       }
       
-      // In StrictMode, React may unmount and remount quickly
-      // Use shorter timeout for navigation away from project
-      cleanupTimeoutRef.current = setTimeout(() => {
-        if (channelRef.current && projectIdRef.current) {
-          unsubscribe()
-        }
-      }, 5000) // 5초 대기 - 탭 전환 시 연결 유지
+      // Clear connection check
+      if (connectionCheckIntervalRef.current) {
+        clearInterval(connectionCheckIntervalRef.current)
+        connectionCheckIntervalRef.current = null
+      }
+      
+      // Clear visibility check
+      if (visibilityCheckIntervalRef.current) {
+        clearInterval(visibilityCheckIntervalRef.current)
+        visibilityCheckIntervalRef.current = null
+      }
+      
+      // Don't immediately unsubscribe on unmount
+      // Channel will be reused if user navigates back quickly
+      // Only cleanup if explicitly navigating to a different project
+      // or if the entire app is being closed
     }
   }, [unsubscribe])
 
@@ -1382,6 +1611,7 @@ export function InterviewRealtimeProvider({ children }: { children: React.ReactN
         trackPresence,
         untrackPresence,
         broadcastEvent,
+        getConnectionQuality,
       }}
     >
       {children}
