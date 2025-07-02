@@ -456,6 +456,8 @@ export default function InterviewScriptViewer({ script, interview, className, on
                   
                   return filteredScript.map((item, index) => {
                     const scriptId = item.id.join('-')
+                    // index를 포함한 고유한 key 생성
+                    const uniqueKey = `${scriptId}-${index}`
                     const memo = memosByScriptId[scriptId]
                     const prevItem = index > 0 ? filteredScript[index - 1] : null
                     const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker
@@ -474,7 +476,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
                     }
                     
                     return (
-                      <div key={scriptId}>
+                      <div key={uniqueKey}>
                         {/* 섹션 헤더 */}
                         {isNewSection && (
                           <div 

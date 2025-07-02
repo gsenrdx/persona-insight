@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Interview } from '@/types/interview'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,15 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
+  
+  // 컴포넌트 언마운트 시 목차 정리
+  useEffect(() => {
+    return () => {
+      if (onSectionsChange) {
+        onSectionsChange(null, null, null)
+      }
+    }
+  }, [onSectionsChange])
 
   // 스크립트 뷰어에서 섹션 정보가 변경될 때
   const handleScriptSectionsChange = (sections: any[] | null, active: string | null, scrollFn: (sectionName: string) => void) => {
@@ -65,7 +74,13 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6">
           <button
-            onClick={onBack}
+            onClick={() => {
+              // 목차 정보 초기화
+              if (onSectionsChange) {
+                onSectionsChange(null, null, null)
+              }
+              onBack()
+            }}
             className="text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             인터뷰 관리
