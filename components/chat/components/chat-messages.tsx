@@ -14,6 +14,7 @@ interface ChatMessagesProps {
   isUsingTool: boolean
   showLoadingMsg: boolean
   messagesEndRef: React.RefObject<HTMLDivElement | null>
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>
   repliedMessages: Record<string, string>
   isCopied: string | null
   onCopyMessage: (messageId: string, content: string) => void
@@ -29,6 +30,7 @@ export function ChatMessages({
   isUsingTool,
   showLoadingMsg,
   messagesEndRef,
+  messagesContainerRef,
   repliedMessages,
   isCopied,
   onCopyMessage,
@@ -41,8 +43,8 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto py-6 px-4 md:px-6 bg-transparent custom-scrollbar">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div ref={messagesContainerRef} className="flex-1 overflow-y-auto py-4 px-4 md:px-6 bg-transparent custom-scrollbar">
+      <div className="max-w-3xl mx-auto space-y-3">
         <AnimatePresence initial={false}>
           {chatMessages.map((message, index) => {
             const sourceMessage = message.role === "user" ? getReplySourceMessage(message.id) : null
@@ -75,30 +77,27 @@ export function ChatMessages({
             className="flex justify-start mb-4"
           >
             <div className="flex flex-row items-end gap-2">
-              <div className="h-9 w-9 rounded-full flex-shrink-0 border border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
+              <div className="h-8 w-8 rounded-full flex-shrink-0 overflow-hidden">
                 {activePersona.image || activePersona.avatar ? (
                   <Image
                     src={activePersona.image || activePersona.avatar}
                     alt={activePersona.persona_title || activePersona.name}
-                    width={36}
-                    height={36}
+                    width={32}
+                    height={32}
                     className="object-cover w-full h-full"
                     unoptimized={(activePersona.image || activePersona.avatar).includes('supabase.co')}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                  <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                     {(activePersona.persona_title || activePersona.name).substring(0, 2)}
                   </div>
                 )}
               </div>
-              <div className="px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
-                <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                  {activePersona.persona_title || activePersona.name}
-                </div>
-                <div className="loading-dots">
-                  <div></div>
-                  <div></div>
-                  <div></div>
+              <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-sm">
+                <div className="flex space-x-1">
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100" />
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200" />
                 </div>
               </div>
             </div>

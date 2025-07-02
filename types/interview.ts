@@ -54,6 +54,14 @@ export interface HMWQuestion {
   hmw_questions: string;
 }
 
+// 스크립트 섹션 정보
+export interface ScriptSection {
+  sector_name: string;
+  start_line: number;
+  end_line: number;
+  is_main_content: boolean;
+}
+
 // AI 페르소나 정의 (관계 데이터)
 export interface AIPersonaDefinition {
   id: string;
@@ -99,6 +107,7 @@ export interface Interview {
   primary_pain_points: InsightItem[] | null;
   primary_needs: InsightItem[] | null;
   hmw_questions: HMWQuestion[] | null;
+  script_sections: ScriptSection[] | null;
   // AI 페르소나 매칭 결과
   ai_persona_match?: string | null; // persona_definitions 테이블 참조 (외래키)
   ai_persona_explanation?: string | null;

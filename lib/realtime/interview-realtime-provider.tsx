@@ -58,6 +58,7 @@ const transformInterviewRow = (row: InterviewRow & {
     primary_pain_points: row.primary_pain_points as any,
     primary_needs: row.primary_needs as any,
     hmw_questions: row.hmw_questions as any,
+    script_sections: row.script_sections as any,
     ai_persona_match: row.ai_persona_match,
     ai_persona_explanation: row.ai_persona_explanation,
     ai_persona_definition: row.ai_persona_definition,

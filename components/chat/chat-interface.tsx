@@ -21,6 +21,7 @@ import { MentionData } from "@/lib/utils/mention"
 // 성능 최적화: 메모화된 ChatInterface 컴포넌트
 const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hasGreetedRef = useRef<boolean>(false)
   
@@ -93,8 +94,12 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
   }, [personaData])
 
   const scrollToBottom = useCallback(() => {
+    // Try both methods for better compatibility
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+      messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" })
     }
   }, [])
 
@@ -337,11 +342,29 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
     }
   }
 
+  // Auto-scroll when new messages are added or when streaming
   useEffect(() => {
     if (chatMessages.length > 0) {
       scrollToBottom()
     }
   }, [chatMessages, scrollToBottom])
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (isStreaming) {
+      const interval = setInterval(() => {
+        scrollToBottom()
+      }, 100)
+      return () => clearInterval(interval)
+    }
+  }, [isStreaming, scrollToBottom])
+
+  // Also scroll when the last message content changes (during streaming)
+  useEffect(() => {
+    if (chatMessages.length > 0 && isStreaming) {
+      scrollToBottom()
+    }
+  }, [chatMessages[chatMessages.length - 1]?.content, isStreaming, scrollToBottom])
 
   const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMentionDropdown && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
@@ -462,6 +485,7 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
         isUsingTool={isUsingTool}
         showLoadingMsg={showLoadingMsg}
         messagesEndRef={messagesEndRef}
+        messagesContainerRef={messagesContainerRef}
         repliedMessages={repliedMessages}
         isCopied={isCopied}
         onCopyMessage={handleCopyMessage}

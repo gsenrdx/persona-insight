@@ -38,7 +38,7 @@ export function ChatMessage({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-6`}
+      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-3`}
     >
       <div 
         className={`
@@ -52,37 +52,20 @@ export function ChatMessage({
         
         <div
           className={`
-            group relative px-4 py-4 rounded-xl text-[15px] 
+            group relative px-4 py-2.5 text-sm break-words
             ${message.role === "user" 
-              ? "bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800/50" 
-              : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700"
+              ? "bg-blue-600 text-white rounded-2xl rounded-br-sm" 
+              : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm"
             }
+            max-w-[75%]
           `}
         >
-          {/* 페르소나 이름 표시 (assistant 메시지에만) */}
-          {message.role === "assistant" && (() => {
-            const respondingPersona = message.respondingPersona
-            const displayName = respondingPersona?.name || personaData.persona_title || personaData.name
-            
-            return (
-              <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                {displayName}
-              </div>
-            )
-          })()}
+          {/* 페르소나 이름 표시 제거 - 더 깔끔한 UI를 위해 */}
           
-          {/* 꼬리질문 배지 */}
+          {/* 꼬리질문 배지 - 더 간단하게 */}
           {sourceMessage && message.role === "user" && (
-            <div className="mb-3 text-xs text-blue-600 dark:text-blue-300 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800/40">
-              <p className="italic font-medium mb-2 flex items-center gap-1.5">
-                <div className="w-1 h-3 bg-blue-500 rounded-full"></div>
-                답변에 대한 추가 질문
-              </p>
-              <div className="pl-3 border-l-2 border-blue-300 dark:border-blue-600 py-1">
-                <span className="line-clamp-2 text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                  {sourceMessage.content}
-                </span>
-              </div>
+            <div className="mb-2 text-xs opacity-80">
+              <p className="italic">이전 답변에 대한 추가 질문</p>
             </div>
           )}
           
@@ -112,29 +95,25 @@ export function ChatMessage({
             content={message.content}
             className="whitespace-pre-wrap leading-relaxed"
           />
-          <div className="mt-1.5 flex justify-end items-center gap-1.5">
-            <p className={`text-[10px] ${message.role === "user" ? "text-indigo-500 dark:text-indigo-300/80" : "text-zinc-500 dark:text-zinc-400"}`}>
-              {isClient && message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ''}
-            </p>
-          </div>
+          {/* 시간 표시 제거 - 더 깔끔한 UI를 위해 */}
           
-          {/* 메시지 액션 버튼 */}
+          {/* 메시지 액션 버튼 - 인라인으로 변경 */}
           {message.role === "assistant" && (
-            <div className="message-actions absolute -right-[90px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col gap-2">
+            <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button 
                 onClick={() => onCopyMessage(message.id, message.content)}
-                className="text-xs px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
               >
                 <Copy className="h-3 w-3" />
-                <span className="font-medium">{isCopied === message.id ? "복사됨" : "복사"}</span>
+                <span>{isCopied === message.id ? "복사됨" : "복사"}</span>
               </button>
               
               <button 
                 onClick={() => onReplyMessage(message)}
-                className="text-xs px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 flex items-center gap-2 whitespace-nowrap transition-all duration-200"
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
               >
                 <MessageSquareMore className="h-3 w-3" />
-                <span className="font-medium">꼬리질문</span>
+                <span>답글</span>
               </button>
             </div>
           )}

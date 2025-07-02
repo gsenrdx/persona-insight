@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { CleanedScriptItem } from '@/types/interview'
+import { CleanedScriptItem, ScriptSection } from '@/types/interview'
 import { Interview } from '@/types/interview'
-import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react'
+import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, Hash } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import FloatingMemoButton from '@/components/ui/floating-memo-button'
 import AIQuestionBar from '@/components/ui/ai-question-bar'
+import InterviewAssistantPanel from './interview-assistant-panel'
 
 interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
@@ -18,6 +19,11 @@ interface InterviewScriptViewerProps {
 
 
 export default function InterviewScriptViewer({ script, interview, className }: InterviewScriptViewerProps) {
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
   // 노션 스타일 텍스트 선택 하이라이트를 위한 스타일 삽입
   useEffect(() => {
     const style = document.createElement('style')
@@ -101,7 +107,7 @@ export default function InterviewScriptViewer({ script, interview, className }: 
   const [selectedTextForAI, setSelectedTextForAI] = useState('')
   const [aiQuestionPosition, setAiQuestionPosition] = useState<{ x: number; y: number } | null>(null)
   const scriptContainerRef = useRef<HTMLDivElement>(null)
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   
   // DB 연동 훅 사용 (Realtime)
   const { 
@@ -206,8 +212,46 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     )
   }
 
-  // 스크립트를 텍스트 파일로 다운로드
-  const handleDownload = () => {
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setDownloadMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 원본 인터뷰 텍스트 다운로드
+  const handleDownloadOriginal = () => {
+    if (!interview?.raw_text) {
+      alert('원본 인터뷰 텍스트가 없습니다.')
+      return
+    }
+
+    const content = interview.raw_text
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    const fileName = interview?.title 
+      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
+      : 'interview'
+    link.download = `${fileName}_original.txt`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    setDownloadMenuOpen(false)
+  }
+
+  // 정리된 스크립트 다운로드
+  const handleDownloadCleaned = () => {
+    setDownloadMenuOpen(false)
     // 스크립트를 텍스트 형식으로 변환
     let content = `인터뷰 스크립트\n`
     content += `제목: ${interview?.title || '제목 없음'}\n`
@@ -241,16 +285,60 @@ export default function InterviewScriptViewer({ script, interview, className }: 
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    setDownloadMenuOpen(false)
   }
 
+  // 스크롤 위치에 따른 현재 섹션 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!scriptContainerRef.current || !interview?.script_sections) return
+      
+      const container = scriptContainerRef.current
+      const scrollTop = container.scrollTop
+      const sections = interview.script_sections as ScriptSection[]
+      
+      // 현재 보이는 섹션 찾기
+      for (const section of sections) {
+        const sectionElement = sectionRefs.current[section.sector_name]
+        if (sectionElement) {
+          const rect = sectionElement.getBoundingClientRect()
+          const containerRect = container.getBoundingClientRect()
+          
+          if (rect.top >= containerRect.top && rect.top <= containerRect.top + 200) {
+            setActiveSection(section.sector_name)
+            break
+          }
+        }
+      }
+    }
+    
+    const container = scriptContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [interview?.script_sections])
+  
+  // 목차 클릭 시 스크롤
+  const scrollToSection = (sectionName: string) => {
+    const safeId = sectionName.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')
+    const element = document.getElementById(`section-${safeId}`)
+    
+    if (element) {
+      const yOffset = -80; // 80px 위로 오프셋
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }
+  
   return (
     <div className={cn(
-      "h-full overflow-auto bg-white interview-script-content",
+      "h-full flex bg-white interview-script-content",
       aiQuestionBarOpen && "ai-selection-active maintain-selection",
       className
     )}>
       {/* 메인 콘텐츠 영역 */}
-      <div className="relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
           {/* 헤더 영역 - 제목과 검색 바 */}
@@ -271,14 +359,38 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                     className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
                   />
                 </div>
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-                  title="스크립트 다운로드"
-                >
-                  <Download className="w-4 h-4" />
-                  다운로드
-                </button>
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                    title="다운로드 옵션"
+                  >
+                    <Download className="w-4 h-4" />
+                    다운로드
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  
+                  {downloadMenuOpen && (
+                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                      <button
+                        onClick={handleDownloadOriginal}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        disabled={!interview?.raw_text}
+                      >
+                        <FileText className="w-4 h-4" />
+                        원본 인터뷰
+                      </button>
+                      <div className="border-t border-gray-100" />
+                      <button
+                        onClick={handleDownloadCleaned}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        정리된 스크립트
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -294,16 +406,67 @@ export default function InterviewScriptViewer({ script, interview, className }: 
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredScript.map((item, index) => {
-                  const scriptId = item.id.join('-')
-                  const memo = memosByScriptId[scriptId]
-                  const prevItem = index > 0 ? filteredScript[index - 1] : null
-                  const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker
+                {/* 섹션별로 그룹핑하여 렌더링 */}
+                {(() => {
+                  const sections = interview?.script_sections as ScriptSection[] || [];
+                  let lastSectionName = '';
                   
-                  return (
-                    <div
-                      key={scriptId}
-                      className="relative flex gap-8"
+                  return filteredScript.map((item, index) => {
+                    const scriptId = item.id.join('-')
+                    const memo = memosByScriptId[scriptId]
+                    const prevItem = index > 0 ? filteredScript[index - 1] : null
+                    const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker
+                    
+                    // item.id 배열의 첫 번째 라인 번호로 섹션 찾기
+                    const firstLineNumber = item.id[0];
+                    const currentSection = sections.find(section => 
+                      firstLineNumber >= section.start_line && 
+                      firstLineNumber <= section.end_line
+                    );
+                    
+                    // 새로운 섹션의 시작인지 확인 (이전 섹션과 다른 경우)
+                    const isNewSection = currentSection && currentSection.sector_name !== lastSectionName;
+                    if (currentSection) {
+                      lastSectionName = currentSection.sector_name;
+                    }
+                    
+                    return (
+                      <div key={scriptId}>
+                        {/* 섹션 헤더 */}
+                        {isNewSection && (
+                          <div 
+                            id={`section-${currentSection.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')}`}
+                            className={cn(
+                            "section-header mb-4 pb-2 border-b",
+                            currentSection.is_main_content 
+                              ? "border-gray-200" 
+                              : "border-gray-100"
+                          )}>
+                            <div className="flex items-center gap-2">
+                              <Hash className={cn(
+                                "w-4 h-4",
+                                currentSection.is_main_content
+                                  ? "text-gray-600"
+                                  : "text-gray-400"
+                              )} />
+                              <h3 className={cn(
+                                "font-medium",
+                                currentSection.is_main_content
+                                  ? "text-gray-900 text-sm"
+                                  : "text-gray-500 text-xs"
+                              )}>
+                                {currentSection.sector_name}
+                              </h3>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 기존 스크립트 아이템 */}
+                        <div
+                          className={cn(
+                        "relative flex gap-8",
+                        currentSection && !currentSection.is_main_content && "opacity-60"
+                      )}
                     >
                       {/* 왼쪽 화자 표시 영역 */}
                       <div className="w-12 flex-shrink-0">
@@ -608,8 +771,10 @@ export default function InterviewScriptViewer({ script, interview, className }: 
                         </div>
                       )}
                     </div>
-                  )
-                })}
+                      </div>
+                    )
+                  });
+                })()}
               </div>
             )}
             
@@ -743,6 +908,41 @@ export default function InterviewScriptViewer({ script, interview, className }: 
           }}
         />
       </div>
+      
+      {/* 우측 하단 플로팅 AI 도우미 버튼 */}
+      {interview && (
+        <>
+          {/* 플로팅 버튼 */}
+          <div className="fixed right-6 bottom-6 z-[100]">
+            <button 
+              onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
+              className={cn(
+                "relative",
+                "hover:scale-105 active:scale-95",
+                "transition-all duration-200",
+                floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
+              )}
+            >
+              <img 
+                src="/chat-icon.png" 
+                alt="AI 도우미" 
+                className="w-16 h-16 drop-shadow-lg hover:drop-shadow-xl transition-all duration-200"
+              />
+            </button>
+          </div>
+          
+          {/* AI 도우미 패널 */}
+          <InterviewAssistantPanel
+            isOpen={floatingPanelOpen}
+            onClose={() => setFloatingPanelOpen(false)}
+            interview={interview}
+            script={script}
+            activeSection={activeSection}
+            onSectionClick={scrollToSection}
+            session={session}
+          />
+        </>
+      )}
     </div>
   )
 }

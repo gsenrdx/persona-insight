@@ -42,7 +42,7 @@ export function ChatInput({
   onCancelReply
 }: ChatInputProps) {
   return (
-    <div className="flex-shrink-0 p-6 bg-transparent">
+    <div className="flex-shrink-0 p-4 bg-transparent border-t border-gray-100">
       {/* 꼬리질문 중인 메시지 표시 */}
       <AnimatePresence>
         {replyingTo && (
@@ -53,21 +53,17 @@ export function ChatInput({
             transition={{ duration: 0.2 }}
             className="max-w-3xl mx-auto mb-3"
           >
-            <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/60 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/50 rounded-lg p-3 pr-10 flex items-center relative overflow-hidden backdrop-blur-sm">
-              <div className="flex-shrink-0 w-1 h-6 bg-blue-400 mr-3 rounded-full"></div>
-              <div className="text-xs text-blue-800 dark:text-blue-200 font-medium truncate">
-                {replyingTo.content.substring(0, 100)}
-                {replyingTo.content.length > 100 ? '...' : ''}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 pr-8 flex items-center relative">
+              <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                답변: {replyingTo.content.substring(0, 80)}
+                {replyingTo.content.length > 80 ? '...' : ''}
               </div>
-              <Button 
-                size="icon" 
-                variant="ghost" 
+              <button
                 onClick={onCancelReply}
-                className="h-6 w-6 rounded-full absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-blue-200/80 dark:hover:bg-blue-800/50 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <X className="h-3 w-3 text-blue-500 dark:text-blue-300" />
-                <span className="sr-only">취소</span>
-              </Button>
+                <X className="h-3 w-3" />
+              </button>
             </div>
           </motion.div>
         )}
@@ -91,21 +87,17 @@ export function ChatInput({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15 }}
-                  className="bg-gradient-to-r from-purple-50/80 to-blue-50/60 dark:from-purple-950/40 dark:to-blue-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-lg px-4 py-2 flex items-center gap-3 relative overflow-hidden backdrop-blur-sm"
+                  className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-1 flex items-center gap-2"
                 >
-                  <div className="flex-shrink-0 w-1 h-5 bg-purple-400 rounded-full"></div>
-                  <div className="text-sm text-purple-800 dark:text-purple-200 font-medium">
-                    @{persona.name}에게 질문 중...
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
+                  <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    @{persona.name}
+                  </span>
+                  <button
                     onClick={() => onRemoveMention(persona.id)}
-                    className="h-5 w-5 rounded-full hover:bg-purple-200/80 dark:hover:bg-purple-800/50 transition-colors"
+                    className="text-blue-400 hover:text-blue-600"
                   >
-                    <X className="h-3 w-3 text-purple-500 dark:text-purple-300" />
-                    <span className="sr-only">멘션 제거</span>
-                  </Button>
+                    <X className="h-3 w-3" />
+                  </button>
                 </motion.div>
               ))}
             </div>
@@ -114,48 +106,43 @@ export function ChatInput({
       </AnimatePresence>
 
       <form onSubmit={onSubmit} className="max-w-3xl mx-auto">
-        <div className="flex items-end gap-3 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all duration-200">
-          <div className="flex-1 relative">
-            <Textarea
-              ref={inputRef}
-              value={userInput}
-              onChange={onInputChange}
-              placeholder={replyingTo ? "꼬리질문을 입력하세요... (@로 페르소나 멘션)" : "메시지를 입력하세요... (@로 페르소나 멘션)"}
-              disabled={loading}
-              rows={1}
-              className="w-full min-h-[40px] max-h-[200px] resize-none p-0 bg-transparent border-none outline-none focus:ring-0 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100 text-[15px] leading-relaxed caret-zinc-700 dark:caret-zinc-300"
-              onKeyDown={onKeyDown}
-              style={{
-                height: 'auto',
-                minHeight: '40px',
-                border: 'none',
-                boxShadow: 'none'
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement
-                target.style.height = 'auto'
-                target.style.height = Math.min(target.scrollHeight, 200) + 'px'
-              }}
-            />
-            
-            {/* 멘션 드롭다운 */}
-            <PersonaMentionDropdown
-              open={showMentionDropdown}
-              onSelect={onMentionSelect}
-              onOpenChange={onMentionDropdownChange}
-              searchText={mentionSearchText}
-              personas={allPersonas}
-            />
-          </div>
-          <Button 
-            type="submit" 
-            size="icon"
+        <div className="relative">
+          <Textarea
+            ref={inputRef}
+            value={userInput}
+            onChange={onInputChange}
+            placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
+            disabled={loading}
+            rows={1}
+            className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 resize-none"
+            onKeyDown={onKeyDown}
+            style={{
+              minHeight: '40px',
+              maxHeight: '120px'
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement
+              target.style.height = 'auto'
+              target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+            }}
+          />
+          
+          {/* 멘션 드롭다운 */}
+          <PersonaMentionDropdown
+            open={showMentionDropdown}
+            onSelect={onMentionSelect}
+            onOpenChange={onMentionDropdownChange}
+            searchText={mentionSearchText}
+            personas={allPersonas}
+          />
+          
+          <button
+            type="submit"
             disabled={loading || !userInput.trim()}
-            className="h-10 w-10 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 transition-all duration-200 flex-shrink-0 border-0 outline-none focus:ring-0"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-transparent transition-colors"
           >
             <ArrowUp className="h-4 w-4" />
-            <span className="sr-only">전송</span>
-          </Button>
+          </button>
         </div>
       </form>
     </div>

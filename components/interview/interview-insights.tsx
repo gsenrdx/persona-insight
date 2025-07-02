@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Interview, InsightItem } from '@/types/interview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import InterviewSummarySidebar from './interview-summary-sidebar'
-import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import InterviewAssistantPanel from './interview-assistant-panel'
 import { cn } from '@/lib/utils'
 
 interface InterviewInsightsProps {
@@ -15,6 +17,7 @@ interface InterviewInsightsProps {
 export default function InterviewInsights({ interview, onEvidenceClick }: InterviewInsightsProps) {
   const { key_takeaways, primary_pain_points, primary_needs, hmw_questions } = interview
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
 
   const handleEvidenceClick = (evidence: number[]) => {
     if (onEvidenceClick) {
@@ -98,7 +101,8 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
   }
 
   return (
-    <div className="flex h-full overflow-auto">
+    <>
+      <div className="flex h-full overflow-auto">
       {/* 왼쪽 사이드바 - 인터뷰 요약 */}
       <InterviewSummarySidebar interview={interview} />
       
@@ -174,7 +178,42 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
               </div>
             )}
           </div>
+        </div>
       </div>
-    </div>
+      
+      {/* Floating button for AI assistant */}
+      {typeof window !== 'undefined' && createPortal(
+        <>
+          {/* 플로팅 버튼 */}
+          <div className="fixed right-6 bottom-6 z-[100]">
+            <button 
+              onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
+              className={cn(
+                "relative",
+                "hover:scale-105 active:scale-95",
+                "transition-all duration-200",
+                floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
+              )}
+            >
+              <img 
+                src="/chat-icon.png" 
+                alt="AI 도우미" 
+                className="w-16 h-16 drop-shadow-lg hover:drop-shadow-xl transition-all duration-200"
+              />
+            </button>
+          </div>
+          
+          <InterviewAssistantPanel
+            isOpen={floatingPanelOpen}
+            onClose={() => setFloatingPanelOpen(false)}
+            interview={interview}
+            script={interview.cleaned_script || []}
+            hideToc={true}
+            context="insights"
+          />
+        </>,
+        document.body
+      )}
+    </>
   )
 }
