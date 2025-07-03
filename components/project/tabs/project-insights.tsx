@@ -83,7 +83,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
 
   // 인터뷰 데이터를 처리하여 인사이트 데이터 생성
   const processedInsightData = useMemo<ProcessedInsightData>(() => {
-    if (!interviews || interviews.length === 0) return {}
+    if (!interviews || !Array.isArray(interviews) || interviews.length === 0) return {}
     
     const yearData: ProcessedInsightData = {}
     
@@ -239,21 +239,26 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     if (selectedYears.length === 0 && availableYears.length > 0 && availableYears[0]) {
       setSelectedYears([availableYears[0]])
     }
-  }, [availableYears, selectedYears.length])
+  }, [availableYears]) // selectedYears.length 제거하여 무한 루프 방지
   
   // 현재 표시할 인사이트 (첫 번째 선택된 연도의 것을 표시)
   const currentYearData = selectedYears.length > 0 && selectedYears[0]
     ? (processedInsightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
     : (availableYears[0] && processedInsightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
 
+  // activeQuoteIndices 초기화를 위한 useEffect
+  useEffect(() => {
+    if (!currentYearData?.insights) {
+      setActiveQuoteIndices([])
+      return
+    }
+    
+    setActiveQuoteIndices(currentYearData.insights.map(() => 0))
+  }, [selectedYears[0]]) // 첫 번째 선택된 연도가 변경될 때만 초기화
+  
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
-    if (selectedYears.length === 0 || !currentYearData?.insights) return
-    
-    // activeQuoteIndices 초기화
-    if (activeQuoteIndices.length !== currentYearData.insights.length) {
-      setActiveQuoteIndices(currentYearData.insights.map(() => 0))
-    }
+    if (activeQuoteIndices.length === 0 || !currentYearData?.insights) return
     
     const interval = setInterval(() => {
       setActiveQuoteIndices(prev => 
@@ -265,10 +270,16 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     }, 5000)
     
     return () => clearInterval(interval)
-  }, [selectedYears, currentYearData, activeQuoteIndices.length])
+  }, [activeQuoteIndices.length > 0]) // 초기화 여부만 확인
+  
+  // 스크롤 컨테이너 ref
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   
   // 스크롤 이벤트 리스너 추가
   useEffect(() => {
+    const scrollContainer = scrollContainerRef.current
+    if (!scrollContainer) return
+    
     const handleScroll = () => {
       if (insightHeaderRef.current) {
         const headerPosition = insightHeaderRef.current.getBoundingClientRect().top
@@ -276,8 +287,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       }
     }
     
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    scrollContainer.addEventListener('scroll', handleScroll)
+    return () => scrollContainer.removeEventListener('scroll', handleScroll)
   }, [])
 
   // 연도 선택 토글 핸들러
@@ -326,7 +337,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   }
   
   return (
-    <div>
+    <div ref={scrollContainerRef} className="h-full overflow-y-auto">
       {/* 헤더 */}
       <div className="mb-8">
         <div className="mb-6">
@@ -518,14 +529,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           {/* 고정 네비게이션 - Portal을 사용하여 body에 직접 렌더링 */}
           {isHeaderFixed && typeof window !== 'undefined' && createPortal(
             <div 
-              className="fixed top-0 left-0 right-0 bg-background shadow-md border-b border-gray-200 dark:border-gray-800 py-3"
-              style={{
-                zIndex: 1000,
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0
-              }}
+              className="fixed top-16 left-0 lg:left-64 right-0 bg-background shadow-md border-b border-gray-200 dark:border-gray-800 py-3 z-40"
             >
               <div className="w-full px-4">
                 <div className="flex justify-center items-center">
