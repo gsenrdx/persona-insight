@@ -10,6 +10,7 @@ import ProjectSettings from '@/components/project/tabs/project-settings'
 import ProjectInterviewsRealtime from '@/components/project/tabs/project-interviews-realtime'
 import ProjectInsights from '@/components/project/tabs/project-insights'
 import { ProjectLayout } from '@/components/layout/project-layout'
+import { AnimatePresence } from 'framer-motion'
 
 interface ProjectDetailContentProps {
   projectId: string
@@ -87,13 +88,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
     switch (activeView) {
       case 'interviews':
-        return <ProjectInterviewsRealtime project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviewsRealtime key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
       case 'insights':
-        return <ProjectInsights project={project} onInsightsChange={handleInsightsChange} />
+        return <ProjectInsights key="insights" project={project} onInsightsChange={handleInsightsChange} />
       case 'settings':
-        return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
+        return <ProjectSettings key="settings" project={project} onProjectUpdate={() => refetch()} />
       default:
-        return <ProjectInterviewsRealtime project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviewsRealtime key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
     }
   }
 
@@ -182,7 +183,9 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         activeInsight={activeView === 'insights' ? activeInsight : null}
         onInsightClick={activeView === 'insights' ? scrollToInsight : null}
       >
-        {renderContent()}
+        <AnimatePresence mode="wait">
+          {renderContent()}
+        </AnimatePresence>
       </ProjectLayout>
     </>
   )

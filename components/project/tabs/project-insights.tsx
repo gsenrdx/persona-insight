@@ -160,9 +160,10 @@ export default function ProjectInsights({ project, onInsightsChange }: ProjectIn
 
   // 인사이트 네비게이션 처리
   const scrollToInsight = useCallback((insightIndex: number) => {
+    setCurrentInsight(insightIndex) // 현재 인사이트 업데이트
     const element = insightRefs.current[insightIndex]
     if (element) {
-      element.scrollIntoView({ behavior: 'auto', block: 'start' })
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 

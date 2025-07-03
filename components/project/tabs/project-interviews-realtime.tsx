@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils'
 import { useAllPresence } from '@/lib/realtime'
 import { PresenceIndicator } from '@/components/ui/presence-indicator'
 import { RealtimeConnectionStatus } from '@/components/ui/realtime-connection-status'
+import { motion, AnimatePresence } from 'framer-motion'
+import { fadeVariants } from '@/components/ui/page-transition'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => ({ default: mod.AddInterviewModal })), {
@@ -324,7 +326,14 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     if (selectedInterview.status === 'pending' || 
         selectedInterview.status === 'processing') {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <motion.div 
+          key="interview-processing"
+          className="flex flex-col items-center justify-center min-h-[400px] gap-4"
+          variants={fadeVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-lg font-medium">인터뷰 분석 중입니다...</p>
           <p className="text-sm text-muted-foreground">
@@ -340,12 +349,19 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           >
             목록으로 돌아가기
           </Button>
-        </div>
+        </motion.div>
       )
     }
     
     return (
-      <div className="h-full p-6 lg:p-8 overflow-auto">
+      <motion.div 
+        key={`interview-detail-${selectedInterview.id}`}
+        className="h-full p-6 lg:p-8 overflow-auto"
+        variants={fadeVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+      >
         <InterviewDetail 
           interview={selectedInterview}
           presence={presence}
@@ -360,13 +376,20 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
           onDelete={handleDeleteInterview}
           onSectionsChange={onSectionsChange}
         />
-      </div>
+      </motion.div>
     )
   }
 
   // 인터뷰 목록
   return (
-    <div className="flex flex-col h-full">
+    <motion.div 
+      key="interview-list"
+      className="flex flex-col h-full"
+      variants={fadeVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
       {/* 상단 헤더 - 고정 */}
       <div className="flex-shrink-0 px-6 lg:px-8 pt-6 lg:pt-8 pb-6">
         <div className="flex items-center justify-between">
@@ -453,7 +476,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         onAssign={handleAssignPersonaDefinition}
       />
 
-    </div>
+    </motion.div>
   )
 }
 

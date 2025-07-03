@@ -9,6 +9,7 @@ import InterviewInsights from './interview-insights'
 import { PresenceIndicatorCompact } from '@/components/ui/presence-indicator'
 import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
 import { useAuth } from '@/hooks/use-auth'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface InterviewDetailProps {
   interview: Interview
@@ -118,29 +119,43 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
             </div>
             
             {/* 탭 네비게이션 - 우측 배치 */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 relative">
               <button
                 onClick={() => handleTabChange('insights')}
                 className={cn(
-                  "text-sm transition-all",
+                  "text-sm transition-all relative pb-1",
                   activeTab === 'insights' 
                     ? "text-gray-900 font-semibold" 
                     : "text-gray-400 hover:text-gray-600 font-medium"
                 )}
               >
                 인사이트
+                {activeTab === 'insights' && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-blue-600"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </button>
               <span className="text-gray-300">|</span>
               <button
                 onClick={() => handleTabChange('script')}
                 className={cn(
-                  "text-sm transition-all",
+                  "text-sm transition-all relative pb-1",
                   activeTab === 'script' 
                     ? "text-gray-900 font-semibold" 
                     : "text-gray-400 hover:text-gray-600 font-medium"
                 )}
               >
                 대화 스크립트
+                {activeTab === 'script' && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-blue-600"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </button>
             </div>
           </div>
@@ -194,22 +209,42 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
       </div>
       
       {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1">
-        {activeTab === 'insights' && (
-          <InterviewInsights 
-            interview={interview} 
-            onEvidenceClick={handleEvidenceClick}
-          />
-        )}
-        
-        {activeTab === 'script' && (
-          <InterviewScriptViewer 
-            script={interview.cleaned_script || []} 
-            interview={interview}
-            className="h-full"
-            onSectionsChange={handleScriptSectionsChange}
-          />
-        )}
+      <div className="flex-1 relative">
+        <AnimatePresence mode="wait">
+          {activeTab === 'insights' && (
+            <motion.div
+              key="insights"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="h-full"
+            >
+              <InterviewInsights 
+                interview={interview} 
+                onEvidenceClick={handleEvidenceClick}
+              />
+            </motion.div>
+          )}
+          
+          {activeTab === 'script' && (
+            <motion.div
+              key="script"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="h-full"
+            >
+              <InterviewScriptViewer 
+                script={interview.cleaned_script || []} 
+                interview={interview}
+                className="h-full"
+                onSectionsChange={handleScriptSectionsChange}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
       {/* 메타데이터 수정 모달 */}

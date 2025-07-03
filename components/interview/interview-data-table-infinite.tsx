@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils"
 import { useInView } from "react-intersection-observer"
 import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
 import { EditInterviewMetadataModal } from "@/components/modal/edit-interview-metadata-modal"
+import { motion } from "framer-motion"
+import { tableRowVariants } from "@/components/ui/page-transition"
 
 interface InterviewDataTableInfiniteProps {
   interviews: Interview[]
@@ -485,11 +487,17 @@ export function InterviewDataTableInfinite({
           <tbody className="bg-white">
             {filteredRows.length ? (
               <>
-                {filteredRows.map((row) => (
-                  <tr
+                {filteredRows.map((row, index) => (
+                  <motion.tr
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                     className="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    variants={tableRowVariants}
+                    initial="initial"
+                    animate="animate"
+                    whileHover="hover"
+                    whileTap="tap"
+                    custom={index}
                     onClick={(e) => {
                       const target = e.target as HTMLElement
                       // 체크박스, 버튼, 메뉴 아이템을 클릭한 경우에는 상세보기로 이동하지 않음
@@ -517,7 +525,7 @@ export function InterviewDataTableInfinite({
                         )}
                       </td>
                     ))}
-                  </tr>
+                  </motion.tr>
                 ))}
                 {/* 더 많은 데이터가 있으면 로딩 인디케이터 표시 */}
                 {visibleRows < processedData.length && !isLoading && (
