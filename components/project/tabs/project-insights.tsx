@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -12,6 +12,8 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { ChevronDown, FileText, User, BarChart3, TrendingUp, Users, Download, Search, Filter } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { useInterviews } from '@/hooks/use-interviews'
+import { Interview } from '@/types/interview'
 
 interface Project {
   id: string
@@ -39,6 +41,7 @@ interface InsightKeyword {
 interface InsightQuote {
   text: string
   persona: string
+  interviewId: string
 }
 
 interface InsightData {
@@ -55,23 +58,8 @@ interface YearInsights {
   insights: InsightData[]
 }
 
-interface InsightApiData {
+interface ProcessedInsightData {
   [year: string]: YearInsights
-}
-
-interface KeywordInsight {
-  keyword: string
-  frequency: number
-  sentiment: 'positive' | 'negative' | 'neutral'
-  context: string[]
-}
-
-interface CustomerQuote {
-  quote: string
-  interviewee: string
-  date: string
-  persona: string
-  sentiment: 'positive' | 'negative' | 'neutral'
 }
 
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#6366f1']
@@ -83,118 +71,168 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   const [showDetailAnalysis, setShowDetailAnalysis] = useState(true)
   const [showRelatedKeywords, setShowRelatedKeywords] = useState(true)
   const [isHeaderFixed, setIsHeaderFixed] = useState(false)
-  const [insightData, setInsightData] = useState<InsightApiData>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const insightHeaderRef = useRef<HTMLDivElement>(null)
   
   // 실제 데이터가 있는 연도들 (동적으로 가져옴)
   const [availableYears, setAvailableYears] = useState<string[]>([])
   const [selectedYears, setSelectedYears] = useState<string[]>([])
   const [activeQuoteIndices, setActiveQuoteIndices] = useState<number[]>([])
-  const [insights, setInsights] = useState<KeywordInsight[]>([])
-  const [quotes, setQuotes] = useState<CustomerQuote[]>([])
+  
+  // 인터뷰 데이터 가져오기
+  const { data: interviews = [], isLoading, error } = useInterviews({ projectId: project.id })
 
-  // 사용 가능한 연도 먼저 로드 (프로젝트 단위)
-  useEffect(() => {
-    if (!profile?.company_id || !project?.id) {
-      setLoading(false)
-      return
-    }
-
-    async function loadAvailableYears() {
-      try {
-        const response = await fetch(`/api/insights/years?company_id=${profile?.company_id}&project_id=${project.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          const years = data.years || []
-          setAvailableYears(years)
-          
-          // API에서 연도 목록이 비어있으면 빈 데이터로 설정하고 로딩 완료
-          if (years.length === 0) {
-            setInsightData({})
-            setLoading(false)
+  // 인터뷰 데이터를 처리하여 인사이트 데이터 생성
+  const processedInsightData = useMemo<ProcessedInsightData>(() => {
+    if (!interviews || interviews.length === 0) return {}
+    
+    const yearData: ProcessedInsightData = {}
+    
+    // 연도별로 인터뷰 그룹핑
+    const interviewsByYear = interviews.reduce((acc, interview) => {
+      const year = interview.interview_date ? new Date(interview.interview_date).getFullYear().toString() : 'Unknown'
+      if (!acc[year]) acc[year] = []
+      acc[year].push(interview)
+      return acc
+    }, {} as Record<string, Interview[]>)
+    
+    // 각 연도별로 인사이트 추출
+    Object.entries(interviewsByYear).forEach(([year, yearInterviews]) => {
+      const painPointsMap = new Map<string, { count: number; quotes: InsightQuote[]; keywords: string[] }>()
+      const needsMap = new Map<string, { count: number; quotes: InsightQuote[]; keywords: string[] }>()
+      
+      yearInterviews.forEach(interview => {
+        // 주요 문제점 처리
+        interview.primary_pain_points?.forEach(painPoint => {
+          const key = painPoint.description
+          if (!painPointsMap.has(key)) {
+            painPointsMap.set(key, { count: 0, quotes: [], keywords: [] })
           }
-        } else {
-          // API 실패 시 빈 데이터로 설정하고 로딩 완료
-          setAvailableYears([])
-          setInsightData({})
-          setLoading(false)
-        }
-      } catch (error) {
-        // 연도 로드 실패
-        // 오류 시 빈 데이터로 설정하고 로딩 완료
-        setAvailableYears([])
-        setInsightData({})
-        setLoading(false)
+          const data = painPointsMap.get(key)!
+          data.count++
+          
+          // 관련된 인용구 추출
+          if (painPoint.evidence && interview.cleaned_script) {
+            painPoint.evidence.forEach(id => {
+              const script = interview.cleaned_script?.find(s => s.id.includes(id))
+              if (script && script.speaker === 'answer') {
+                data.quotes.push({
+                  text: script.cleaned_sentence,
+                  persona: interview.title || 'Unknown',
+                  interviewId: interview.id
+                })
+              }
+            })
+          }
+          
+          // 키워드 추출 (간단한 단어 분석)
+          const words = painPoint.description.split(' ').filter(w => w.length > 2)
+          data.keywords.push(...words)
+        })
+        
+        // 주요 니즈 처리
+        interview.primary_needs?.forEach(need => {
+          const key = need.description
+          if (!needsMap.has(key)) {
+            needsMap.set(key, { count: 0, quotes: [], keywords: [] })
+          }
+          const data = needsMap.get(key)!
+          data.count++
+          
+          // 관련된 인용구 추출
+          if (need.evidence && interview.cleaned_script) {
+            need.evidence.forEach(id => {
+              const script = interview.cleaned_script?.find(s => s.id.includes(id))
+              if (script && script.speaker === 'answer') {
+                data.quotes.push({
+                  text: script.cleaned_sentence,
+                  persona: interview.title || 'Unknown',
+                  interviewId: interview.id
+                })
+              }
+            })
+          }
+          
+          // 키워드 추출
+          const words = need.description.split(' ').filter(w => w.length > 2)
+          data.keywords.push(...words)
+        })
+      })
+      
+      // 인사이트 데이터 형식으로 변환
+      const insights: InsightData[] = []
+      
+      // 문제점 인사이트
+      Array.from(painPointsMap.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 5)
+        .forEach(([description, data]) => {
+          // 키워드 빈도 계산
+          const keywordCounts = data.keywords.reduce((acc, keyword) => {
+            acc[keyword] = (acc[keyword] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+          
+          const topKeywords = Object.entries(keywordCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({
+              name,
+              weight: Math.round((count / data.keywords.length) * 100)
+            }))
+          
+          insights.push({
+            title: `문제점: ${description.slice(0, 50)}${description.length > 50 ? '...' : ''}`,
+            summary: description,
+            keywords: topKeywords,
+            quotes: data.quotes.slice(0, 3),
+            mentionCount: data.count,
+            priority: data.count >= 3 ? 1 : data.count >= 2 ? 5 : 8
+          })
+        })
+      
+      // 니즈 인사이트
+      Array.from(needsMap.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 5)
+        .forEach(([description, data]) => {
+          // 키워드 빈도 계산
+          const keywordCounts = data.keywords.reduce((acc, keyword) => {
+            acc[keyword] = (acc[keyword] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+          
+          const topKeywords = Object.entries(keywordCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({
+              name,
+              weight: Math.round((count / data.keywords.length) * 100)
+            }))
+          
+          insights.push({
+            title: `니즈: ${description.slice(0, 50)}${description.length > 50 ? '...' : ''}`,
+            summary: description,
+            keywords: topKeywords,
+            quotes: data.quotes.slice(0, 3),
+            mentionCount: data.count,
+            priority: data.count >= 3 ? 2 : data.count >= 2 ? 6 : 9
+          })
+        })
+      
+      yearData[year] = {
+        intervieweeCount: yearInterviews.length,
+        insights: insights.sort((a, b) => a.priority - b.priority)
       }
-    }
+    })
     
-    loadAvailableYears()
-  }, [profile?.company_id, project?.id])
+    return yearData
+  }, [interviews])
 
-  // 인사이트 데이터 로드 (사용 가능한 연도가 로드된 후에 실행) - 프로젝트 단위
+  // 사용 가능한 연도 목록 업데이트
   useEffect(() => {
-    // 연도 목록이 비어있으면 로딩 완료 (이미 첫 번째 useEffect에서 처리됨)
-    if (availableYears.length === 0) return
-    if (!profile?.company_id || !project?.id) return
-    
-    async function loadInsights() {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Batch API 호출로 모든 연도 데이터를 한 번에 가져오기
-        const response = await fetch('/api/insights/batch', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            company_id: profile?.company_id,
-            project_id: project.id,
-            years: availableYears
-          })
-        })
-        
-        if (response.ok) {
-          const { results } = await response.json()
-          const newInsightData: InsightApiData = {}
-          
-          Object.entries(results).forEach(([year, data]: [string, any]) => {
-            newInsightData[year] = {
-              intervieweeCount: data.intervieweeCount || 0,
-              insights: data.insights || []
-            }
-          })
-          
-          setInsightData(newInsightData)
-        } else {
-          setError('인사이트 데이터를 불러오는데 실패했습니다')
-          // 오류 시 빈 데이터로 초기화
-          const emptyData: InsightApiData = {}
-          availableYears.forEach(year => {
-            emptyData[year] = { intervieweeCount: 0, insights: [] }
-          })
-          setInsightData(emptyData)
-        }
-        
-      } catch (error) {
-        // 인사이트 데이터 로드 실패
-        setError('인사이트 데이터를 불러오는데 실패했습니다')
-        // 오류 시 빈 데이터로 초기화
-        const emptyData: InsightApiData = {}
-        availableYears.forEach(year => {
-          emptyData[year] = { intervieweeCount: 0, insights: [] }
-        })
-        setInsightData(emptyData)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    loadInsights()
-  }, [availableYears, profile?.company_id, project?.id])
+    const years = Object.keys(processedInsightData).sort((a, b) => b.localeCompare(a))
+    setAvailableYears(years)
+  }, [processedInsightData])
 
   // selectedYears 초기화
   useEffect(() => {
@@ -205,9 +243,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   
   // 현재 표시할 인사이트 (첫 번째 선택된 연도의 것을 표시)
   const currentYearData = selectedYears.length > 0 && selectedYears[0]
-    ? (insightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
-    : (availableYears[0] && insightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
-
+    ? (processedInsightData[selectedYears[0]] || { intervieweeCount: 0, insights: [] })
+    : (availableYears[0] && processedInsightData[availableYears[0]] || { intervieweeCount: 0, insights: [] })
 
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
@@ -260,36 +297,11 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   }
 
   // persona 이름으로 인터뷰 찾기 및 상세보기로 이동
-  const handleViewInterview = async (personaName: string) => {
-    try {
-      // 해당 프로젝트의 인터뷰 목록에서 persona 이름으로 검색
-      const response = await fetch(`/api/interviews?company_id=${profile?.company_id}&project_id=${project.id}`)
-      if (response.ok) {
-        const { data } = await response.json()
-        // interviewee_fake_name 또는 personas.persona_title과 매칭
-        const interview = data?.find((item: any) => 
-          item.interviewee_fake_name === personaName || 
-          item.personas?.persona_title === personaName ||
-          item.personas?.persona_type === personaName
-        )
-        
-        if (interview) {
-          // 프로젝트 페이지로 이동하면서 쿼리스트링으로 인터뷰 ID 전달
-          router.push(`/projects/${project.id}?interview=${interview.id}`)
-        } else {
-          // 인터뷰를 찾지 못한 경우 프로젝트 페이지로만 이동
-          router.push(`/projects/${project.id}`)
-        }
-      }
-    } catch (error) {
-      // 인터뷰 검색 중 오류
-      // 오류 발생 시에도 프로젝트 페이지로 이동
-      router.push(`/projects/${project.id}`)
-    }
+  const handleViewInterview = (interviewId: string) => {
+    router.push(`/projects/${project.id}?interview=${interviewId}`)
   }
-  
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -307,7 +319,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   if (error) {
     return (
       <div className="text-center py-16">
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-red-500 mb-4">{error.message}</p>
         <Button variant="outline" onClick={() => window.location.reload()}>다시 시도</Button>
       </div>
     )
@@ -321,11 +333,26 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
           <h1 className="text-2xl font-semibold text-gray-900 mb-1">프로젝트 인사이트</h1>
           <p className="text-sm text-muted-foreground">연도별 인터뷰 데이터를 분석하고 인사이트를 확인하세요</p>
         </div>
-        {/* 연도 선택 */}
-        <div className="flex flex-wrap gap-4 items-center">
+      </div>
+
+      {/* 연도별 선택과 인터뷰 고객 수를 묶어서 표시 */}
+      <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl font-bold">연간 인터뷰 현황</CardTitle>
+              <CardDescription>
+                원하는 연도를 선택하여 데이터를 확인하세요 (복수 선택 가능)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* 연도 선택 드롭다운과 태그를 같은 줄에 배치 */}
+          <div className="mb-5 flex flex-wrap gap-4 items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="min-w-[180px] justify-between">
+                <Button variant="outline" className="min-w-[180px] justify-between border-gray-200 dark:border-gray-800">
                   <span>
                     {selectedYears.length === 1 
                       ? `${selectedYears[0]}년` 
@@ -344,55 +371,62 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                     onCheckedChange={() => toggleYear(year)}
                     disabled={selectedYears.length === 1 && selectedYears.includes(year)}
                   >
-                    {year}년 ({insightData[year]?.intervieweeCount || 0}명)
+                    {year}년 ({processedInsightData[year]?.intervieweeCount || 0}명)
                   </DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
             
-          {/* 선택된 연도 태그 */}
-          <div className="flex gap-2 flex-wrap">
-            {selectedYears.map(year => (
-              <Badge key={year} variant="secondary" className="px-3 py-1 text-sm">
-                {year}년: <span className="font-semibold ml-1">{insightData[year]?.intervieweeCount || 0}명</span>
-              </Badge>
-            ))}
+            {/* 선택된 연도 태그 */}
+            <div className="flex gap-2 flex-wrap">
+              {selectedYears.map(year => (
+                <Badge key={year} variant="outline" className="px-3 py-1 text-sm bg-primary/5 border-gray-200 dark:border-gray-800">
+                  {year}년: <span className="font-bold ml-1">{processedInsightData[year]?.intervieweeCount || 0}명</span>
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
           
-      {/* 주요 통계 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* 완료된 인터뷰 수 */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Users className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-medium text-muted-foreground">완료된 인터뷰</h3>
+          {/* 주요 통계 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 완료된 인터뷰 수 */}
+            <div className="flex items-center justify-center">
+              <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <p className="text-4xl font-bold mb-3">
+                    {selectedYears.reduce((total, year) => total + (processedInsightData[year]?.intervieweeCount || 0), 0)}
+                  </p>
+                  <p className="text-sm text-muted-foreground text-center font-medium">
+                    완료된 인터뷰
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* 인사이트 수 */}
+            <div className="flex items-center justify-center">
+              <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <p className="text-4xl font-bold mb-3">
+                    {selectedYears.reduce((total, year) => {
+                      return total + (processedInsightData[year]?.insights?.length || 0)
+                    }, 0)}
+                  </p>
+                  <p className="text-sm text-muted-foreground text-center font-medium">
+                    발견된 인사이트
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
-            {selectedYears.reduce((total, year) => total + (insightData[year]?.intervieweeCount || 0), 0)}
-          </p>
-        </div>
-        
-        {/* 인사이트 수 */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-medium text-muted-foreground">발견된 인사이트</h3>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            {selectedYears.reduce((total, year) => {
-              return total + (insightData[year]?.insights?.length || 0)
-            }, 0)}
-          </p>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
       
       {/* 종합 인사이트 요약 카드와 내용 */}
       {(() => {
         // 인터뷰 데이터가 있는지 먼저 확인
         const hasInterviews = selectedYears.some(year => 
-          insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
+          processedInsightData[year]?.intervieweeCount && processedInsightData[year].intervieweeCount > 0
         )
         
         // 인사이트 데이터가 있는지 확인
@@ -556,17 +590,17 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         <CardContent>
                           <div className="space-y-4">
                             <p className="text-sm leading-relaxed">
-                              프로젝트 &quot;{project.name}&quot;에서 공통적으로 강조된 &quot;{safeSelectedInsight.title}&quot;에 대한 분석입니다. 
+                              프로젝트 "{project.name}"에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
                               {safeSelectedInsight.summary}
                             </p>
                             <p className="text-sm leading-relaxed">
                               이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
                               {new Set(safeSelectedInsight.quotes.map((q: any) => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 &quot;{safeSelectedInsight.keywords.slice(0, 3).map((k: any) => k?.name).filter(Boolean).join('", "')}&quot; 등이 
+                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map((k: any) => k?.name).filter(Boolean).join('", "')}" 등이 
                               핵심 요소로 확인되었습니다.
                             </p>
                             <p className="text-sm leading-relaxed">
-                              특히 &quot;{safeSelectedInsight.keywords[0]?.name}&quot; 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
+                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
                               이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
                               {safeSelectedInsight.priority <= 3 ? 
                                 '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
@@ -719,14 +753,15 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                       
                       const safeQuote = {
                         text: quote.text || '인용구 내용이 없습니다.',
-                        persona: quote.persona || `고객 ${i + 1}`
+                        persona: quote.persona || `고객 ${i + 1}`,
+                        interviewId: quote.interviewId
                       }
                       
                       return (
                         <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
                           <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
                             <div className="flex-grow">
-                              <p className="text-base">&quot;{safeQuote.text}&quot;</p>
+                              <p className="text-base">"{safeQuote.text}"</p>
                             </div>
                             <div className="pt-2 border-t mt-auto">
                               <div className="flex items-center justify-between mt-2">
@@ -740,7 +775,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                                   size="sm" 
                                   variant="outline" 
                                   className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950"
-                                  onClick={() => handleViewInterview(safeQuote.persona)}
+                                  onClick={() => handleViewInterview(safeQuote.interviewId)}
                                 >
                                   <FileText className="h-3 w-3" />
                                   <span>인터뷰 상세보기</span>
@@ -762,10 +797,9 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         (() => {
           // 인터뷰 데이터가 있는지 확인
           const hasInterviews = selectedYears.some(year => 
-            insightData[year]?.intervieweeCount && insightData[year].intervieweeCount > 0
+            processedInsightData[year]?.intervieweeCount && processedInsightData[year].intervieweeCount > 0
           )
           
-
           if (!hasInterviews) {
             // 인터뷰가 없는 경우
             return (
@@ -791,4 +825,4 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       )}
     </div>
   )
-} 
+}
