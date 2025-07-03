@@ -404,9 +404,9 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
             />
             <button
               onClick={() => setShowAddInterviewModal(true)}
-              className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-all shadow-sm hover:shadow-md"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               인터뷰 추가
             </button>
           </div>

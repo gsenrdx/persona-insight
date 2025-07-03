@@ -5,6 +5,12 @@ import { useInterviewRealtime } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
 import { Wifi, WifiOff, AlertCircle, RotateCw, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface RealtimeConnectionStatusProps {
   className?: string
@@ -30,48 +36,75 @@ export function RealtimeConnectionStatus({ className, projectId, onRefresh }: Re
   
   if (isLoading) {
     return (
-      <button
-        disabled
-        className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-sm cursor-not-allowed",
-          className
-        )}
-      >
-        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-        <span className="text-gray-700">연결 중...</span>
-      </button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              disabled
+              className={cn(
+                "p-2.5 rounded-md bg-gray-100 cursor-not-allowed",
+                className
+              )}
+            >
+              <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>연결 중...</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
   
   if (error || !isSubscribed) {
     return (
-      <button
-        onClick={handleRefresh}
-        className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors",
-          error ? "bg-red-50 hover:bg-red-100 text-red-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700",
-          className
-        )}
-      >
-        <RotateCw className="w-4 h-4" />
-        <span>새로고침</span>
-      </button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleRefresh}
+              className={cn(
+                "p-2.5 rounded-md transition-colors",
+                error ? "bg-red-50 hover:bg-red-100" : "bg-gray-100 hover:bg-gray-200",
+                className
+              )}
+            >
+              {error ? (
+                <WifiOff className="w-5 h-5 text-red-600" />
+              ) : (
+                <RotateCw className="w-5 h-5 text-gray-600" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{error ? '연결 오류 - 클릭하여 재연결' : '새로고침'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
   
   // 연결됨 상태
   return (
-    <button
-      onClick={handleRefresh}
-      className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-sm transition-colors",
-        className
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-green-700">연결됨</span>
-      </div>
-    </button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleRefresh}
+            className={cn(
+              "p-2.5 rounded-md bg-green-50 hover:bg-green-100 transition-colors relative",
+              className
+            )}
+          >
+            <Wifi className="w-5 h-5 text-green-600" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>실시간 연결됨</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
