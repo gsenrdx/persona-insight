@@ -117,13 +117,16 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     
     setLoading(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
+      
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...editData,
-          user_id: profile?.id
-        })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(editData)
       })
 
       if (!response.ok) {
@@ -177,10 +180,16 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     
     setLoading(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
+      
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: profile?.id })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({})
       })
 
       if (!response.ok) {
@@ -238,7 +247,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
   }
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto">
       {/* 헤더 */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">

@@ -203,6 +203,9 @@ export async function PUT(
   }
 }
 
+// PATCH 메서드도 PUT과 동일하게 처리
+export const PATCH = PUT
+
 // 프로젝트 삭제 (비활성화)
 export async function DELETE(
   request: Request,

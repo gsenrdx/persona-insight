@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -29,6 +29,11 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
   
+  // 인사이트 네비게이션을 위한 상태
+  const [insightSections, setInsightSections] = useState<any[] | null>(null)
+  const [activeInsight, setActiveInsight] = useState<number | null>(null)
+  const [scrollToInsight, setScrollToInsight] = useState<((insightIndex: number) => void) | null>(null)
+  
   // 전체 로딩 상태 - 인증 로딩 상태도 포함
   const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
 
@@ -55,6 +60,12 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     setActiveSection(active)
     setScrollToSection(() => scrollFn)
   }
+  
+  const handleInsightsChange = useCallback((insights: any[] | null, activeInsight: number | null, scrollToInsight: ((insightIndex: number) => void) | null) => {
+    setInsightSections(insights)
+    setActiveInsight(activeInsight)
+    setScrollToInsight(() => scrollToInsight)
+  }, [])
 
   const getHeaderTitle = () => {
     switch (activeView) {
@@ -78,7 +89,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
       case 'interviews':
         return <ProjectInterviewsRealtime project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
       case 'insights':
-        return <ProjectInsights project={project} />
+        return <ProjectInsights project={project} onInsightsChange={handleInsightsChange} />
       case 'settings':
         return <ProjectSettings project={project} onProjectUpdate={() => refetch()} />
       default:
@@ -164,9 +175,12 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         onViewChange={handleViewChange}
         projectName={project?.name}
         headerTitle={getHeaderTitle()}
-        scriptSections={scriptSections}
-        activeSection={activeSection}
-        onSectionClick={scrollToSection}
+        scriptSections={activeView === 'interviews' ? scriptSections : null}
+        activeSection={activeView === 'interviews' ? activeSection : null}
+        onSectionClick={activeView === 'interviews' ? scrollToSection : null}
+        insightSections={activeView === 'insights' ? insightSections : null}
+        activeInsight={activeView === 'insights' ? activeInsight : null}
+        onInsightClick={activeView === 'insights' ? scrollToInsight : null}
       >
         {renderContent()}
       </ProjectLayout>

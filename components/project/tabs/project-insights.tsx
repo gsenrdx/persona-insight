@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ChevronDown, FileText, User, BarChart3, TrendingUp, Users, Download, Search, Filter } from "lucide-react"
+import { ChevronDown, FileText, User, BarChart3, TrendingUp, Users, Download, Search, Filter, AlertCircle } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
-import { useInterviews } from '@/hooks/use-interviews'
-import { Interview } from '@/types/interview'
+import { useProjectInsights } from '@/hooks/use-project-insights'
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Project {
   id: string
@@ -31,6 +31,7 @@ interface Project {
 
 interface ProjectInsightsProps {
   project: Project
+  onInsightsChange?: (insights: any[] | null, activeInsight: number | null, scrollToInsight: ((insightIndex: number) => void) | null) => void
 }
 
 interface InsightKeyword {
@@ -41,7 +42,6 @@ interface InsightKeyword {
 interface InsightQuote {
   text: string
   persona: string
-  interviewId: string
 }
 
 interface InsightData {
@@ -64,7 +64,7 @@ interface ProcessedInsightData {
 
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#6366f1']
 
-export default function ProjectInsights({ project }: ProjectInsightsProps) {
+export default function ProjectInsights({ project, onInsightsChange }: ProjectInsightsProps) {
   const { profile } = useAuth()
   const router = useRouter()
   const [currentInsight, setCurrentInsight] = useState(0)
@@ -72,174 +72,24 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   const [showRelatedKeywords, setShowRelatedKeywords] = useState(true)
   const [isHeaderFixed, setIsHeaderFixed] = useState(false)
   const insightHeaderRef = useRef<HTMLDivElement>(null)
+  const insightRefs = useRef<{ [key: number]: HTMLDivElement }>({})
   
-  // 실제 데이터가 있는 연도들 (동적으로 가져옴)
-  const [availableYears, setAvailableYears] = useState<string[]>([])
+  // API를 통해 인사이트 데이터 가져오기
+  const { data, isLoading, error } = useProjectInsights(project.id)
+  
+  // 현재 표시할 인사이트 데이터
+  const processedInsightData = data?.insights || {}
+  const availableYears = data?.years || []
+  
   const [selectedYears, setSelectedYears] = useState<string[]>([])
   const [activeQuoteIndices, setActiveQuoteIndices] = useState<number[]>([])
-  
-  // 인터뷰 데이터 가져오기
-  const { data: interviews = [], isLoading, error } = useInterviews({ projectId: project.id })
-
-  // 인터뷰 데이터를 처리하여 인사이트 데이터 생성
-  const processedInsightData = useMemo<ProcessedInsightData>(() => {
-    if (!interviews || !Array.isArray(interviews) || interviews.length === 0) return {}
-    
-    const yearData: ProcessedInsightData = {}
-    
-    // 연도별로 인터뷰 그룹핑
-    const interviewsByYear = interviews.reduce((acc, interview) => {
-      const year = interview.interview_date ? new Date(interview.interview_date).getFullYear().toString() : 'Unknown'
-      if (!acc[year]) acc[year] = []
-      acc[year].push(interview)
-      return acc
-    }, {} as Record<string, Interview[]>)
-    
-    // 각 연도별로 인사이트 추출
-    Object.entries(interviewsByYear).forEach(([year, yearInterviews]) => {
-      const painPointsMap = new Map<string, { count: number; quotes: InsightQuote[]; keywords: string[] }>()
-      const needsMap = new Map<string, { count: number; quotes: InsightQuote[]; keywords: string[] }>()
-      
-      yearInterviews.forEach(interview => {
-        // 주요 문제점 처리
-        interview.primary_pain_points?.forEach(painPoint => {
-          const key = painPoint.description
-          if (!painPointsMap.has(key)) {
-            painPointsMap.set(key, { count: 0, quotes: [], keywords: [] })
-          }
-          const data = painPointsMap.get(key)!
-          data.count++
-          
-          // 관련된 인용구 추출
-          if (painPoint.evidence && interview.cleaned_script) {
-            painPoint.evidence.forEach(id => {
-              const script = interview.cleaned_script?.find(s => s.id.includes(id))
-              if (script && script.speaker === 'answer') {
-                data.quotes.push({
-                  text: script.cleaned_sentence,
-                  persona: interview.title || 'Unknown',
-                  interviewId: interview.id
-                })
-              }
-            })
-          }
-          
-          // 키워드 추출 (간단한 단어 분석)
-          const words = painPoint.description.split(' ').filter(w => w.length > 2)
-          data.keywords.push(...words)
-        })
-        
-        // 주요 니즈 처리
-        interview.primary_needs?.forEach(need => {
-          const key = need.description
-          if (!needsMap.has(key)) {
-            needsMap.set(key, { count: 0, quotes: [], keywords: [] })
-          }
-          const data = needsMap.get(key)!
-          data.count++
-          
-          // 관련된 인용구 추출
-          if (need.evidence && interview.cleaned_script) {
-            need.evidence.forEach(id => {
-              const script = interview.cleaned_script?.find(s => s.id.includes(id))
-              if (script && script.speaker === 'answer') {
-                data.quotes.push({
-                  text: script.cleaned_sentence,
-                  persona: interview.title || 'Unknown',
-                  interviewId: interview.id
-                })
-              }
-            })
-          }
-          
-          // 키워드 추출
-          const words = need.description.split(' ').filter(w => w.length > 2)
-          data.keywords.push(...words)
-        })
-      })
-      
-      // 인사이트 데이터 형식으로 변환
-      const insights: InsightData[] = []
-      
-      // 문제점 인사이트
-      Array.from(painPointsMap.entries())
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 5)
-        .forEach(([description, data]) => {
-          // 키워드 빈도 계산
-          const keywordCounts = data.keywords.reduce((acc, keyword) => {
-            acc[keyword] = (acc[keyword] || 0) + 1
-            return acc
-          }, {} as Record<string, number>)
-          
-          const topKeywords = Object.entries(keywordCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, count]) => ({
-              name,
-              weight: Math.round((count / data.keywords.length) * 100)
-            }))
-          
-          insights.push({
-            title: `문제점: ${description.slice(0, 50)}${description.length > 50 ? '...' : ''}`,
-            summary: description,
-            keywords: topKeywords,
-            quotes: data.quotes.slice(0, 3),
-            mentionCount: data.count,
-            priority: data.count >= 3 ? 1 : data.count >= 2 ? 5 : 8
-          })
-        })
-      
-      // 니즈 인사이트
-      Array.from(needsMap.entries())
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 5)
-        .forEach(([description, data]) => {
-          // 키워드 빈도 계산
-          const keywordCounts = data.keywords.reduce((acc, keyword) => {
-            acc[keyword] = (acc[keyword] || 0) + 1
-            return acc
-          }, {} as Record<string, number>)
-          
-          const topKeywords = Object.entries(keywordCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, count]) => ({
-              name,
-              weight: Math.round((count / data.keywords.length) * 100)
-            }))
-          
-          insights.push({
-            title: `니즈: ${description.slice(0, 50)}${description.length > 50 ? '...' : ''}`,
-            summary: description,
-            keywords: topKeywords,
-            quotes: data.quotes.slice(0, 3),
-            mentionCount: data.count,
-            priority: data.count >= 3 ? 2 : data.count >= 2 ? 6 : 9
-          })
-        })
-      
-      yearData[year] = {
-        intervieweeCount: yearInterviews.length,
-        insights: insights.sort((a, b) => a.priority - b.priority)
-      }
-    })
-    
-    return yearData
-  }, [interviews])
-
-  // 사용 가능한 연도 목록 업데이트
-  useEffect(() => {
-    const years = Object.keys(processedInsightData).sort((a, b) => b.localeCompare(a))
-    setAvailableYears(years)
-  }, [processedInsightData])
 
   // selectedYears 초기화
   useEffect(() => {
     if (selectedYears.length === 0 && availableYears.length > 0 && availableYears[0]) {
       setSelectedYears([availableYears[0]])
     }
-  }, [availableYears]) // selectedYears.length 제거하여 무한 루프 방지
+  }, [availableYears])
   
   // 현재 표시할 인사이트 (첫 번째 선택된 연도의 것을 표시)
   const currentYearData = selectedYears.length > 0 && selectedYears[0]
@@ -254,23 +104,24 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     }
     
     setActiveQuoteIndices(currentYearData.insights.map(() => 0))
-  }, [selectedYears[0]]) // 첫 번째 선택된 연도가 변경될 때만 초기화
+  }, [selectedYears[0]]) // currentYearData?.insights 제거
   
   // 롤링 배너 효과를 위한 인터벌 설정
   useEffect(() => {
-    if (activeQuoteIndices.length === 0 || !currentYearData?.insights) return
+    if (activeQuoteIndices.length === 0) return
     
     const interval = setInterval(() => {
       setActiveQuoteIndices(prev => 
         prev.map((idx, i) => {
-          const quotes = currentYearData?.insights[i]?.quotes || []
+          const insights = selectedYears.length > 0 && selectedYears[0] && processedInsightData[selectedYears[0]]?.insights
+          const quotes = insights?.[i]?.quotes || []
           return quotes.length ? (idx + 1) % quotes.length : 0
         })
       )
     }, 5000)
     
     return () => clearInterval(interval)
-  }, [activeQuoteIndices.length > 0]) // 초기화 여부만 확인
+  }, [activeQuoteIndices.length > 0, selectedYears[0]]) // 의존성 배열 수정
   
   // 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -307,6 +158,30 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     })
   }
 
+  // 인사이트 네비게이션 처리
+  const scrollToInsight = useCallback((insightIndex: number) => {
+    const element = insightRefs.current[insightIndex]
+    if (element) {
+      element.scrollIntoView({ behavior: 'auto', block: 'start' })
+    }
+  }, [])
+
+  // 인사이트 변경 통지
+  useEffect(() => {
+    if (!onInsightsChange) return
+    
+    const insights = selectedYears.length > 0 && selectedYears[0] && processedInsightData[selectedYears[0]]?.insights
+    if (insights && insights.length > 0) {
+      const insightsWithId = insights.map((insight, index) => ({
+        ...insight,
+        id: index
+      }))
+      onInsightsChange(insightsWithId, currentInsight, scrollToInsight)
+    } else {
+      onInsightsChange(null, null, null)
+    }
+  }, [selectedYears[0], currentInsight, onInsightsChange, scrollToInsight, processedInsightData])
+
   // persona 이름으로 인터뷰 찾기 및 상세보기로 이동
   const handleViewInterview = (interviewId: string) => {
     router.push(`/projects/${project.id}?interview=${interviewId}`)
@@ -329,9 +204,16 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
 
   if (error) {
     return (
-      <div className="text-center py-16">
-        <p className="text-red-500 mb-4">{error.message}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>다시 시도</Button>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            인사이트를 불러오는 중 오류가 발생했습니다: {error.message}
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4 text-center">
+          <Button variant="outline" onClick={() => window.location.reload()}>다시 시도</Button>
+        </div>
       </div>
     )
   }
@@ -511,10 +393,12 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                           <div className="text-sm text-muted-foreground line-clamp-2 mb-4">{safeInsight.summary}</div>
                           <div className="flex flex-wrap gap-2 mt-3">
                             <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              언급 {safeInsight.mentionCount}회
+                              <FileText className="w-3 h-3 mr-1" />
+                              {safeInsight.mentionCount}명 언급
                             </Badge>
-                            <Badge variant="outline" className="bg-primary/5 border-primary/10">
-                              고객 {new Set(safeInsight.quotes.map((q: any) => q?.persona).filter(Boolean)).size}명
+                            <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
+                              <User className="w-3 h-3 mr-1" />
+                              {safeInsight.quotes.length}개 인용
                             </Badge>
                           </div>
                         </div>
@@ -525,307 +409,168 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
               </CardContent>
             </Card>
           </div>
-          
-          {/* 고정 네비게이션 - Portal을 사용하여 body에 직접 렌더링 */}
-          {isHeaderFixed && typeof window !== 'undefined' && createPortal(
-            <div 
-              className="fixed top-16 left-0 lg:left-64 right-0 bg-background shadow-md border-b border-gray-200 dark:border-gray-800 py-3 z-40"
-            >
-              <div className="w-full px-4">
-                <div className="flex justify-center items-center">
-                  <div className="flex gap-2 overflow-auto pb-1 w-full justify-center">
-                    {(currentYearData?.insights || []).map((insight: any, idx: number) => {
-                      const isSelected = currentInsight === idx
-                      return (
-                        <Button 
-                          key={idx} 
-                          ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) : undefined}
-                          variant={isSelected ? "default" : "outline"} 
-                          className="text-xs h-8 px-2 whitespace-nowrap flex-shrink-0"
-                          onClick={() => setCurrentInsight(idx)}
-                        >
-                          {insight?.title || `인사이트 ${idx + 1}`}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
-          
-          {/* 선택된 인사이트 상세 보기 */}
-          {currentYearData?.insights && Array.isArray(currentYearData.insights) && currentYearData.insights[currentInsight] && (() => {
-            const selectedInsight = currentYearData.insights[currentInsight]
-            
-            // 안전한 데이터 구조 생성
-            const safeSelectedInsight = {
-              title: selectedInsight?.title || `인사이트 ${currentInsight + 1}`,
-              summary: selectedInsight?.summary || '요약 정보가 없습니다.',
-              keywords: Array.isArray(selectedInsight?.keywords) ? selectedInsight.keywords : [],
-              quotes: Array.isArray(selectedInsight?.quotes) ? selectedInsight.quotes : [],
-              mentionCount: selectedInsight?.mentionCount || 0,
-              priority: selectedInsight?.priority || 1
-            }
-            
-            return (
-              <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold">
-                    {safeSelectedInsight.title}
-                  </CardTitle>
-                  <CardDescription>
-                    {safeSelectedInsight.summary}
-                  </CardDescription>
-                </CardHeader>
-            
-              {/* 인사이트 상세 보기 */}
-              <CardContent className="pb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 md:items-start">
-                  {/* 인사이트 상세 요약 */}
-                  <div>
-                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
-                      <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowDetailAnalysis(!showDetailAnalysis)}>
-                        <CardTitle className="text-lg font-medium">상세 분석</CardTitle>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${showDetailAnalysis ? '' : 'transform rotate-180'}`} />
-                      </CardHeader>
-                      {showDetailAnalysis && (
-                        <CardContent>
-                          <div className="space-y-4">
-                            <p className="text-sm leading-relaxed">
-                              프로젝트 "{project.name}"에서 공통적으로 강조된 "{safeSelectedInsight.title}"에 대한 분석입니다. 
-                              {safeSelectedInsight.summary}
-                            </p>
-                            <p className="text-sm leading-relaxed">
-                              이 인사이트는 총 {safeSelectedInsight.mentionCount}회 언급되었으며, 
-                              {new Set(safeSelectedInsight.quotes.map((q: any) => q?.persona).filter(Boolean)).size}명의 고객으로부터 {safeSelectedInsight.quotes.length}개의 관련 의견이 수집되었습니다. 
-                              주요 키워드로는 "{safeSelectedInsight.keywords.slice(0, 3).map((k: any) => k?.name).filter(Boolean).join('", "')}" 등이 
-                              핵심 요소로 확인되었습니다.
-                            </p>
-                            <p className="text-sm leading-relaxed">
-                              특히 "{safeSelectedInsight.keywords[0]?.name}" 키워드가 가장 높은 비중({safeSelectedInsight.keywords[0]?.weight}%)을 차지하며, 
-                              이는 고객들이 가장 중요하게 여기는 부분임을 시사합니다. 
-                              {safeSelectedInsight.priority <= 3 ? 
-                                '높은 우선순위를 가진 이 인사이트는 즉시 개선이 필요한 영역으로 판단됩니다.' :
-                                safeSelectedInsight.priority <= 7 ?
-                                '중간 우선순위를 가진 이 인사이트는 중장기적 개선 계획에 포함되어야 할 요소입니다.' :
-                                '이 인사이트는 장기적 관점에서 지속적인 모니터링과 개선이 필요한 영역입니다.'
-                              }
-                            </p>
-                            <div>
-                              {safeSelectedInsight.keywords.slice(0, 3).map((keyword: any, idx: number) => 
-                                keyword?.name ? (
-                                  <Badge key={idx} className="bg-primary/10 text-primary hover:bg-primary/20 border-none mr-2">
-                                    {keyword.name} ({keyword.weight || 0}%)
-                                  </Badge>
-                                ) : null
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      )}
-                    </Card>
-                  </div>
-                  
-                  {/* 키워드 원형 그래프 */}
-                  <div>
-                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
-                      <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowRelatedKeywords(!showRelatedKeywords)}>
-                        <CardTitle className="text-lg font-medium">관련 키워드</CardTitle>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${showRelatedKeywords ? '' : 'transform rotate-180'}`} />
-                      </CardHeader>
-                      {showRelatedKeywords && (
-                        <CardContent>
-                          <div className="w-full h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart margin={{ top: 20, right: 20, bottom: 30, left: 20 }}>
-                                <Pie
-                                  data={safeSelectedInsight.keywords}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  outerRadius={90}
-                                  fill="#8884d8"
-                                  dataKey="weight"
-                                  nameKey="name"
-                                  label={({ name }) => name}
-                                  isAnimationActive={false}
-                                >
-                                  {safeSelectedInsight.keywords.map((_: any, index: number) => (
-                                    <Cell 
-                                      key={`cell-${index}`} 
-                                      fill={[
-                                        'hsl(var(--primary) / 0.85)',
-                                        'hsl(215, 70%, 60%)',
-                                        'hsl(260, 60%, 65%)',
-                                        'hsl(330, 65%, 65%)'
-                                      ][index % 4]} 
-                                    />
-                                  ))}
-                                </Pie>
-                                <Tooltip formatter={(value: number, name: string) => [`${value}%`, name]} />
-                                <Legend verticalAlign="bottom" height={36} iconSize={12} />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                          <style jsx global>{`
-                            .recharts-default-legend {
-                              font-size: 12px;
-                              margin-top: 10px !important; 
-                            }
-                            .recharts-legend-item {
-                              margin-right: 15px !important;
-                            }
-                            .recharts-text {
-                              font-size: 11px;
-                            }
-                          `}</style>
-                        </CardContent>
-                      )}
-                    </Card>
-                  </div>
-                </div>
-                
-                {/* 구분선 */}
-                <div className="border-t border-gray-200 dark:border-gray-800 my-6"></div>
-                
-                {/* 고객 이야기 섹션 */}
-                <div>
-                  <div className="flex justify-between items-center mb-5">
-                    <div>
-                      <h3 className="text-xl font-bold">인사이트와 연관된 고객의 한마디</h3>
+
+          {/* 인사이트 상세 내용 */}
+          <div className="space-y-6">
+            {(currentYearData?.insights || []).map((insight: any, idx: number) => {
+              // 데이터 유효성 검사
+              if (!insight || typeof insight !== 'object') {
+                return null
+              }
+
+              const safeInsight = {
+                title: insight.title || `인사이트 ${idx + 1}`,
+                summary: insight.summary || '요약 정보가 없습니다.',
+                mentionCount: insight.mentionCount || 0,
+                quotes: Array.isArray(insight.quotes) ? insight.quotes : [],
+                keywords: Array.isArray(insight.keywords) ? insight.keywords : []
+              }
+
+              const topKeywords = safeInsight.keywords.slice(0, 8)
+              const activeQuoteIndex = activeQuoteIndices[idx] || 0
+
+              return (
+                <Card 
+                  key={idx} 
+                  ref={el => { if (el) insightRefs.current[idx] = el }}
+                  className={`transition-all duration-200 ${
+                    currentInsight === idx 
+                      ? 'shadow-md border-primary' 
+                      : 'shadow-sm border-gray-200 dark:border-gray-800'
+                  }`}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className={`
+                          w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg
+                          ${currentInsight === idx ? 'bg-primary' : 'bg-gray-400'}
+                        `}>
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-xl">{safeInsight.title}</CardTitle>
+                          <CardDescription className="mt-2">{safeInsight.summary}</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="secondary">
+                        {safeInsight.mentionCount}명 언급
+                      </Badge>
                     </div>
-                    
-                    {/* 필터 */}
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
-                            <span className="text-sm">고객 유형</span>
-                            <ChevronDown className="h-4 w-4 ml-2" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56">
-                          <DropdownMenuLabel>고객 유형 필터</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuCheckboxItem checked={true}>
-                            모든 고객
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem>
-                            학생
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem>
-                            직장인
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem>
-                            주부
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem>
-                            노년층
-                          </DropdownMenuCheckboxItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
-                            <span className="text-sm">정렬 기준</span>
-                            <ChevronDown className="h-4 w-4 ml-2" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56">
-                          <DropdownMenuLabel>정렬 기준</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuCheckboxItem checked={true}>
-                            최신순
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem>
-                            페르소나순
-                          </DropdownMenuCheckboxItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {safeSelectedInsight.quotes.map((quote, i) => {
-                      // 인용구 데이터 유효성 검사
-                      if (!quote || typeof quote !== 'object') {
-                        return null
-                      }
-                      
-                      const safeQuote = {
-                        text: quote.text || '인용구 내용이 없습니다.',
-                        persona: quote.persona || `고객 ${i + 1}`,
-                        interviewId: quote.interviewId
-                      }
-                      
-                      return (
-                        <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
-                          <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
-                            <div className="flex-grow">
-                              <p className="text-base">"{safeQuote.text}"</p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* 관련 키워드 섹션 */}
+                    {showRelatedKeywords && topKeywords.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-600 mb-3">관련 키워드</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {topKeywords.map((keyword: InsightKeyword, kidx: number) => (
+                            <Badge 
+                              key={kidx} 
+                              variant="outline"
+                              className="px-3 py-1"
+                              style={{
+                                backgroundColor: `${COLORS[kidx % COLORS.length]}10`,
+                                borderColor: `${COLORS[kidx % COLORS.length]}40`,
+                                color: COLORS[kidx % COLORS.length]
+                              }}
+                            >
+                              {keyword.name}
+                              <span className="ml-2 text-xs opacity-70">{keyword.weight}%</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 사용자 인용 섹션 */}
+                    {showDetailAnalysis && safeInsight.quotes.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-600 mb-3">사용자 인용</h4>
+                        <div className="relative bg-gray-50 rounded-lg p-6 border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
+                          <div className="absolute top-4 left-4 text-6xl text-gray-300 leading-none">"</div>
+                          <div className="relative z-10 pl-8">
+                            <p className="text-gray-700 italic mb-3 dark:text-gray-300 leading-relaxed">
+                              {safeInsight.quotes[activeQuoteIndex]?.text || '인용구가 없습니다.'}
+                            </p>
+                            <p className="text-sm text-gray-500 font-medium">
+                              - {safeInsight.quotes[activeQuoteIndex]?.persona || '알 수 없음'}
+                            </p>
+                          </div>
+                          
+                          {/* 인용 네비게이션 */}
+                          {safeInsight.quotes.length > 1 && (
+                            <div className="flex justify-center mt-4 gap-1">
+                              {safeInsight.quotes.map((_: any, qidx: number) => (
+                                <button
+                                  key={qidx}
+                                  className={`w-2 h-2 rounded-full transition-all ${
+                                    qidx === activeQuoteIndex 
+                                      ? 'bg-primary w-6' 
+                                      : 'bg-gray-300 hover:bg-gray-400'
+                                  }`}
+                                  onClick={() => {
+                                    setActiveQuoteIndices(prev => {
+                                      const newIndices = [...prev]
+                                      newIndices[idx] = qidx
+                                      return newIndices
+                                    })
+                                  }}
+                                />
+                              ))}
                             </div>
-                            <div className="pt-2 border-t mt-auto">
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center">
-                                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
-                                    <User className="h-4 w-4 text-primary" />
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">{safeQuote.persona}</p>
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950"
-                                  onClick={() => handleViewInterview(safeQuote.interviewId)}
-                                >
-                                  <FileText className="h-3 w-3" />
-                                  <span>인터뷰 상세보기</span>
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            )
-          })()}
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
         </>
       ) : (
-        (() => {
-          // 인터뷰 데이터가 있는지 확인
-          const hasInterviews = selectedYears.some(year => 
-            processedInsightData[year]?.intervieweeCount && processedInsightData[year].intervieweeCount > 0
-          )
-          
-          if (!hasInterviews) {
-            // 인터뷰가 없는 경우
-            return (
-              <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
-                <div className="text-center text-muted-foreground">
-                  <p className="mb-4">이 프로젝트에 대한 인터뷰가 없습니다.</p>
-                  <p className="text-sm mb-4">인터뷰를 업로드하여 인사이트를 생성해보세요.</p>
-                </div>
-              </Card>
-            )
-          } else {
-            // 인터뷰는 있지만 인사이트가 없는 경우
-            return (
-              <Card className="py-16 shadow-sm border-gray-200 dark:border-gray-800">
-                <div className="text-center text-muted-foreground">
-                  <p className="mb-4">선택된 연도에 대한 인사이트 데이터가 없습니다.</p>
-                  <p className="text-sm mb-4">인터뷰 분석이 완료되면 인사이트가 생성됩니다.</p>
-                </div>
-              </Card>
-            )
-          }
-        })()
+        <Card className="shadow-sm border-gray-200 dark:border-gray-800">
+          <CardContent className="py-16 text-center">
+            <div className="text-gray-400 mb-4">
+              <BarChart3 className="w-16 h-16 mx-auto" />
+            </div>
+            <p className="text-lg font-medium text-gray-600 mb-2">
+              {selectedYears.some(year => processedInsightData[year]?.intervieweeCount > 0)
+                ? '인사이트 데이터가 없습니다'
+                : '선택한 연도에 인터뷰 데이터가 없습니다'}
+            </p>
+            <p className="text-sm text-gray-500">
+              {selectedYears.some(year => processedInsightData[year]?.intervieweeCount > 0)
+                ? '인터뷰 데이터를 분석하여 인사이트를 생성해주세요.'
+                : '다른 연도를 선택하거나 새로운 인터뷰를 추가해주세요.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 스티키 헤더 (Portal로 렌더링) */}
+      {isHeaderFixed && typeof document !== 'undefined' && createPortal(
+        <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b shadow-sm z-20 px-8 py-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">
+                {selectedYears.length === 1 
+                  ? `${selectedYears[0]}년 인사이트` 
+                  : '선택된 연도의 인사이트'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {currentYearData?.insights?.length || 0}개의 인사이트
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline">
+                인터뷰: {selectedYears.reduce((total, year) => total + (processedInsightData[year]?.intervieweeCount || 0), 0)}명
+              </Badge>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

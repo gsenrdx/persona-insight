@@ -20,6 +20,9 @@ interface ProjectLayoutProps {
   scriptSections?: any[]
   activeSection?: string | null
   onSectionClick?: (sectionName: string) => void
+  insightSections?: any[]
+  activeInsight?: number | null
+  onInsightClick?: (insightIndex: number) => void
 }
 
 export function ProjectLayout({ 
@@ -31,7 +34,10 @@ export function ProjectLayout({
   headerTitle,
   scriptSections,
   activeSection,
-  onSectionClick
+  onSectionClick,
+  insightSections,
+  activeInsight,
+  onInsightClick
 }: ProjectLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
@@ -85,6 +91,11 @@ export function ProjectLayout({
             activeSection={activeSection}
             onSectionClick={(sectionName) => {
               onSectionClick?.(sectionName)
+            }}
+            insightSections={insightSections}
+            activeInsight={activeInsight}
+            onInsightClick={(insightIndex) => {
+              onInsightClick?.(insightIndex)
             }}
           />
         </aside>
