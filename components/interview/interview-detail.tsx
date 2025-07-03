@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Interview } from '@/types/interview'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
 import { PresenceIndicatorCompact } from '@/components/ui/presence-indicator'
+import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
+import { useAuth } from '@/hooks/use-auth'
 
 interface InterviewDetailProps {
   interview: Interview
@@ -24,6 +26,11 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const { profile } = useAuth()
+  
+  // 수정 권한 확인
+  const canEdit = currentUserId && (interview.created_by === currentUserId || profile?.role === 'super_admin' || profile?.role === 'company_admin')
   
   // 컴포넌트 언마운트 시 목차 정리
   useEffect(() => {
@@ -91,27 +98,57 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
           </span>
         </div>
         
-        {/* 헤더 컨텐츠와 탭 네비게이션 */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            {/* 인터뷰 제목 */}
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">
-              {interview.title || '제목 없음'}
-            </h1>
-            
-            {/* 메타 정보 - 깔끔한 태그 스타일 */}
-            <div className="flex flex-wrap items-center gap-2">
-              {interview.interview_date && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-md">
-                  <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs text-gray-700 font-medium">
-                    {new Date(interview.interview_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                </div>
+        {/* 헤더 컨텐츠 */}
+        <div>
+          {/* 제목과 탭 네비게이션 - 같은 줄 */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {interview.title || '제목 없음'}
+              </h1>
+              {canEdit && (
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all"
+                  title="정보 수정"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
               )}
-              
+            </div>
+            
+            {/* 탭 네비게이션 - 우측 배치 */}
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => handleTabChange('insights')}
+                className={cn(
+                  "text-sm transition-all",
+                  activeTab === 'insights' 
+                    ? "text-gray-900 font-semibold" 
+                    : "text-gray-400 hover:text-gray-600 font-medium"
+                )}
+              >
+                인사이트
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={() => handleTabChange('script')}
+                className={cn(
+                  "text-sm transition-all",
+                  activeTab === 'script' 
+                    ? "text-gray-900 font-semibold" 
+                    : "text-gray-400 hover:text-gray-600 font-medium"
+                )}
+              >
+                대화 스크립트
+              </button>
+            </div>
+          </div>
+          
+          {/* 메타 정보와 실시간 시청자 정보 - 두 번째 줄 */}
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 인터뷰이 정보 */}
               {interview.interviewee_profile?.[0]?.demographics && (
                 <>
                   {interview.interviewee_profile[0].demographics.age_group && (
@@ -134,56 +171,21 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
                   )}
                 </>
               )}
-              
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-md">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-xs text-gray-600">
-                  등록: {new Date(interview.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-              
-              {presence && presence.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-green-600 font-medium">
-                    {presence.length}명 보는 중
-                  </span>
-                  <PresenceIndicatorCompact 
-                    viewers={presence}
-                    currentUserId={currentUserId}
-                  />
-                </div>
-              )}
             </div>
-          </div>
-          
-          {/* 탭 네비게이션 - 우측 배치 */}
-          <div className="flex items-center gap-6 ml-8">
-            <button
-              onClick={() => handleTabChange('insights')}
-              className={cn(
-                "text-sm transition-all",
-                activeTab === 'insights' 
-                  ? "text-gray-900 font-semibold" 
-                  : "text-gray-400 hover:text-gray-600 font-medium"
-              )}
-            >
-              인사이트
-            </button>
-            <span className="text-gray-300">|</span>
-            <button
-              onClick={() => handleTabChange('script')}
-              className={cn(
-                "text-sm transition-all",
-                activeTab === 'script' 
-                  ? "text-gray-900 font-semibold" 
-                  : "text-gray-400 hover:text-gray-600 font-medium"
-              )}
-            >
-              대화 스크립트
-            </button>
+            
+            {/* 실시간 시청자 정보 - 가장 우측 */}
+            {presence && presence.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs text-green-600 font-medium">
+                  {presence.length}명 보는 중
+                </span>
+                <PresenceIndicatorCompact 
+                  viewers={presence}
+                  currentUserId={currentUserId}
+                />
+              </div>
+            )}
           </div>
         </div>
         
@@ -209,6 +211,17 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
           />
         )}
       </div>
+      
+      {/* 메타데이터 수정 모달 */}
+      <EditInterviewMetadataModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        interview={interview}
+        onUpdate={() => {
+          setShowEditModal(false)
+          // 실시간 업데이트로 인해 자동으로 반영됨
+        }}
+      />
     </div>
   )
 }

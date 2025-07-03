@@ -30,6 +30,7 @@ import { FileText, Search, Loader2, Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "react-intersection-observer"
 import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
+import { EditInterviewMetadataModal } from "@/components/modal/edit-interview-metadata-modal"
 
 interface InterviewDataTableInfiniteProps {
   interviews: Interview[]
@@ -70,6 +71,7 @@ export function InterviewDataTableInfinite({
   const [visibleRows, setVisibleRows] = React.useState(ITEMS_PER_PAGE)
   const [showMyInterviewsOnly, setShowMyInterviewsOnly] = React.useState(false)
   const hasActiveFilters = columnFilters.length > 0 || showMyInterviewsOnly || globalFilter
+  const [editingInterview, setEditingInterview] = React.useState<Interview | null>(null)
   
   // 페르소나 정의 목록 가져오기
   const { data: personaDefinitions } = usePersonaDefinitions()
@@ -141,7 +143,8 @@ export function InterviewDataTableInfinite({
       } : undefined,
       projectId,
       personaDefinitions,
-      creators
+      creators,
+      (interview: Interview) => setEditingInterview(interview)
     ),
     [onView, onDelete, currentUserId, onRetry, isAdmin, onAssignPersona, projectId, interviews, personaDefinitions, creators]
   )
@@ -541,6 +544,20 @@ export function InterviewDataTableInfinite({
           </tbody>
         </table>
       </div>
+      
+      {/* 메타데이터 수정 모달 */}
+      {editingInterview && (
+        <EditInterviewMetadataModal
+          open={!!editingInterview}
+          onOpenChange={(open) => !open && setEditingInterview(null)}
+          interview={editingInterview}
+          onUpdate={(updatedData) => {
+            // 인터뷰 목록 새로고침을 위해 상위 컴포넌트에서 처리해야 함
+            setEditingInterview(null)
+            // TODO: 목록 새로고침 로직은 상위 컴포넌트에서 처리
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -65,7 +65,8 @@ export const createInterviewColumns = (
   onAssignPersona?: (interviewId: string) => void,
   projectId?: string,
   personaDefinitions?: any[],
-  creators?: { id: string; name: string }[]
+  creators?: { id: string; name: string }[],
+  onEditMetadata?: (interview: Interview) => void
 ): ColumnDef<Interview>[] => [
   {
     id: "select",
@@ -599,6 +600,11 @@ export const createInterviewColumns = (
             <DropdownMenuItem onClick={() => onView(interview.id)}>
               상세보기
             </DropdownMenuItem>
+            {onEditMetadata && currentUserId && (interview.created_by === currentUserId || isAdmin) && (
+              <DropdownMenuItem onClick={() => onEditMetadata(interview)}>
+                정보 수정
+              </DropdownMenuItem>
+            )}
             {onDelete && currentUserId && (interview.created_by === currentUserId || isAdmin) && (
               <DropdownMenuItem 
                 onClick={() => onDelete(interview.id)}
