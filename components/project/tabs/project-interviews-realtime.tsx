@@ -141,7 +141,7 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
   }, [])
 
   // 인터뷰 추가 처리
-  const handleFilesSubmit = async (content: string | File, targetProjectId?: string, title?: string) => {
+  const handleFilesSubmit = async (content: string | File, targetProjectId?: string, title?: string, lastModified?: number) => {
     if (!session?.access_token) return
     
     try {
@@ -153,6 +153,9 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
         formData.append('file', content)
         formData.append('projectId', targetProjectId || project.id)
         formData.append('title', title || '제목 없음')
+        if (lastModified) {
+          formData.append('lastModified', lastModified.toString())
+        }
         
         response = await fetch('/api/workflow/async', {
           method: 'POST',

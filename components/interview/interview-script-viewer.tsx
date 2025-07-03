@@ -460,7 +460,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
                     const uniqueKey = `${scriptId}-${index}`
                     const memo = memosByScriptId[scriptId]
                     const prevItem = index > 0 ? filteredScript[index - 1] : null
-                    const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker
                     
                     // item.id 배열의 첫 번째 라인 번호로 섹션 찾기
                     const firstLineNumber = item.id[0];
@@ -474,6 +473,9 @@ export default function InterviewScriptViewer({ script, interview, className, on
                     if (currentSection) {
                       lastSectionName = currentSection.sector_name;
                     }
+                    
+                    // 섹션이 바뀌면 연속된 화자여도 새로 표시
+                    const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker && !isNewSection
                     
                     return (
                       <div key={uniqueKey}>

@@ -99,28 +99,62 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
               {interview.title || '제목 없음'}
             </h1>
             
-            {/* 메타 정보 */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{new Date(interview.created_at).toLocaleDateString('ko-KR')}</span>
+            {/* 메타 정보 - 깔끔한 태그 스타일 */}
+            <div className="flex flex-wrap items-center gap-2">
+              {interview.interview_date && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-md">
+                  <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-xs text-gray-700 font-medium">
+                    {new Date(interview.interview_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              
               {interview.interviewee_profile?.[0]?.demographics && (
                 <>
-                  <span>·</span>
-                  <span>{interview.interviewee_profile[0].demographics.age_group}</span>
-                  <span>·</span>
-                  <span>{interview.interviewee_profile[0].demographics.gender}</span>
+                  {interview.interviewee_profile[0].demographics.age_group && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-md">
+                      <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="text-xs text-blue-700 font-medium">
+                        {interview.interviewee_profile[0].demographics.age_group}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {interview.interviewee_profile[0].demographics.gender && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-md">
+                      <span className="text-xs text-purple-700 font-medium">
+                        {interview.interviewee_profile[0].demographics.gender}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
+              
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-md">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xs text-gray-600">
+                  등록: {new Date(interview.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              
               {presence && presence.length > 0 && (
-                <>
-                  <span>·</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs">현재 보는 중:</span>
-                    <PresenceIndicatorCompact 
-                      viewers={presence}
-                      currentUserId={currentUserId}
-                    />
-                  </div>
-                </>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-xs text-green-600 font-medium">
+                    {presence.length}명 보는 중
+                  </span>
+                  <PresenceIndicatorCompact 
+                    viewers={presence}
+                    currentUserId={currentUserId}
+                  />
+                </div>
               )}
             </div>
           </div>

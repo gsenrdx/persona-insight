@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   let projectId: string;
   let title: string;
   let fileName: string | undefined;
+  let lastModified: number | undefined;
 
   // multipart/form-data 처리 (파일 업로드)
   if (contentType.includes('multipart/form-data')) {
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest) {
     projectId = formData.get('projectId') as string;
     title = formData.get('title') as string;
     fileName = file?.name;
+    const lastModifiedStr = formData.get('lastModified') as string;
+    if (lastModifiedStr) {
+      lastModified = parseInt(lastModifiedStr, 10);
+    }
 
     if (!file) {
       return new Response('파일이 제공되지 않았습니다.', { status: 400 });
@@ -102,9 +107,11 @@ export async function POST(req: NextRequest) {
         created_by: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        interview_date: lastModified ? new Date(lastModified).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         metadata: {
           processing_started_at: new Date().toISOString(),
-          file_name: fileName
+          file_name: fileName,
+          file_last_modified: lastModified ? new Date(lastModified).toISOString() : undefined
         }
       }])
       .select('id, status')

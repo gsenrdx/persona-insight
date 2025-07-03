@@ -98,7 +98,7 @@ export interface PersonaSwitcherProps extends BaseComponentProps {
 export interface AddInterviewModalProps extends BaseModalProps {
   onClose?: () => void
   onComplete?: () => void
-  onFilesSubmit?: (content: string | File, projectId?: string, title?: string) => void | Promise<void>
+  onFilesSubmit?: (content: string | File, projectId?: string, title?: string, lastModified?: number) => void | Promise<void>
   projectId?: string
 }
 

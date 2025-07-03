@@ -1,0 +1,274 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Commands
+
+```bash
+# Development
+pnpm dev              # Start development server on localhost:3000
+pnpm build            # Production build  
+pnpm start            # Start production server
+pnpm lint             # Run Next.js linter
+
+# Testing (Vitest configured)
+pnpm test             # Run tests
+pnpm test:ui          # Run tests with UI
+pnpm test:coverage    # Run tests with coverage report
+
+# Package management (uses pnpm exclusively)
+pnpm install          # Install dependencies
+pnpm add <package>    # Add new dependency
+```
+
+## Architecture Overview
+
+This is a **customer persona management and analysis platform** built with Next.js 15, integrating AI-powered interview analysis and persona generation.
+
+### Core Business Domains
+- **Interview Analysis**: Audio/text file upload with AI-powered analysis via MISO API
+- **Persona Generation**: AI synthesis of user personas from interview data  
+- **Interactive Chat**: Real-time conversations with generated personas
+- **Project Management**: Team collaboration with role-based permissions
+- **Insights Dashboard**: Temporal trend analysis and data visualization
+- **Real-time Collaboration**: Live presence tracking and synchronized updates
+
+### Database Schema (Supabase)
+Multi-tenant architecture with hierarchical relationships:
+- `companies` → `profiles` (role-based access control)
+- `projects` → `project_members` (team collaboration with owner/admin/member roles)
+- `interviewees` (raw interview data with JSON structure)
+- `interview_notes` → `interview_note_replies` (collaborative annotations)
+- `personas` (generated personas with pain points, needs, insights)
+- `main_topics` (extracted topics per company)
+- `persona_topic_documents` (MISO knowledge base integration)
+
+Role hierarchy: `super_admin` > `company_admin` > `company_user`
+Project roles: `owner` > `admin` > `member`
+
+### API Architecture
+- `/api/workflow/` - Main interview analysis pipeline (MISO API integration)
+- `/api/chat/` - Persona conversation streaming with summary/mindmap generation
+- `/api/personas/synthesis/` - AI persona generation and MISO knowledge sync
+- `/api/insights/` - Temporal trend analysis and data visualization
+- `/api/projects/` - Project and member management
+  - `/api/projects/[id]/join/` - Join public projects
+  - `/api/projects/[id]/members/[memberId]/` - Update member roles
+- `/api/interviews/[id]/notes/` - Collaborative interview annotations
+- `/api/knowledge/` - MISO knowledge base management
+
+External integrations:
+- **MISO API** (`api.holdings.miso.gs`) - Primary AI workflow engine and knowledge base
+- **OpenAI** - Secondary AI features (insights, mindmaps)
+
+### Real-time Architecture (Supabase Realtime)
+Comprehensive real-time synchronization system:
+- **Interview Collaboration** - Live updates for notes and replies
+- **Presence Tracking** - See who's viewing interviews in real-time
+- **Broadcast Events** - Custom event propagation across clients
+- **Connection Management** - Auto-reconnect with exponential backoff
+- **Health Monitoring** - 30-second heartbeat checks
+- **JWT Refresh** - Automatic token renewal every 30 minutes
+
+Key real-time hooks:
+- `useInterviewRealtime()` - Main context provider
+- `useInterviewNotes()` - Real-time notes for specific interview
+- `useInterviewPresence()` - Track active viewers
+- `useAllPresence()` - Global presence information
+
+### Lib Directory Structure
+```
+lib/
+├── services/miso/     # MISO API integration
+│   ├── parser.ts      # Interview detail parsing logic
+│   ├── api.ts         # MISO API calls (documents, segments)
+│   ├── workflow.ts    # Topic synchronization workflows
+│   └── index.ts       # Unified exports
+├── config/            # Configuration management
+│   ├── upload.ts      # File upload settings
+│   ├── workflow.ts    # Processing and pagination config
+│   ├── ui.ts          # Chat, cache, and UI settings
+│   ├── api.ts         # API, security, and environment config
+│   └── defaults.ts    # Persona types and extraction criteria
+├── api/               # HTTP client wrappers
+├── utils/             # Pure utility functions
+│   └── auth-cache.ts  # Authentication caching layer
+├── constants/         # App-wide constants with legacy compatibility
+├── errors/            # Structured error handling
+└── realtime/          # Real-time collaboration infrastructure
+    └── interview-realtime-provider.tsx
+```
+
+**File Size Guidelines**: Services <150 lines, Components <100 lines, Utils <50 lines
+
+### State Management Architecture
+- **TanStack Query** - Server state, caching, and synchronization
+- **Custom Hooks** - Business logic encapsulation
+  - `use-standard-query` - Unified query pattern with error handling
+  - `use-auth` - Authentication with caching
+  - `use-workflow-queue` - File processing queue
+  - `use-projects` - Project management
+- **Context API** - Global auth and real-time state
+- **localStorage** - Workflow queue persistence and draft management
+
+### AI Workflow System
+File processing pipeline: Upload → MISO Analysis → Storage → Persona Synthesis → Knowledge Base Sync
+
+Processing states: `PENDING` → `PROCESSING` → `COMPLETED`/`FAILED`
+- Concurrent processing (max 5 files via `WORKFLOW_CONFIG.MAX_CONCURRENT_JOBS`)
+- Queue-based management with retry capability (3 attempts)
+- Real-time progress feedback via streaming responses
+- Topic-based document organization in MISO knowledge base
+
+### Authentication & Multi-tenancy
+Supabase Auth with JWT tokens and caching:
+1. Login → JWT acquisition and profile loading
+2. In-memory auth cache (5-minute TTL, 1000 entry limit)
+3. Company-level data isolation (all queries filtered by `company_id`)
+4. Role-based UI/feature restrictions throughout app
+5. Bearer token attachment for all API requests
+
+### Project Management Features
+Enhanced project system with flexible access control:
+- **Visibility**: `public` | `private`
+- **Join Methods**: `open` | `invite_only` | `password`
+- **Member Roles**: `owner` | `admin` | `member`
+- **Metadata**: purpose, target audience, research method, date ranges
+
+### Component Organization
+- `components/auth/` - Authentication UI and guards
+- `components/persona/` - Persona cards, switcher, floating actions
+- `components/project/` - Project management, member handling, interview lists
+  - `components/project/components/join-project-dialog.tsx` - Join flow UI
+- `components/chat/` - Real-time conversation interface with mention system
+- `components/modal/` - Workflow progress, persona criteria, file upload
+- `components/shared/` - Navigation, theme, mobile support
+- `components/ui/` - shadcn/ui design system (52 pre-configured components)
+
+## Important Technical Details
+
+### Package Manager
+This project uses **pnpm** exclusively. Never use `npm` or `yarn` commands.
+
+### Environment Configuration
+Required environment variables:
+```bash
+# MISO API (primary AI integration)
+MISO_API_URL=https://api.holdings.miso.gs
+MISO_API_KEY=<workflow-processing-key>
+MISO_AGENT_API_KEY=<chat-conversations-key>
+MISO_KNOWLEDGE_API_KEY=<knowledge-base-management-key>
+MISO_API_OWNER_ID=<miso-api-owner-user-id>
+
+# Supabase (database & auth)
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-key>
+
+# OpenAI (secondary AI features)
+OPENAI_API_KEY=<your-openai-key>
+```
+
+### Key Technical Patterns
+- **Multi-tenant Architecture**: All data access filtered by company context
+- **Streaming Responses**: Real-time AI chat and file processing feedback
+- **Queue-based Processing**: Async file workflow with localStorage persistence
+- **Permission-based Routing**: Dynamic access control based on user roles
+- **Type Safety**: Comprehensive TypeScript with Supabase-generated types
+- **Error Boundaries**: Structured error handling with user-friendly messages
+- **Standard Query Pattern**: Unified API calls with retry and error handling
+- **Auth Caching**: Reduces profile lookups by ~80%
+
+### Performance Optimizations
+- **Authentication Cache**: In-memory LRU cache for user profiles
+- **Real-time Memoization**: Optimized transform functions
+- **Connection Pooling**: Reused Supabase channels
+- **Batch Fetching**: Combined queries in real-time subscriptions
+- **Graceful Cleanup**: 5-second delay for tab switching
+
+### Error Handling Strategy
+Centralized error utilities with categorized handling:
+- Network errors → Retry with exponential backoff
+- Auth errors → Redirect to login
+- Server errors → User-friendly toast messages
+- Validation errors → Inline field messages
+
+### Key Dependencies
+- **Next.js 15** with App Router
+- **shadcn/ui** + **Radix UI** for consistent design system
+- **TanStack Query** for server state management
+- **Framer Motion** for animations
+- **Zod** for runtime type validation
+- **Supabase** for database, auth, and real-time subscriptions
+- **Vitest** for testing framework
+
+## Performance Considerations
+
+### Known Performance Issues
+The codebase has several identified performance bottlenecks documented in `/docs/PERFORMANCE_ANALYSIS.md`:
+
+**Critical Issues**:
+- **N+1 Database Queries**: `app/api/workflow/route.ts:255-278` processes topics individually (2.5s → 0.1s potential)
+- **Memory Leaks**: `hooks/use-workflow-queue.ts` stores large files in localStorage without cleanup
+- **Component Re-renders**: `components/chat/chat-interface.tsx` lacks proper memoization
+
+**Bundle Size**: 
+- Current `node_modules`: **519MB** (target: 280MB)
+- 26 Radix UI components installed (15 actually used)
+- Development dependencies included in production builds
+
+**Quick Fixes Available**:
+```bash
+# Immediate localStorage crash prevention
+const MAX_STORAGE_SIZE = 5 * 1024 * 1024; // 5MB limit
+
+# Remove unused dependencies
+pnpm uninstall @radix-ui/react-menubar @radix-ui/react-context-menu
+```
+
+### Performance Guidelines
+- Database queries must use batch operations, never loops
+- Components >100 lines need memoization analysis  
+- File processing >10MB requires chunking or Web Workers
+- localStorage usage must have size limits and cleanup
+- API routes need caching for authentication/profile lookups
+- Real-time subscriptions must clean up on unmount
+
+## Code Quality Standards
+
+### Linting and Formatting
+- **ESLint**: Configured with strict rules (`no-console`, `no-debugger` as errors)
+- **Prettier**: Single quotes, semicolons required, 100 char line width
+- Run `pnpm lint` before committing code
+- The codebase recently underwent cleanup (removed all console.log statements)
+
+### TypeScript Configuration
+- Strict mode enabled with comprehensive type checking
+- Path aliases configured: `@/` for root imports
+- Supabase types auto-generated from database schema
+- Always maintain type safety - avoid `any` types
+
+## Database Migrations
+```bash
+# Generate TypeScript types from Supabase
+pnpm supabase gen types typescript --project-id <project-id> > types/supabase.ts
+```
+
+## Debugging Performance Issues
+1. Check for N+1 queries in API routes (especially `/api/workflow/route.ts`)
+2. Monitor localStorage usage in `use-workflow-queue` hook
+3. Profile component re-renders with React DevTools
+4. Use Chrome DevTools Network tab to identify slow API calls
+5. Check Supabase Realtime subscription health in console
+6. Monitor auth cache hit rates in development
+```
+
+## Best Practices
+
+- 항상 작업 전 코드베이스를 검토해야합니다.
+```

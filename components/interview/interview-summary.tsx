@@ -22,31 +22,31 @@ export default function InterviewSummary({ interview }: InterviewSummaryProps) {
   return (
     <div className="p-6 space-y-6">
       {/* 세션 정보 */}
-      {sessionInfo && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="w-5 h-5 text-gray-600" />
-              세션 정보
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">인터뷰 날짜</p>
-              <p className="text-base font-medium">
-                {sessionInfo.session_date ? 
-                  format(new Date(sessionInfo.session_date), 'yyyy년 M월 d일', { locale: ko }) :
-                  '날짜 정보 없음'
-                }
-              </p>
-            </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Calendar className="w-5 h-5 text-gray-600" />
+            세션 정보
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <p className="text-sm text-gray-500">인터뷰 날짜</p>
+            <p className="text-base font-medium">
+              {interview.interview_date ? 
+                format(new Date(interview.interview_date), 'yyyy년 M월 d일', { locale: ko }) :
+                '날짜 정보 없음'
+              }
+            </p>
+          </div>
+          {sessionInfo && (
             <div>
               <p className="text-sm text-gray-500">인터뷰 주제</p>
               <p className="text-base font-medium">{sessionInfo.interview_topic || '주제 정보 없음'}</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* 인터뷰 대상자 프로필 */}
       {profile && (

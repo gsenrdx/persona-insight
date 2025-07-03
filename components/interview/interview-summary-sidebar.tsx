@@ -36,28 +36,30 @@ export default function InterviewSummarySidebar({ interview }: InterviewSummaryS
       <ScrollArea className="flex-1">
         <div className="px-6 pb-6 space-y-6">
           {/* 세션 정보 */}
-          {interview?.session_info?.[0] && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                세션 정보
-              </h4>
-              <div className="space-y-3">
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              세션 정보
+            </h4>
+            <div className="space-y-3">
+              {interview?.interview_date && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">인터뷰 날짜</p>
                   <p className="text-sm text-gray-900">
-                    {formatSafeDate(interview.session_info[0].session_date)}
+                    {formatSafeDate(interview.interview_date)}
                   </p>
                 </div>
+              )}
+              {interview?.session_info?.[0]?.interview_topic && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">인터뷰 주제</p>
                   <p className="text-sm text-gray-900">
-                    {interview.session_info[0].interview_topic || '주제 정보 없음'}
+                    {interview.session_info[0].interview_topic}
                   </p>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* AI 페르소나 매칭 */}
           {(interview?.ai_persona_match || interview?.ai_persona_definition) && (
