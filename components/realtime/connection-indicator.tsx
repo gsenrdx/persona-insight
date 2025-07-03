@@ -1,6 +1,6 @@
 'use client'
 
-import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
+import { useInterviewRealtime } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
 import { WifiIcon, WifiOffIcon } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'

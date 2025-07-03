@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
+import { useInterviewRealtime } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
 import { Wifi, WifiOff, AlertCircle, RotateCw, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'

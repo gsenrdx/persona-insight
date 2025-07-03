@@ -1,8 +1,8 @@
 'use client'
 
-import { InterviewRealtimeProvider } from './interview-realtime-provider'
+import { ImprovedRealtimeProvider } from './improved-realtime-provider'
 
 export function InterviewRealtimeWrapper({ children }: { children: React.ReactNode }) {
-  // Always provide the context, the provider itself will handle client-side only operations
-  return <InterviewRealtimeProvider>{children}</InterviewRealtimeProvider>
+  // Using the new improved realtime provider with modular architecture
+  return <ImprovedRealtimeProvider>{children}</ImprovedRealtimeProvider>
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
+import { useInterviewRealtime } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
 import { Interview, InterviewStatus } from '@/types/interview'
 import { useAuth } from '@/hooks/use-auth'

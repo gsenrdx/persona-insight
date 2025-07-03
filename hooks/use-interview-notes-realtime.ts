@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useInterviewRealtime } from '@/lib/realtime/interview-realtime-provider'
+import { useInterviewRealtime } from '@/lib/realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import type { InterviewNote, CreateNoteRequest, CreateReplyRequest } from '@/types/interview-notes'
