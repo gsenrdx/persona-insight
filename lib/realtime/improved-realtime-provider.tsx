@@ -7,6 +7,7 @@ import { PresenceManager } from './core/presence-manager'
 import { Interview } from '@/types/interview'
 import { InterviewNote } from '@/types/interview-notes'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase'
 
 interface RealtimeState {
   interviews: Interview[]
@@ -38,6 +39,9 @@ export function ImprovedRealtimeProvider({ children }: { children: React.ReactNo
     isLoading: false,
     error: null
   })
+  
+  // 토큰 갱신을 위한 ref
+  const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   // 매니저 인스턴스 refs
   const dataSyncRef = useRef<DataSyncManager | null>(null)
@@ -182,6 +186,9 @@ export function ImprovedRealtimeProvider({ children }: { children: React.ReactNo
       dataSyncRef.current = dataSync
       presenceRef.current = presence
       
+      // 토큰 갱신 시작
+      startTokenRefresh()
+      
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -211,6 +218,12 @@ export function ImprovedRealtimeProvider({ children }: { children: React.ReactNo
       channelRegistry.releaseChannel(profile.company_id, currentProjectRef.current)
       
       currentProjectRef.current = null
+      
+      // 토큰 갱신 정리
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current)
+        tokenRefreshIntervalRef.current = null
+      }
       
       setState({
         interviews: [],
@@ -247,10 +260,43 @@ export function ImprovedRealtimeProvider({ children }: { children: React.ReactNo
     await dataSyncRef.current.forceSync()
   }, [])
   
+  // 토큰 갱신 시작
+  const startTokenRefresh = useCallback(() => {
+    // 기존 interval 정리
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current)
+    }
+    
+    // 50분마다 토큰 갱신 (1시간 만료 전에 갱신)
+    tokenRefreshIntervalRef.current = setInterval(async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        
+        if (session) {
+          // 세션 갱신
+          const { data, error: refreshError } = await supabase.auth.refreshSession()
+          if (refreshError) throw refreshError
+          
+          // Realtime 연결에 새 토큰 적용
+          if (data.session) {
+            supabase.realtime.setAuth(data.session.access_token)
+          }
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+      }
+    }, 50 * 60 * 1000) // 50분
+  }, [])
+  
   // 컴포넌트 언마운트시 정리
   useEffect(() => {
     return () => {
       unsubscribe()
+      // 토큰 갱신 정리
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current)
+      }
     }
   }, [unsubscribe])
   
