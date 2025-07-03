@@ -10,7 +10,9 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { AppLayout } from "@/components/layout/app-layout"
 import { PersonaCriteriaModal } from '@/components/modal'
-import { Plus } from 'lucide-react'
+import { Plus, Sparkles, FolderOpen } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { fadeVariants } from '@/components/ui/page-transition'
 import { ProjectHeader } from '../sections/project-header'
 import { ProjectGrid } from '../sections/project-grid'
 import { ProjectSearchBar } from '../components/project-search-bar'
@@ -230,7 +232,12 @@ export function ProjectPageContent() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8">
+      <motion.div 
+        className="container mx-auto px-4 py-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
         <ProjectHeader
           projectCount={filteredProjects.length}
           onShowPersonaCriteria={() => setShowPersonaCriteriaModal(true)}
@@ -242,55 +249,100 @@ export function ProjectPageContent() {
           onChange={setSearchQuery}
         />
 
-        {/* 참여한 프로젝트 */}
-        {joinedProjects.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">내 프로젝트</h2>
-            <ProjectGrid
-              projects={joinedProjects}
-              searchQuery={searchQuery}
-              onEditProject={handleEditProject}
-              onInviteProject={setInviteProject}
-              onSelectProject={handleSelectProject}
-              onCreateProject={() => setShowCreateForm(true)}
-            />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {/* 참여한 프로젝트 */}
+          {joinedProjects.length > 0 && (
+            <motion.div 
+              key="joined-projects"
+              className="mb-10"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <div className="flex items-center gap-2 mb-6">
+                <div className="h-8 w-1 bg-blue-600 rounded-full" />
+                <h2 className="text-xl font-semibold text-gray-900">내 프로젝트</h2>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({joinedProjects.length})
+                </span>
+              </div>
+              <ProjectGrid
+                projects={joinedProjects}
+                searchQuery={searchQuery}
+                onEditProject={handleEditProject}
+                onInviteProject={setInviteProject}
+                onSelectProject={handleSelectProject}
+                onCreateProject={() => setShowCreateForm(true)}
+              />
+            </motion.div>
+          )}
 
-        {/* 참여하지 않은 공개 프로젝트 */}
-        {notJoinedProjects.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">참여 가능한 프로젝트</h2>
-            <ProjectGrid
-              projects={notJoinedProjects}
-              searchQuery={searchQuery}
-              onEditProject={handleEditProject}
-              onInviteProject={setInviteProject}
-              onSelectProject={handleSelectProject}
-              onCreateProject={() => setShowCreateForm(true)}
-              showJoinBadge={true}
-            />
-          </div>
-        )}
+          {/* 참여하지 않은 공개 프로젝트 */}
+          {notJoinedProjects.length > 0 && (
+            <motion.div
+              key="not-joined-projects"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <div className="flex items-center gap-2 mb-6">
+                <div className="h-8 w-1 bg-green-600 rounded-full" />
+                <h2 className="text-xl font-semibold text-gray-900">참여 가능한 프로젝트</h2>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({notJoinedProjects.length})
+                </span>
+              </div>
+              <ProjectGrid
+                projects={notJoinedProjects}
+                searchQuery={searchQuery}
+                onEditProject={handleEditProject}
+                onInviteProject={setInviteProject}
+                onSelectProject={handleSelectProject}
+                onCreateProject={() => setShowCreateForm(true)}
+                showJoinBadge={true}
+              />
+            </motion.div>
+          )}
 
-        {/* 검색 결과가 없을 때 */}
-        {filteredProjects.length === 0 && (
-          <div className="text-center py-20">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchQuery ? '검색 결과가 없습니다' : '프로젝트가 없습니다'}
-            </h3>
-            <p className="text-gray-500 mb-6">
-              {searchQuery ? '다른 검색어를 시도해보세요' : '첫 번째 프로젝트를 생성해보세요'}
-            </p>
-            {!searchQuery && (
-              <Button onClick={() => setShowCreateForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                새 프로젝트
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+          {/* 검색 결과가 없을 때 */}
+          {filteredProjects.length === 0 && (
+            <motion.div 
+              key="empty-state"
+              className="text-center py-20"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
+                {searchQuery ? (
+                  <FolderOpen className="w-10 h-10 text-gray-400" />
+                ) : (
+                  <Sparkles className="w-10 h-10 text-gray-400" />
+                )}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {searchQuery ? '검색 결과가 없습니다' : '프로젝트가 없습니다'}
+              </h3>
+              <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                {searchQuery ? '다른 검색어를 시도해보세요' : '프로젝트를 생성하고 팀원들과 함께 인터뷰를 분석해보세요'}
+              </p>
+              {!searchQuery && (
+                <Button 
+                  onClick={() => setShowCreateForm(true)}
+                  size="lg"
+                  className="shadow-sm"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  새 프로젝트 생성
+                </Button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* 프로젝트 생성 다이얼로그 */}
       {profile?.company_id && profile?.id && (

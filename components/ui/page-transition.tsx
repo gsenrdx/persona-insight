@@ -50,14 +50,15 @@ export const tableRowVariants = {
     opacity: 0,
     x: -20 
   },
-  animate: { 
+  animate: (i: number = 0) => ({ 
     opacity: 1,
     x: 0,
     transition: {
+      delay: i * 0.05,
       duration: 0.3,
       ease: "easeOut"
     }
-  },
+  }),
   hover: {
     x: 4,
     transition: {
@@ -69,6 +70,51 @@ export const tableRowVariants = {
     scale: 0.98,
     transition: {
       duration: 0.1
+    }
+  }
+}
+
+// Project card animation variants
+export const projectCardVariants = {
+  initial: { 
+    opacity: 0, 
+    y: 20,
+    scale: 0.95
+  },
+  animate: (i: number = 0) => ({ 
+    opacity: 1, 
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.08,
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1] // cubic-bezier easing
+    }
+  }),
+  hover: { 
+    y: -8,
+    scale: 1.02,
+    transition: { 
+      duration: 0.3,
+      ease: "easeOut"
+    }
+  },
+  tap: { 
+    scale: 0.98,
+    transition: { 
+      duration: 0.1 
+    }
+  }
+}
+
+// Stagger container variants
+export const staggerContainerVariants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1
     }
   }
 }

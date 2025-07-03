@@ -9,7 +9,10 @@ import { queryClient } from '@/lib/query-client'
 import { queryKeys } from '@/lib/query-keys'
 import { projectsApi as projectService, interviewsApi } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
-import { Users, Lock, Globe } from 'lucide-react'
+import { Users, Lock, Globe, MessageSquare, Crown, Shield, User } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { projectCardVariants } from '@/components/ui/page-transition'
+import { cn } from '@/lib/utils'
 
 interface ProjectCardProps {
   project: ProjectWithMembership
@@ -17,9 +20,10 @@ interface ProjectCardProps {
   onInvite: (project: ProjectWithMembership) => void
   onSelect: (project: ProjectWithMembership) => void
   showJoinBadge?: boolean
+  index?: number
 }
 
-export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge = false }: ProjectCardProps) {
+export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge = false, index = 0 }: ProjectCardProps) {
   const { profile } = useAuth()
 
   // 프로젝트 카드 hover 시 프리페칭
@@ -40,49 +44,123 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
     }
   }
 
+  const getRoleIcon = () => {
+    switch (project.user_role) {
+      case 'owner':
+        return <Crown className="w-3.5 h-3.5" />
+      case 'admin':
+        return <Shield className="w-3.5 h-3.5" />
+      default:
+        return <User className="w-3.5 h-3.5" />
+    }
+  }
+
+  const getRoleColor = () => {
+    switch (project.user_role) {
+      case 'owner':
+        return 'bg-amber-100 text-amber-700 border-amber-200'
+      case 'admin':
+        return 'bg-blue-100 text-blue-700 border-blue-200'
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200'
+    }
+  }
+
   return (
-    <Card
-      className={`bg-white transition-all cursor-pointer border ${
-        showJoinBadge 
-          ? 'border-gray-200 hover:border-primary/50 hover:shadow-sm' 
-          : 'border-gray-200 hover:shadow-sm'
-      }`}
-      onClick={() => onSelect(project)}
+    <motion.div
+      variants={projectCardVariants}
+      initial="initial"
+      animate="animate"
+      whileHover="hover"
+      whileTap="tap"
+      custom={index}
       onMouseEnter={handleMouseEnter}
     >
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
-          <div className="flex items-center gap-2">
-            {project.visibility === 'public' ? (
-              <Globe className="w-4 h-4 text-gray-400" />
+      <Card
+        className={cn(
+          "bg-white cursor-pointer border relative overflow-hidden group h-full",
+          "transition-all duration-300",
+          showJoinBadge 
+            ? 'border-blue-200 shadow-sm hover:shadow-lg' 
+            : 'border-gray-200 hover:shadow-lg hover:border-gray-300'
+        )}
+        onClick={() => onSelect(project)}
+      >
+        {/* Gradient overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-blue-100/0 group-hover:from-blue-50/40 group-hover:to-blue-100/40 transition-all duration-300 pointer-events-none" />
+        
+        <CardContent className="p-6 relative">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
+                {project.name}
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 ml-3">
+              <div className={cn(
+                "p-1.5 rounded-full transition-all",
+                project.visibility === 'public' 
+                  ? 'bg-green-100 text-green-600 group-hover:bg-green-200' 
+                  : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+              )}>
+                {project.visibility === 'public' ? (
+                  <Globe className="w-3.5 h-3.5" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Description */}
+          {project.description && (
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+              {project.description}
+            </p>
+          )}
+          
+          {/* Stats */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">
+                {project.interview_count || 0}
+              </span>
+              <span className="text-sm text-gray-500">인터뷰</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">
+                {project.member_count || 0}
+              </span>
+              <span className="text-sm text-gray-500">멤버</span>
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            {project.user_role ? (
+              <Badge variant="outline" className={cn(
+                "text-xs flex items-center gap-1.5 px-2.5 py-1",
+                getRoleColor()
+              )}>
+                {getRoleIcon()}
+                {project.user_role === 'owner' ? '소유자' : 
+                 project.user_role === 'admin' ? '관리자' : '멤버'}
+              </Badge>
             ) : (
-              <Lock className="w-4 h-4 text-gray-400" />
+              <div className="flex-1" />
             )}
+            
             {showJoinBadge && (
-              <Badge variant="secondary" className="text-xs">참여 가능</Badge>
+              <Badge className="text-xs bg-blue-600 hover:bg-blue-700 text-white">
+                참여 가능
+              </Badge>
             )}
           </div>
-        </div>
-        
-        {project.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
-        )}
-        
-        <div className="flex items-center gap-4 text-sm text-gray-500">
-          <span>{project.interview_count || 0} 인터뷰</span>
-          <span>{project.member_count || 0} 멤버</span>
-        </div>
-        
-        {project.user_role && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <Badge variant="outline" className="text-xs">
-              {project.user_role === 'owner' ? '소유자' : 
-               project.user_role === 'admin' ? '관리자' : '멤버'}
-            </Badge>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
