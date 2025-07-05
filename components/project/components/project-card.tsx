@@ -9,7 +9,7 @@ import { queryClient } from '@/lib/query-client'
 import { queryKeys } from '@/lib/query-keys'
 import { projectsApi as projectService, interviewsApi } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
-import { Users, Lock, Globe, MessageSquare, Crown, Shield, User } from 'lucide-react'
+import { Users, Lock, Globe, MessageSquare, Crown, Shield, User, ToggleLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { projectCardVariants } from '@/components/ui/page-transition'
 import { cn } from '@/lib/utils'
@@ -47,11 +47,11 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
   const getRoleIcon = () => {
     switch (project.user_role) {
       case 'owner':
-        return <Crown className="w-3.5 h-3.5" />
+        return <Crown className="w-3 h-3" />
       case 'admin':
-        return <Shield className="w-3.5 h-3.5" />
+        return <Shield className="w-3 h-3" />
       default:
-        return <User className="w-3.5 h-3.5" />
+        return <User className="w-3 h-3" />
     }
   }
 
@@ -65,6 +65,9 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
         return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
+
+  // 프로젝트 생성자인지 확인
+  const isOwner = project.created_by === profile?.id || project.user_role === 'owner'
 
   return (
     <motion.div
@@ -89,15 +92,21 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
         {/* Gradient overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-blue-100/0 group-hover:from-blue-50/40 group-hover:to-blue-100/40 transition-all duration-300 pointer-events-none" />
         
-        <CardContent className="p-6 relative">
+        <CardContent className="p-5 relative">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
+              <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
                 {project.name}
               </h3>
             </div>
             <div className="flex items-center gap-2 ml-3">
+              {/* 활성화 상태 표시 */}
+              {project.is_active === false && (
+                <div className="p-1.5 rounded-full bg-gray-100 text-gray-500" title="비활성화됨">
+                  <ToggleLeft className="w-3.5 h-3.5" />
+                </div>
+              )}
               <div className={cn(
                 "p-1.5 rounded-full transition-all",
                 project.visibility === 'public' 
@@ -115,38 +124,34 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
           
           {/* Description */}
           {project.description && (
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
               {project.description}
             </p>
           )}
           
           {/* Stats */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
-                {project.interview_count || 0}
-              </span>
-              <span className="text-sm text-gray-500">인터뷰</span>
+          <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+            <div className="flex items-center gap-1">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="font-medium text-gray-700">{project.interview_count || 0}</span>
+              <span>인터뷰</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">
-                {project.member_count || 0}
-              </span>
-              <span className="text-sm text-gray-500">멤버</span>
+            <div className="flex items-center gap-1">
+              <Users className="w-3.5 h-3.5" />
+              <span className="font-medium text-gray-700">{project.member_count || 0}</span>
+              <span>멤버</span>
             </div>
           </div>
           
           {/* Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            {project.user_role ? (
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+            {project.user_role || isOwner ? (
               <Badge variant="outline" className={cn(
-                "text-xs flex items-center gap-1.5 px-2.5 py-1",
-                getRoleColor()
+                "text-xs flex items-center gap-1 px-2 py-0.5",
+                isOwner && !project.user_role ? 'bg-amber-100 text-amber-700 border-amber-200' : getRoleColor()
               )}>
-                {getRoleIcon()}
-                {project.user_role === 'owner' ? '소유자' : 
+                {isOwner && !project.user_role ? <Crown className="w-3 h-3" /> : getRoleIcon()}
+                {isOwner ? '소유자' : 
                  project.user_role === 'admin' ? '관리자' : '멤버'}
               </Badge>
             ) : (

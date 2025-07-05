@@ -9,20 +9,17 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { InviteMemberDialog } from '../components/invite-member-dialog'
-import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown } from "lucide-react"
+import { MoreVertical } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Settings, 
@@ -35,8 +32,17 @@ import {
   Shield,
   Lock,
   Globe,
-  Calendar
+  Calendar,
+  AlertTriangle,
+  Target,
+  FileSearch,
+  Flag,
+  CalendarDays,
+  ToggleLeft,
+  ToggleRight,
+  Key
 } from "lucide-react"
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -56,6 +62,12 @@ interface Project {
   member_count?: number
   interview_count?: number
   password?: string
+  purpose?: string
+  target_audience?: string
+  research_method?: string
+  start_date?: string
+  end_date?: string
+  is_active?: boolean
 }
 
 interface ProjectMember {
@@ -84,6 +96,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
   const [loading, setLoading] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [changingMemberRole, setChangingMemberRole] = useState<string | null>(null)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   
@@ -92,7 +105,13 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     description: project.description || '',
     visibility: project.visibility,
     join_method: project.join_method,
-    password: ''
+    password: project.password || '',
+    purpose: project.purpose || '',
+    target_audience: project.target_audience || '',
+    research_method: project.research_method || '',
+    start_date: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : '',
+    end_date: project.end_date ? new Date(project.end_date).toISOString().split('T')[0] : '',
+    is_active: project.is_active ?? true
   })
 
   // 프로젝트 멤버 조회
@@ -109,8 +128,9 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
 
   // 현재 사용자의 역할 확인
   const currentUserMember = members.find(m => m.user_id === profile?.id)
-  const canEdit = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin'
-  const canDelete = currentUserMember?.role === 'owner'
+  const isProjectCreator = project.created_by === profile?.id
+  const canEdit = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin' || isProjectCreator
+  const canDelete = currentUserMember?.role === 'owner' || isProjectCreator
 
   const handleSave = async () => {
     if (!canEdit) return
@@ -126,7 +146,11 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(editData)
+        body: JSON.stringify({
+          ...editData,
+          start_date: editData.start_date ? new Date(editData.start_date).toISOString() : null,
+          end_date: editData.end_date ? new Date(editData.end_date).toISOString() : null
+        })
       })
 
       if (!response.ok) {
@@ -203,6 +227,7 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     } finally {
       setLoading(false)
       setDeleteDialogOpen(false)
+      setDeleteConfirmText('')
     }
   }
 
@@ -236,24 +261,24 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
     await queryClient.invalidateQueries({ queryKey: queryKeys.projects.member(project.id) })
   }
 
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (role: string, userId?: string) => {
     const roleConfig = {
-      owner: { label: '소유자', variant: 'default' as const },
-      admin: { label: '관리자', variant: 'secondary' as const },
-      member: { label: '멤버', variant: 'outline' as const }
+      owner: { label: '소유자', variant: 'default' as const, className: 'bg-amber-100 text-amber-700 border-amber-200' },
+      admin: { label: '관리자', variant: 'secondary' as const, className: 'bg-blue-100 text-blue-700 border-blue-200' },
+      member: { label: '멤버', variant: 'outline' as const, className: 'bg-gray-100 text-gray-700 border-gray-200' }
     }
-    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, variant: 'outline' as const }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, variant: 'outline' as const, className: '' }
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto px-6 lg:px-8 py-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-1">프로젝트 설정</h1>
-            <p className="text-sm text-muted-foreground">프로젝트 정보를 관리하고 멤버를 초대하세요</p>
+            <h1 className="text-2xl font-semibold text-gray-900">프로젝트 설정</h1>
+            <p className="text-sm text-gray-500 mt-1">프로젝트 정보를 관리하고 멤버를 초대하세요</p>
           </div>
           {canEdit && (
             <div className="flex items-center gap-2">
@@ -276,141 +301,292 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
             </div>
           )}
         </div>
-        <div className="h-px bg-gray-200 mt-6" />
       </div>
 
       <div className="space-y-6">
         {/* 일반 설정 */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">일반 설정</h2>
-            <p className="text-sm text-muted-foreground mt-1">프로젝트 기본 정보를 수정합니다</p>
+            <p className="text-sm text-gray-500 mt-1">프로젝트 기본 정보를 수정합니다</p>
           </div>
           <div className="p-6 space-y-6">
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-3">
-                <Label className="text-sm font-medium text-gray-700">프로젝트 이름</Label>
-                <p className="text-xs text-muted-foreground mt-1">프로젝트의 고유한 이름입니다</p>
-              </div>
-              <div className="col-span-9">
-                {editMode ? (
-                  <Input
-                    value={editData.name}
-                    onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="프로젝트 이름"
-                    className="max-w-md"
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900 py-2">{project.name}</p>
-                )}
-              </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">프로젝트 이름</Label>
+              {editMode ? (
+                <Input
+                  value={editData.name}
+                  onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="프로젝트 이름"
+                  className="mt-2"
+                />
+              ) : (
+                <p className="text-sm text-gray-900 mt-2">{project.name}</p>
+              )}
             </div>
 
-            <Separator />
-
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-3">
-                <Label className="text-sm font-medium text-gray-700">설명</Label>
-                <p className="text-xs text-muted-foreground mt-1">프로젝트에 대한 간단한 설명</p>
-              </div>
-              <div className="col-span-9">
-                {editMode ? (
-                  <Textarea
-                    value={editData.description}
-                    onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="프로젝트 설명"
-                    className="max-w-md min-h-[100px]"
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900 py-2">{project.description || '설명이 없습니다'}</p>
-                )}
-              </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">설명</Label>
+              {editMode ? (
+                <Textarea
+                  value={editData.description}
+                  onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="프로젝트 설명"
+                  className="mt-2 min-h-[100px]"
+                />
+              ) : (
+                <p className="text-sm text-gray-900 mt-2">{project.description || '설명이 없습니다'}</p>
+              )}
             </div>
 
-            <Separator />
-
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-3">
-                <Label className="text-sm font-medium text-gray-700">공개 설정</Label>
-                <p className="text-xs text-muted-foreground mt-1">프로젝트 공개 범위</p>
-              </div>
-              <div className="col-span-9">
-                {editMode ? (
-                  <div className="space-y-3 max-w-md">
-                    <Select 
-                      value={editData.visibility} 
-                      onValueChange={(value) => setEditData(prev => ({ ...prev, visibility: value as 'public' | 'private' }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4" />
-                            <span>공개</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="private">
-                          <div className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
-                            <span>비공개</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-muted-foreground">
-                      {editData.visibility === 'public' 
-                        ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
-                        : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
-                    </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">공개 설정</Label>
+              {editMode ? (
+                <div className="mt-2 space-y-3">
+                  <Select 
+                    value={editData.visibility} 
+                    onValueChange={(value) => setEditData(prev => ({ ...prev, visibility: value as 'public' | 'private' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          <span>공개</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="private">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          <span>비공개</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    {editData.visibility === 'public' 
+                      ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
+                      : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    {project.visibility === 'public' ? <Globe className="w-4 h-4 text-green-600" /> : <Lock className="w-4 h-4 text-gray-600" />}
+                    <span className="text-sm text-gray-900">{project.visibility === 'public' ? '공개' : '비공개'}</span>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      {project.visibility === 'public' ? <Globe className="w-4 h-4 text-green-600" /> : <Lock className="w-4 h-4 text-gray-600" />}
-                      <span className="text-sm font-medium text-gray-900">{project.visibility === 'public' ? '공개' : '비공개'}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {project.visibility === 'public' 
-                        ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
-                        : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {project.visibility === 'public' 
+                      ? '회사의 모든 멤버가 이 프로젝트를 찾고 볼 수 있습니다' 
+                      : '초대된 멤버만 이 프로젝트에 접근할 수 있습니다'}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <Separator />
+            <div>
+              <Label className="text-sm font-medium text-gray-700">참여 방식</Label>
+              {editMode ? (
+                <div className="mt-2 space-y-3">
+                  <Select 
+                    value={editData.join_method} 
+                    onValueChange={(value) => setEditData(prev => ({ ...prev, join_method: value as 'open' | 'invite_only' | 'password' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open">자유 참여</SelectItem>
+                      <SelectItem value="invite_only">초대 전용</SelectItem>
+                      <SelectItem value="password">비밀번호 필요</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {editData.join_method === 'password' && (
+                    <Input
+                      type="password"
+                      value={editData.password}
+                      onChange={(e) => setEditData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="참여 비밀번호 입력"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    {project.join_method === 'password' && <Key className="w-4 h-4 text-gray-600" />}
+                    <span className="text-sm text-gray-900">
+                      {project.join_method === 'open' ? '자유 참여' : 
+                       project.join_method === 'invite_only' ? '초대 전용' : '비밀번호 필요'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-3">
-                <Label className="text-sm font-medium text-gray-700">생성일</Label>
-              </div>
-              <div className="col-span-9">
-                <div className="flex items-center gap-2 py-2">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-gray-900">
-                    {new Date(project.created_at).toLocaleDateString('ko-KR')}
+            <div>
+              <Label className="text-sm font-medium text-gray-700">프로젝트 상태</Label>
+              {editMode ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                    className={cn(
+                      "gap-2",
+                      editData.is_active ? "text-green-600" : "text-gray-500"
+                    )}
+                  >
+                    {editData.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                    {editData.is_active ? '활성화' : '비활성화'}
+                  </Button>
+                  <span className="text-xs text-gray-500">
+                    {editData.is_active ? '프로젝트가 활성 상태입니다' : '프로젝트가 비활성 상태입니다'}
                   </span>
                 </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2">
+                  {project.is_active ? 
+                    <span className="flex items-center gap-2 text-sm text-green-600">
+                      <ToggleRight className="w-4 h-4" />
+                      활성화
+                    </span> : 
+                    <span className="flex items-center gap-2 text-sm text-gray-500">
+                      <ToggleLeft className="w-4 h-4" />
+                      비활성화
+                    </span>
+                  }
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium text-gray-700">생성일</Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-900">
+                  {new Date(project.created_at).toLocaleDateString('ko-KR')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 프로젝트 상세 정보 */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">프로젝트 상세 정보</h2>
+            <p className="text-sm text-gray-500 mt-1">프로젝트의 목적과 대상, 리서치 방법을 설정합니다</p>
+          </div>
+          <div className="p-6 space-y-6">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">프로젝트 목적</Label>
+              {editMode ? (
+                <Textarea
+                  value={editData.purpose}
+                  onChange={(e) => setEditData(prev => ({ ...prev, purpose: e.target.value }))}
+                  placeholder="프로젝트의 목적을 입력하세요"
+                  className="mt-2 min-h-[80px]"
+                />
+              ) : (
+                <p className="text-sm text-gray-900 mt-2">
+                  {project.purpose || '설정되지 않음'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium text-gray-700">타겟 고객</Label>
+              {editMode ? (
+                <Input
+                  value={editData.target_audience}
+                  onChange={(e) => setEditData(prev => ({ ...prev, target_audience: e.target.value }))}
+                  placeholder="예: 20-30대 직장인"
+                  className="mt-2"
+                />
+              ) : (
+                <p className="text-sm text-gray-900 mt-2">
+                  {project.target_audience || '설정되지 않음'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium text-gray-700">리서치 방법</Label>
+              {editMode ? (
+                <Input
+                  value={editData.research_method}
+                  onChange={(e) => setEditData(prev => ({ ...prev, research_method: e.target.value }))}
+                  placeholder="예: 인터뷰, 설문조사, 관찰 등"
+                  className="mt-2"
+                />
+              ) : (
+                <p className="text-sm text-gray-900 mt-2">
+                  {project.research_method || '설정되지 않음'}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">시작일</Label>
+                {editMode ? (
+                  <Input
+                    type="date"
+                    value={editData.start_date}
+                    onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+                    className="mt-2"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 mt-2">
+                    <CalendarDays className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-900">
+                      {project.start_date ? new Date(project.start_date).toLocaleDateString('ko-KR') : '설정되지 않음'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-700">종료일</Label>
+                {editMode ? (
+                  <Input
+                    type="date"
+                    value={editData.end_date}
+                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                    className="mt-2"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 mt-2">
+                    <CalendarDays className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-900">
+                      {project.end_date ? new Date(project.end_date).toLocaleDateString('ko-KR') : '설정되지 않음'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* 멤버 관리 */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">액세스 관리</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {loadingMembers ? '멤버를 로딩 중...' : `${members.length}명의 멤버`}
+                <h2 className="text-lg font-semibold text-gray-900">프로젝트 멤버</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {loadingMembers ? '멤버를 로딩 중...' : `${members.length}명이 참여 중`}
                 </p>
               </div>
               {canEdit && (
-                <Button variant="outline" onClick={() => setShowInviteDialog(true)}>
+                <Button 
+                  size="sm"
+                  onClick={() => setShowInviteDialog(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
                   <UserPlus className="w-4 h-4 mr-2" />
                   멤버 초대
                 </Button>
@@ -421,38 +597,48 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
             {loadingMembers ? (
               <div className="text-center py-8">
                 <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-2"></div>
-                <p className="text-sm text-muted-foreground">멤버를 로딩 중...</p>
+                <p className="text-sm text-gray-500">멤버를 로딩 중...</p>
+              </div>
+            ) : members.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-600 mb-1">아직 멤버가 없습니다</p>
+                <p className="text-xs text-gray-500">
+                  {project.visibility === 'public' 
+                    ? '공개 프로젝트에 참여한 멤버가 없습니다' 
+                    : '이 프로젝트에 협업할 멤버를 초대해보세요'}
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {/* 관리자 및 소유자 표시 */}
-                {members.filter(m => m.role === 'owner' || m.role === 'admin').map((member) => (
-                  <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={member.profile.avatar_url} />
-                        <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
-                          {member.profile.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-gray-900">{member.profile.name}</p>
-                          {member.role === 'owner' && <Crown className="w-3 h-3 text-amber-500" />}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {members.map((member) => (
+                  <div key={member.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={member.profile.avatar_url} />
+                          <AvatarFallback className="text-sm bg-blue-100 text-blue-700">
+                            {member.profile.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900 truncate">{member.profile.name}</p>
+                            {member.role === 'owner' && <Crown className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">{member.profile.email}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{member.profile.email}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getRoleBadge(member.role)}
                       {canEdit && member.role !== 'owner' && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={changingMemberRole === member.id}>
-                              <ChevronDown className="w-4 h-4" />
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>역할 변경</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={member.role} onValueChange={(value) => handleRoleChange(member.id, value as 'admin' | 'member')}>
                               <DropdownMenuRadioItem value="admin">
                                 <Shield className="w-4 h-4 mr-2" />
@@ -467,69 +653,14 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                         </DropdownMenu>
                       )}
                     </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      {getRoleBadge(member.role, member.user_id)}
+                      <p className="text-xs text-gray-500">
+                        {new Date(member.joined_at).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
                   </div>
                 ))}
-                
-                {/* 일반 멤버가 있는 경우 표시 */}
-                {members.filter(m => m.role === 'member').length > 0 && (
-                  <>
-                    <div className="py-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">개별 멤버</p>
-                    </div>
-                    {members.filter(m => m.role === 'member').map((member) => (
-                      <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={member.profile.avatar_url} />
-                            <AvatarFallback className="text-xs font-medium bg-gray-100 text-gray-600">
-                              {member.profile.name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{member.profile.name}</p>
-                            <p className="text-xs text-muted-foreground">{member.profile.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getRoleBadge(member.role)}
-                          {canEdit && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={changingMemberRole === member.id}>
-                                  <ChevronDown className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuRadioGroup value={member.role} onValueChange={(value) => handleRoleChange(member.id, value as 'admin' | 'member')}>
-                                  <DropdownMenuRadioItem value="admin">
-                                    <Shield className="w-4 h-4 mr-2" />
-                                    관리자
-                                  </DropdownMenuRadioItem>
-                                  <DropdownMenuRadioItem value="member">
-                                    <Users className="w-4 h-4 mr-2" />
-                                    멤버
-                                  </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                
-                {members.length === 0 && (
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-muted-foreground mb-1">아직 멤버가 없습니다</p>
-                    <p className="text-xs text-muted-foreground/80">
-                      {project.visibility === 'public' 
-                        ? '공개 프로젝트에 참여한 멤버가 없습니다' 
-                        : '이 프로젝트에 협업할 멤버를 초대해보세요'}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -537,18 +668,26 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
 
         {/* 위험 구역 */}
         {canDelete && (
-          <div className="bg-white rounded-lg border border-red-200">
+          <div className="bg-white rounded-lg border border-red-200 shadow-sm">
             <div className="p-6 border-b border-red-200">
-              <h2 className="text-lg font-semibold text-destructive">위험 구역</h2>
-              <p className="text-sm text-destructive/80 mt-1">되돌릴 수 없는 작업들</p>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">위험 구역</h2>
+                  <p className="text-sm text-red-600 mt-1">되돌릴 수 없는 작업들</p>
+                </div>
+              </div>
             </div>
             <div className="p-6">
-              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">프로젝트 삭제</h3>
-                <p className="text-sm text-muted-foreground mb-3">
+                <p className="text-sm text-gray-600 mb-4">
                   프로젝트를 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
                 </p>
-                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+                  setDeleteDialogOpen(open)
+                  if (!open) setDeleteConfirmText('')
+                }}>
                   <DialogTrigger asChild>
                     <Button variant="destructive" size="sm">
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -562,12 +701,39 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
                         프로젝트와 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
                       </DialogDescription>
                     </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+                        <div className="text-sm text-red-800 font-medium">⚠️ 경고</div>
+                        <div className="text-sm text-red-700 mt-1">
+                          삭제되는 항목: 모든 인터뷰, 페르소나, 인사이트, 멤버 정보
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                          확인을 위해 프로젝트 이름 <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{project.name}</span>을 입력하세요:
+                        </Label>
+                        <Input
+                          id="delete-confirm"
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          placeholder="프로젝트 이름 입력"
+                          className="font-mono"
+                        />
+                      </div>
+                    </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                      <Button variant="outline" onClick={() => {
+                        setDeleteDialogOpen(false)
+                        setDeleteConfirmText('')
+                      }}>
                         취소
                       </Button>
-                      <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-                        {loading ? '삭제 중...' : '프로젝트 삭제'}
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleDelete} 
+                        disabled={loading || deleteConfirmText !== project.name}
+                      >
+                        {loading ? '삭제 중...' : '프로젝트 영구 삭제'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
