@@ -148,11 +148,17 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
   getPresenceForScript(scriptId: string): ScriptPresencePayload[] {
     const presences: ScriptPresencePayload[] = []
     
+    console.log('[ScriptHandler] Getting presence for script:', scriptId)
+    console.log('[ScriptHandler] Current presence state:', Array.from(this.state.presence.entries()))
+    console.log('[ScriptHandler] Current user ID:', this.currentUserId)
+    
     this.state.presence.forEach((presence, userId) => {
       if (userId !== this.currentUserId && presence.scriptId === scriptId) {
         presences.push(presence)
       }
     })
+    
+    console.log('[ScriptHandler] Found presences for script:', presences.length)
     
     return presences
   }

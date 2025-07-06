@@ -110,9 +110,15 @@ export class ManagedChannel {
       } : {}
     })
     
-    // Set up broadcast listener
+    // Set up broadcast listener with proper event binding
     channel.on('broadcast', { event: '*' }, (payload) => {
+      console.log('[Channel] Received broadcast:', payload.event, payload)
       this.handleBroadcast(payload)
+    })
+    
+    // Also listen to system events for debugging
+    channel.on('system', { event: '*' }, (payload) => {
+      console.log('[Channel] System event:', payload)
     })
     
     return channel
@@ -149,16 +155,19 @@ export class ManagedChannel {
     
     return new Promise((resolve, reject) => {
       channel.subscribe((status, error) => {
+        console.log('[Channel] Subscription status:', status, error)
         if (status === 'SUBSCRIBED') {
           this.state.isConnected = true
           this.state.isSubscribed = true
           this.state.isSubscribing = false
           this.reconnectAttempts = 0
+          console.log('[Channel] Successfully subscribed to:', this.config.name)
           resolve()
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           this.state.isConnected = false
           this.state.isSubscribing = false
           this.state.error = error || new Error('Channel subscription failed')
+          console.error('[Channel] Subscription error:', this.state.error)
           this.handleError(this.state.error)
           this.scheduleReconnect()
           reject(this.state.error)
@@ -166,6 +175,7 @@ export class ManagedChannel {
           this.state.isConnected = false
           this.state.isSubscribed = false
           this.state.isSubscribing = false
+          console.log('[Channel] Channel closed')
         }
       })
     })
@@ -197,24 +207,29 @@ export class ManagedChannel {
   async send<T>(message: BroadcastMessage<T>): Promise<void> {
     // Check both isConnected and isSubscribed states
     if (!this.state.isConnected && !this.state.isSubscribed) {
-      console.warn('Channel is not connected, skipping message:', message)
+      console.warn('[Channel] Not connected, skipping message:', message.type, this.state)
       return Promise.resolve()
     }
     
     const channel = await this.getChannel()
+    console.log('[Channel] Sending message:', message.type, message)
+    
     const result = await channel.send({
       type: 'broadcast',
       event: message.type,
       payload: message
     })
     
+    console.log('[Channel] Send result:', result, 'for message type:', message.type)
+    
     if (result !== 'ok') {
       // Handle timeout more gracefully - just warn instead of throwing error
       if (result === 'timed out') {
-        console.warn('Message send timed out, but continuing:', message.type)
+        console.warn('[Channel] Message send timed out, but continuing:', message.type)
         return Promise.resolve()
       }
       // For other errors, still throw
+      console.error('[Channel] Failed to send message:', result)
       throw new Error(`Failed to send message: ${result}`)
     }
   }
@@ -266,17 +281,23 @@ export class ManagedChannel {
   }
   
   private handleBroadcast(payload: any): void {
+    console.log('[Channel] Processing broadcast:', payload)
     const message = payload.payload as BroadcastMessage
     const handlers = this.handlers.get(message.type)
+    
+    console.log('[Channel] Found handlers for type', message.type, ':', handlers?.size || 0)
     
     if (handlers) {
       handlers.forEach(handler => {
         try {
           handler(message)
         } catch (error) {
+          console.error('[Channel] Error in handler:', error)
           this.handleError(error as Error)
         }
       })
+    } else {
+      console.warn('[Channel] No handlers registered for message type:', message.type)
     }
   }
   

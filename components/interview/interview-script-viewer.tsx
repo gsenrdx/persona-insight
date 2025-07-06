@@ -163,14 +163,33 @@ export default function InterviewScriptViewer({ script, interview, className, on
     return map
   }, [notes])
 
+  // 실시간 업데이트된 스크립트 생성
+  const realtimeScript = useMemo(() => {
+    // scripts Map에서 업데이트된 항목들을 가져와서 원본 script와 병합
+    return script.map(item => {
+      const scriptId = item.id.join('-')
+      const updatedScript = scripts.get(scriptId)
+      
+      if (updatedScript) {
+        // 실시간 업데이트된 내용이 있으면 적용
+        return {
+          ...item,
+          cleaned_sentence: updatedScript.cleaned_sentence
+        }
+      }
+      
+      return item
+    })
+  }, [script, scripts])
+  
   // 필터링된 스크립트
   const filteredScript = useMemo(() => {
-    if (!searchTerm) return script
+    if (!searchTerm) return realtimeScript
     
-    return script.filter(item =>
+    return realtimeScript.filter(item =>
       item.cleaned_sentence.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }, [script, searchTerm])
+  }, [realtimeScript, searchTerm])
 
   const handleAddMemo = async (scriptId: string) => {
     if (!memoInput.trim()) return
@@ -286,7 +305,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
     content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
     content += '='.repeat(50) + '\n\n'
     
-    script.forEach(item => {
+    realtimeScript.forEach(item => {
       const speaker = item.speaker === 'question' ? 'Q' : 'A'
       const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
       content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
@@ -559,7 +578,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
             isOpen={floatingPanelOpen}
             onClose={() => setFloatingPanelOpen(false)}
             interview={interview}
-            script={script}
+            script={realtimeScript}
             session={session}
           />
         </>

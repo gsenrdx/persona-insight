@@ -17,7 +17,7 @@ export function GlobalPresenceProvider({ children }: GlobalPresenceProviderProps
     enabled: true,
     trackLocation: true,
     trackActivityEnabled: true,
-    heartbeatInterval: 30000 // 30 seconds
+    heartbeatInterval: 5000 // 5 seconds for fast updates
   })
 
   return <>{children}</>

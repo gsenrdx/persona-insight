@@ -21,7 +21,7 @@ export function useUnifiedPresence({
   interviewId,
   includeCurrentUser = true,
   enableEditing = true,
-  heartbeatInterval = 20000
+  heartbeatInterval = 5000 // 5 seconds for ultra-fast updates
 }: UnifiedPresenceOptions = {}): UnifiedPresenceReturn {
   
   const { user, profile } = useAuth()
@@ -32,7 +32,7 @@ export function useUnifiedPresence({
     enabled: true,
     trackLocation: true,
     trackActivityEnabled: true,
-    heartbeatInterval: 30000
+    heartbeatInterval: 5000 // Fast global presence updates
   })
   
   const scriptPresence = useInterviewScriptBroadcast({

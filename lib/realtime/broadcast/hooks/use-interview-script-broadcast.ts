@@ -108,7 +108,7 @@ export function useInterviewScriptBroadcast({
             name: channelName,
             presence: true,
             ack: true,
-            selfBroadcast: false
+            selfBroadcast: true  // Enable self broadcast to ensure all clients receive updates
           })
           if (!isMounted) return
           
@@ -118,8 +118,11 @@ export function useInterviewScriptBroadcast({
           const unsubscribeScript = channel.on(
             InterviewBroadcastType.INTERVIEW_SCRIPT,
             (message) => {
+              console.log('[ScriptBroadcast] Received script message:', message)
               if (handlerRef.current) {
                 handler.handleMessage(message)
+              } else {
+                console.warn('[ScriptBroadcast] No handler available for script message')
               }
             }
           )
@@ -128,8 +131,11 @@ export function useInterviewScriptBroadcast({
           const unsubscribePresenceChannel = channel.on(
             InterviewBroadcastType.INTERVIEW_SCRIPT_PRESENCE,
             (message) => {
+              console.log('[ScriptBroadcast] Received presence message:', message)
               if (handlerRef.current) {
                 handler.handlePresenceMessage(message)
+              } else {
+                console.warn('[ScriptBroadcast] No handler available for presence message')
               }
             }
           )
@@ -148,8 +154,14 @@ export function useInterviewScriptBroadcast({
           const channelState = channel.getState()
           const internalState = channelState as any
           
+          console.log('[ScriptBroadcast] Channel state before subscribe:', channelState)
+          
           if (!internalState.isSubscribed && !internalState.isConnected && !internalState.isSubscribing) {
+            console.log('[ScriptBroadcast] Subscribing to channel:', channelName)
             await channel.subscribe()
+            console.log('[ScriptBroadcast] Subscription complete')
+          } else {
+            console.log('[ScriptBroadcast] Channel already subscribed/connected')
           }
           
           if (!isMounted) return
@@ -212,7 +224,7 @@ export function useInterviewScriptBroadcast({
             }
           }, 100)
           
-          // Set up presence heartbeat (every 20 seconds)
+          // Set up presence heartbeat (every 5 seconds for faster updates)
           presenceIntervalRef.current = setInterval(async () => {
             if (channelRef.current && handlerRef.current) {
               const channelState = channelRef.current.getState()
@@ -234,7 +246,7 @@ export function useInterviewScriptBroadcast({
                 }
               }
             }
-          }, 20000)
+          }, 5000) // 5초마다 heartbeat으로 빠른 업데이트
           
         } catch (err) {
           console.error('Failed to initialize script channel:', err)
@@ -355,10 +367,13 @@ export function useInterviewScriptBroadcast({
         updated,
         user.id
       )
+      console.log('[ScriptBroadcast] Sending script update:', message)
       if (!channelRef.current) {
+        console.error('[ScriptBroadcast] Channel not available')
         throw new Error('Channel not available')
       }
       await channelRef.current.send(message)
+      console.log('[ScriptBroadcast] Script update sent successfully')
       
       // Save to database (in background)
       fetch(`/api/interviews/${interviewId}/script`, {
@@ -411,8 +426,13 @@ export function useInterviewScriptBroadcast({
             fullPresence,
             user.id
           )
+          console.log('[ScriptBroadcast] Sending presence update:', message)
           if (channelRef.current) {
-            channelRef.current.send(message).catch(console.error)
+            channelRef.current.send(message)
+              .then(() => console.log('[ScriptBroadcast] Presence sent successfully'))
+              .catch((err) => console.error('[ScriptBroadcast] Failed to send presence:', err))
+          } else {
+            console.warn('[ScriptBroadcast] No channel available for presence update')
           }
         }
       }
@@ -423,8 +443,13 @@ export function useInterviewScriptBroadcast({
   
   // Get presence for specific script
   const getPresenceForScript = useCallback((scriptId: string): ScriptPresencePayload[] => {
-    if (!handlerRef.current) return []
-    return handlerRef.current.getPresenceForScript(scriptId)
+    if (!handlerRef.current) {
+      console.log('[ScriptBroadcast] No handler ref available for getPresenceForScript')
+      return []
+    }
+    const presences = handlerRef.current.getPresenceForScript(scriptId)
+    console.log('[ScriptBroadcast] getPresenceForScript result:', scriptId, presences)
+    return presences
   }, [])
   
   return {

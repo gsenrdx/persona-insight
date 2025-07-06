@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUserProfile } from '@/lib/utils/auth-cache'
 import { Database } from '@/types/database'
 import { z } from 'zod'
+import { channelManager } from '@/lib/realtime/broadcast/channels/channel-manager'
+import { MessageFactory } from '@/lib/realtime/broadcast/utils/message-factory'
+import { InterviewBroadcastType, getInterviewChannelName } from '@/lib/realtime/broadcast/types'
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,6 +101,51 @@ export async function PATCH(
         { error: 'Failed to update script', details: updateError.message },
         { status: 500 }
       )
+    }
+
+    // Broadcast the saved update to all connected clients
+    try {
+      const channelName = getInterviewChannelName(interviewId)
+      const channel = channelManager.getChannel({
+        name: channelName,
+        presence: true,
+        ack: false,
+        selfBroadcast: true
+      })
+      
+      // Create the script update message
+      const scriptUpdate = {
+        interview_id: interviewId,
+        script_id: scriptId,
+        cleaned_sentence: cleanedSentence,
+        speaker: updatedScript.find(item => 
+          (Array.isArray(item.id) ? item.id.join('-') : item.id) === scriptId
+        )?.speaker || 'question',
+        category: updatedScript.find(item => 
+          (Array.isArray(item.id) ? item.id.join('-') : item.id) === scriptId
+        )?.category,
+        last_edited_by: userId,
+        last_edited_at: new Date().toISOString(),
+        version: (updatedScript.find(item => 
+          (Array.isArray(item.id) ? item.id.join('-') : item.id) === scriptId
+        )?.version || 0) + 1
+      }
+      
+      const message = MessageFactory.updateAction(
+        InterviewBroadcastType.INTERVIEW_SCRIPT,
+        scriptUpdate,
+        userId
+      )
+      
+      // Send the broadcast message (fire and forget)
+      const channelState = channel.getState()
+      if (channelState.isConnected || channelState.isSubscribed) {
+        channel.send(message).catch(() => {
+          // Failed to broadcast script update, but continue
+        })
+      }
+    } catch (broadcastError) {
+      // Don't fail the API if broadcast fails, continue silently
     }
 
     return NextResponse.json({

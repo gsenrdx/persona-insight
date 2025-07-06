@@ -82,7 +82,7 @@ export function useGlobalPresence({
   enabled = true,
   trackLocation = true,
   trackActivityEnabled = true,
-  heartbeatInterval = 30000 // 30 seconds
+  heartbeatInterval = 10000 // 10 seconds for faster updates
 }: UseGlobalPresenceOptions = {}): UseGlobalPresenceReturn {
   const { user, profile } = useAuth()
   const pathname = usePathname()
