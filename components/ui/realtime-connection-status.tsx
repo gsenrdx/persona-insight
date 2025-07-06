@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useInterviewRealtime } from '@/lib/realtime'
+import { useRealtime } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
 import { Wifi, WifiOff, AlertCircle, RotateCw, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ interface RealtimeConnectionStatusProps {
 }
 
 export function RealtimeConnectionStatus({ className, projectId, onRefresh }: RealtimeConnectionStatusProps) {
-  const { isSubscribed, error, isLoading, subscribeToProject } = useInterviewRealtime()
+  const { isConnected: isSubscribed, error, isLoading, subscribeToProject } = useRealtime()
   
   const handleRefresh = useCallback(() => {
     if (isSubscribed) {

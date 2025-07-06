@@ -1,6 +1,6 @@
 'use client'
 
-import { InterviewRealtimeWrapper } from '@/lib/realtime/interview-realtime-wrapper'
+import { RealtimeWrapper } from '@/lib/realtime/broadcast-wrapper'
 import { ProjectDetailContent } from './project-detail-content'
 
 interface ProjectDetailWithRealtimeProps {
@@ -9,8 +9,8 @@ interface ProjectDetailWithRealtimeProps {
 
 export function ProjectDetailWithRealtime({ projectId }: ProjectDetailWithRealtimeProps) {
   return (
-    <InterviewRealtimeWrapper>
+    <RealtimeWrapper>
       <ProjectDetailContent projectId={projectId} />
-    </InterviewRealtimeWrapper>
+    </RealtimeWrapper>
   )
 }

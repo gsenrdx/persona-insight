@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Plus, RotateCw, Wifi, WifiOff, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
-import { useInterviewsRealtime, useInterviewDetailRealtime } from '@/hooks/use-interviews-realtime'
+import { useInterviewsRealtime, useInterviewDetailRealtime } from '@/hooks/use-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'
-import { useInterviewRealtime } from '@/lib/realtime'
+import { useRealtime } from '@/lib/realtime'
 import { useAssignPersonaDefinitionToInterview } from '@/hooks/use-interviews'
 import { Interview } from '@/types/interview'
 import { InterviewDataTableInfinite } from '@/components/interview/interview-data-table-infinite'
@@ -16,7 +16,7 @@ import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useAllPresence } from '@/lib/realtime'
+import { usePresence } from '@/lib/realtime'
 import { PresenceIndicator } from '@/components/ui/presence-indicator'
 import { RealtimeConnectionStatus } from '@/components/ui/realtime-connection-status'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -70,11 +70,11 @@ export default function ProjectInterviewsRealtime({ project, selectedInterviewId
     deleteInterview 
   } = useInterviewsRealtime(project.id, isProjectAdmin)
   
-  // subscribeToProject와 forceRefreshData 함수 가져오기
-  const { subscribeToProject, forceRefreshData } = useInterviewRealtime()
+  // subscribeToProject와 refresh 함수 가져오기
+  const { subscribeToProject, refresh: forceRefreshData } = useRealtime()
   
   // 전체 presence 정보 가져오기
-  const allPresence = useAllPresence()
+  const allPresence = {} // TODO: Implement global presence
   
   // Only track presence when actually viewing an interview
   const { 
