@@ -192,28 +192,31 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
           {/* 메타 정보와 실시간 시청자 정보 */}
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              {/* 인터뷰이 정보 */}
-              {interview.interviewee_profile?.[0]?.demographics && (
-                <>
-                  {interview.interviewee_profile[0].demographics.age_group && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-md">
-                      <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span className="text-xs text-blue-700 font-medium">
-                        {interview.interviewee_profile[0].demographics.age_group}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {interview.interviewee_profile[0].demographics.gender && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-md">
-                      <span className="text-xs text-purple-700 font-medium">
-                        {interview.interviewee_profile[0].demographics.gender}
-                      </span>
-                    </div>
-                  )}
-                </>
+              {/* 세션 정보 */}
+              {interview.interview_date && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-md">
+                  <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-xs text-gray-700 font-medium">
+                    {new Date(interview.interview_date).toLocaleDateString('ko-KR', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                </div>
+              )}
+              
+              {interview.session_info?.[0]?.interview_topic && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 rounded-md">
+                  <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  <span className="text-xs text-indigo-700 font-medium">
+                    {interview.session_info[0].interview_topic}
+                  </span>
+                </div>
               )}
             </div>
             

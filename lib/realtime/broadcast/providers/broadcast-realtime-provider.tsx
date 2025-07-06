@@ -313,6 +313,8 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
         .select(`
           *,
           created_by_profile:profiles!interviews_created_by_fkey(id, name),
+          ai_persona_definition:persona_definitions!interviews_ai_persona_match_fkey(id, name_ko, name_en, description, tags),
+          confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey(id, name_ko, name_en, description, tags),
           interview_notes(count)
         `)
         .eq('project_id', projectId)
