@@ -63,6 +63,8 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
   handlePresenceMessage(message: InterviewScriptPresenceBroadcastMessage): void {
     const { action, payload } = message
     
+    console.log('Handling presence message:', { action, payload })
+    
     if (action === BroadcastAction.PRESENCE) {
       // Update or add presence
       this.state.presence.set(payload.userId, payload)
@@ -82,6 +84,7 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
       }
     })
     
+    console.log('Current presence state:', Array.from(this.state.presence.entries()))
     this.notifyPresenceListeners()
   }
   
@@ -131,10 +134,11 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
     const updated: ScriptPresencePayload = {
       ...current,
       ...presence,
+      userId: presence.userId || this.currentUserId,
       lastActiveAt: new Date().toISOString()
     }
     
-    this.state.presence.set(this.currentUserId, updated)
+    this.state.presence.set(updated.userId, updated)
     this.notifyPresenceListeners()
   }
   
@@ -265,9 +269,9 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
   }
   
   /**
-   * Generate a random color for user cursor/selection
+   * Generate a consistent color for user based on their ID
    */
-  static generateUserColor(): string {
+  static generateUserColor(userId?: string): string {
     const colors = [
       '#FF6B6B', // Red
       '#4ECDC4', // Teal
@@ -277,7 +281,24 @@ export class InterviewScriptHandler extends BaseMessageHandler<ScriptItemPayload
       '#52C9B0', // Green
       '#F8B739', // Orange
       '#6C84E0', // Indigo
+      '#FF8A65', // Deep Orange
+      '#81C784', // Light Green
+      '#64B5F6', // Light Blue
+      '#FFB74D', // Orange
     ]
-    return colors[Math.floor(Math.random() * colors.length)]
+    
+    if (!userId) {
+      return colors[Math.floor(Math.random() * colors.length)]
+    }
+    
+    // Generate consistent color based on user ID hash
+    let hash = 0
+    for (let i = 0; i < userId.length; i++) {
+      const char = userId.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    
+    return colors[Math.abs(hash) % colors.length]
   }
 }

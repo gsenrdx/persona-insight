@@ -381,32 +381,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
                   <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
                   <p className="text-xs text-gray-500 mt-1">Interview Script</p>
                 </div>
-                {/* Realtime presence indicator */}
-                {isConnected && presence.size > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-400" />
-                    <div className="flex -space-x-2">
-                      {Array.from(presence.values())
-                        .filter(p => p.userId !== user?.id)
-                        .slice(0, 3)
-                        .map((p) => (
-                          <div
-                            key={p.userId}
-                            className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white"
-                            style={{ backgroundColor: p.color || '#6B7280' }}
-                            title={p.userName}
-                          >
-                            {p.userName?.[0]?.toUpperCase() || '?'}
-                          </div>
-                        ))}
-                      {presence.size > 4 && (
-                        <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
-                          +{presence.size - 4}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative max-w-sm">

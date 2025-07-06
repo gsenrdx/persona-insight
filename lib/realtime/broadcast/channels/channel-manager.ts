@@ -209,6 +209,12 @@ export class ManagedChannel {
     })
     
     if (result !== 'ok') {
+      // Handle timeout more gracefully - just warn instead of throwing error
+      if (result === 'timed out') {
+        console.warn('Message send timed out, but continuing:', message.type)
+        return Promise.resolve()
+      }
+      // For other errors, still throw
       throw new Error(`Failed to send message: ${result}`)
     }
   }

@@ -41,7 +41,6 @@ export function ProjectLayout({
 }: ProjectLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
-  
   return (
     <AuthGuard>
       <div className="min-h-screen flex bg-white">

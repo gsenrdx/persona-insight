@@ -54,11 +54,14 @@ export interface ScriptPresencePayload {
   avatarUrl?: string
   scriptId?: string // which script item user is editing
   cursorPosition?: number
+  cursorCoords?: { x: number; y: number } // actual pixel coordinates
   selection?: {
     start: number
     end: number
   }
+  selectionCoords?: { x: number; y: number; width: number; height: number } // actual pixel coordinates
   color?: string // user color for cursor/selection
+  lastActiveAt?: string // for presence cleanup
 }
 
 // Typed broadcast messages
@@ -67,6 +70,14 @@ export type InterviewNoteBroadcastMessage = BroadcastMessage<InterviewNotePayloa
 export type InterviewNoteReplyBroadcastMessage = BroadcastMessage<InterviewNoteReplyPayload>
 export type InterviewScriptBroadcastMessage = BroadcastMessage<ScriptItemPayload>
 export type InterviewScriptPresenceBroadcastMessage = BroadcastMessage<ScriptPresencePayload>
+
+// Re-export global presence types for compatibility
+export type { 
+  GlobalPresenceData,
+  PresenceSummary,
+  ActivityType,
+  LocationType 
+} from './global-presence.types'
 
 // Channel names
 export const getProjectChannelName = (projectId: string) => `project:${projectId}`

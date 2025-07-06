@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils/index'
 import { ThemeProvider, MobileNotSupported } from '@/components/shared'
 import { AuthProvider } from '@/hooks/use-auth'
 import { QueryProvider } from '@/components/providers/query-provider'
+import { GlobalPresenceProvider } from '@/components/providers/global-presence-provider'
 import { Toaster } from 'sonner'
 
 const fontSans = FontSans({ 
@@ -39,8 +40,10 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              <MobileNotSupported />
-              {children}
+              <GlobalPresenceProvider>
+                <MobileNotSupported />
+                {children}
+              </GlobalPresenceProvider>
             </AuthProvider>
             <Toaster 
               position="top-right" 

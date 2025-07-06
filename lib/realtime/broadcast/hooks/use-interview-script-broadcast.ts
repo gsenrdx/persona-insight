@@ -58,9 +58,9 @@ export function useInterviewScriptBroadcast({
   const cleanupRef = useRef<(() => void)[]>([])
   const presenceIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Get or generate user color
+  // Get or generate consistent user color based on user ID
   const userColor = userColorCache.get(user?.id || '') || 
-    InterviewScriptHandler.generateUserColor()
+    InterviewScriptHandler.generateUserColor(user?.id)
   
   if (user?.id && !userColorCache.has(user.id)) {
     userColorCache.set(user.id, userColor)
@@ -154,6 +154,18 @@ export function useInterviewScriptBroadcast({
           
           if (!isMounted) return
           
+          // Add initial presence immediately
+          const initialPresence: ScriptPresencePayload = {
+            userId: user.id,
+            userName: profile?.name || user.email?.split('@')[0],
+            avatarUrl: profile?.avatar_url || undefined,
+            color: userColor,
+            lastActiveAt: new Date().toISOString()
+          }
+          
+          // Update local presence first
+          handler.updatePresence(initialPresence)
+          
           // Update connection state
           const updatedState = channel.getState()
           setIsConnected(updatedState.isConnected || updatedState.isSubscribed)
@@ -184,23 +196,17 @@ export function useInterviewScriptBroadcast({
             if (channelRef.current && isMounted) {
               const channelState = channelRef.current.getState()
               if (channelState.isConnected || channelState.isSubscribed) {
-                const initialPresence: ScriptPresencePayload = {
-                  userId: user.id,
-                  userName: profile?.name || user.email?.split('@')[0],
-                  avatarUrl: profile?.avatar_url || undefined,
-                  color: userColor,
-                  lastActiveAt: new Date().toISOString()
-                }
-                
                 const presenceMessage = MessageFactory.presenceAction(
                   InterviewBroadcastType.INTERVIEW_SCRIPT_PRESENCE,
                   initialPresence,
                   user.id
                 )
-                try {
-                  await channelRef.current.send(presenceMessage)
-                } catch (err) {
-                  console.warn('Failed to send initial presence:', err)
+                if (channelRef.current) {
+                  try {
+                    await channelRef.current.send(presenceMessage)
+                  } catch (err) {
+                    console.warn('Failed to send initial presence:', err)
+                  }
                 }
               }
             }
@@ -218,10 +224,12 @@ export function useInterviewScriptBroadcast({
                     { ...presence, lastActiveAt: new Date().toISOString() },
                     user.id
                   )
-                  try {
-                    await channelRef.current.send(heartbeat)
-                  } catch (err) {
-                    console.warn('Failed to send presence heartbeat:', err)
+                  if (channelRef.current) {
+                    try {
+                      await channelRef.current.send(heartbeat)
+                    } catch (err) {
+                      console.warn('Failed to send presence heartbeat:', err)
+                    }
                   }
                 }
               }
@@ -270,7 +278,9 @@ export function useInterviewScriptBroadcast({
             { userId: user.id },
             user.id
           )
-          channelRef.current.send(leaveMessage).catch(console.error)
+          if (channelRef.current) {
+            channelRef.current.send(leaveMessage).catch(console.error)
+          }
         }
       }
       
@@ -323,7 +333,7 @@ export function useInterviewScriptBroadcast({
           throw new Error('Failed to save script')
         }
         
-        toast.success('스크립트가 저장되었습니다')
+        // Silently saved - no toast needed for realtime collaboration
       } catch (err) {
         toast.error('스크립트 저장에 실패했습니다')
         // Failed to save script
@@ -345,6 +355,9 @@ export function useInterviewScriptBroadcast({
         updated,
         user.id
       )
+      if (!channelRef.current) {
+        throw new Error('Channel not available')
+      }
       await channelRef.current.send(message)
       
       // Save to database (in background)
@@ -364,6 +377,11 @@ export function useInterviewScriptBroadcast({
       })
       
     } catch (err) {
+      // Only show error for connection issues, not for normal operation
+      if (err instanceof Error && err.message.includes('Channel is not connected')) {
+        // Silently fall back to database save
+        return
+      }
       toast.error('스크립트 업데이트에 실패했습니다')
       // Failed to update script
     }
@@ -393,7 +411,9 @@ export function useInterviewScriptBroadcast({
             fullPresence,
             user.id
           )
-          channelRef.current.send(message).catch(console.error)
+          if (channelRef.current) {
+            channelRef.current.send(message).catch(console.error)
+          }
         }
       }
     } catch (err) {

@@ -6,10 +6,11 @@ import { ChevronRight, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
-import { PresenceIndicatorCompact } from '@/components/ui/presence-indicator'
 import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
 import { useAuth } from '@/hooks/use-auth'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useUnifiedPresence } from '@/lib/realtime/unified-presence/use-unified-presence'
+import { GoogleStylePresence } from '@/components/presence/google-style-presence'
 
 interface InterviewDetailProps {
   interview: Interview
@@ -28,7 +29,24 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
+  
+  // Unified presence hook
+  const {
+    allUsers,
+    viewers,
+    editors,
+    commenters,
+    totalCount,
+    activeEditorsCount,
+    isLoading: presenceLoading,
+    isConnected: presenceConnected,
+    error: presenceError
+  } = useUnifiedPresence({
+    interviewId: interview.id,
+    includeCurrentUser: true,
+    enableEditing: activeTab === 'script'
+  })
   
   // 수정 권한 확인
   const canEdit = currentUserId && (interview.created_by === currentUserId || profile?.role === 'super_admin' || profile?.role === 'company_admin')
@@ -79,24 +97,35 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
     <div className="flex flex-col h-full">
       {/* 헤더 영역 */}
       <div className="mb-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-6">
-          <button
-            onClick={() => {
-              // 목차 정보 초기화
-              if (onSectionsChange) {
-                onSectionsChange(null, null, null)
-              }
-              onBack()
-            }}
-            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-          >
-            인터뷰 관리
-          </button>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-          <span className="text-sm font-medium text-foreground">
-            {interview.title || '제목 없음'}
-          </span>
+        {/* Breadcrumb with Script Presence */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                // 목차 정보 초기화
+                if (onSectionsChange) {
+                  onSectionsChange(null, null, null)
+                }
+                onBack()
+              }}
+              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+            >
+              인터뷰 관리
+            </button>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+            <span className="text-sm font-medium text-foreground">
+              {interview.title || '제목 없음'}
+            </span>
+          </div>
+          
+          {/* Google Style Presence - 우측 끝 */}
+          {totalCount > 0 && (
+            <GoogleStylePresence
+              users={[...editors, ...commenters, ...viewers]}
+              className="ml-auto"
+              maxVisible={6}
+            />
+          )}
         </div>
         
         {/* 헤더 컨텐츠 */}
@@ -160,7 +189,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
             </div>
           </div>
           
-          {/* 메타 정보와 실시간 시청자 정보 - 두 번째 줄 */}
+          {/* 메타 정보와 실시간 시청자 정보 */}
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
               {/* 인터뷰이 정보 */}
@@ -188,19 +217,6 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
               )}
             </div>
             
-            {/* 실시간 시청자 정보 - 가장 우측 */}
-            {presence && presence.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-xs text-green-600 font-medium">
-                  {presence.length}명 보는 중
-                </span>
-                <PresenceIndicatorCompact 
-                  viewers={presence}
-                  currentUserId={currentUserId}
-                />
-              </div>
-            )}
           </div>
         </div>
         

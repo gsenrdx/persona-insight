@@ -268,8 +268,14 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
         user.id
       )
       
+      // Check if channel exists and is connected
+      if (!projectChannelRef.current) {
+        console.warn('Channel not available for presence update')
+        return
+      }
+      
       try {
-        await projectChannelRef.current!.send(message)
+        await projectChannelRef.current.send(message)
       } catch (error) {
         console.error('Failed to send presence:', error)
       }
