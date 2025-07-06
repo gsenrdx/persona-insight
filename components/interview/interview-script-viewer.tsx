@@ -3,13 +3,15 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { CleanedScriptItem, ScriptSection } from '@/types/interview'
 import { Interview } from '@/types/interview'
-import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, ListOrdered } from 'lucide-react'
+import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, ListOrdered, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes'
 import { useAuth } from '@/hooks/use-auth'
 import FloatingMemoButton from '@/components/ui/floating-memo-button'
 import AIQuestionBar from '@/components/ui/ai-question-bar'
 import InterviewAssistantPanel from './interview-assistant-panel'
+import EditableScriptItem from './editable-script-item'
+import { useInterviewScriptBroadcast } from '@/lib/realtime/broadcast/hooks/use-interview-script-broadcast'
 
 interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
@@ -18,13 +20,27 @@ interface InterviewScriptViewerProps {
   onSectionsChange?: (sections: ScriptSection[] | null, activeSection: string | null, scrollToSection: (sectionName: string) => void) => void
 }
 
-
 export default function InterviewScriptViewer({ script, interview, className, onSectionsChange }: InterviewScriptViewerProps) {
+  const { user, profile, session } = useAuth()
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
+  
+  // Realtime script editing
+  const {
+    scripts,
+    presence,
+    updateScript,
+    updatePresence,
+    getPresenceForScript,
+    userColor,
+    isConnected
+  } = useInterviewScriptBroadcast({
+    interviewId: interview?.id || '',
+    enabled: !!interview?.id
+  })
   
   // scrollToSection 함수를 먼저 정의
   const scrollToSection = useCallback((sectionName: string) => {
@@ -50,6 +66,17 @@ export default function InterviewScriptViewer({ script, interview, className, on
       onSectionsChange(sections, activeSection, scrollToSection)
     }
   }, [interview?.script_sections, activeSection, onSectionsChange, scrollToSection])
+  
+  const [searchTerm, setSearchTerm] = useState('')
+  const [editingMemoId, setEditingMemoId] = useState<string | null>(null)
+  const [memoInput, setMemoInput] = useState('')
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyInput, setReplyInput] = useState('')
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
+  const [aiQuestionBarOpen, setAiQuestionBarOpen] = useState(false)
+  const [selectedTextForAI, setSelectedTextForAI] = useState('')
+  const [aiQuestionPosition, setAiQuestionPosition] = useState<{ x: number; y: number } | null>(null)
+  const scriptContainerRef = useRef<HTMLDivElement>(null)
 
   // 노션 스타일 텍스트 선택 하이라이트를 위한 스타일 삽입
   useEffect(() => {
@@ -98,24 +125,12 @@ export default function InterviewScriptViewer({ script, interview, className, on
       }
       
       /* 다크 모드 대응 */
-      @media (prefers-color-scheme: dark) {
-        .interview-script-content ::selection {
-          background-color: rgba(35, 131, 226, 0.4);
-          color: inherit;
-        }
-        
-        .interview-script-content ::-moz-selection {
-          background-color: rgba(35, 131, 226, 0.4);
-          color: inherit;
-        }
-        
-        .notion-comment-highlight {
-          background-color: rgba(255, 235, 137, 0.15);
-        }
-        
-        .notion-comment-highlight:hover {
-          background-color: rgba(255, 235, 137, 0.25);
-        }
+      .dark .notion-comment-highlight {
+        background-color: rgba(255, 235, 137, 0.15);
+      }
+      
+      .dark .notion-comment-highlight:hover {
+        background-color: rgba(255, 235, 137, 0.25);
       }
     `
     document.head.appendChild(style)
@@ -124,17 +139,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
       document.head.removeChild(style)
     }
   }, [])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [editingMemoId, setEditingMemoId] = useState<string | null>(null)
-  const [memoInput, setMemoInput] = useState('')
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyInput, setReplyInput] = useState('')
-  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
-  const [aiQuestionBarOpen, setAiQuestionBarOpen] = useState(false)
-  const [selectedTextForAI, setSelectedTextForAI] = useState('')
-  const [aiQuestionPosition, setAiQuestionPosition] = useState<{ x: number; y: number } | null>(null)
-  const scriptContainerRef = useRef<HTMLDivElement>(null)
-  const { profile, session } = useAuth()
   
   // DB 연동 훅 사용 (Realtime)
   const { 
@@ -167,8 +171,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
       item.cleaned_sentence.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [script, searchTerm])
-
-
 
   const handleAddMemo = async (scriptId: string) => {
     if (!memoInput.trim()) return
@@ -217,7 +219,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
       }
     }
   }
-
 
   const highlightText = (text: string, category?: string) => {
     const parts = searchTerm 
@@ -279,24 +280,18 @@ export default function InterviewScriptViewer({ script, interview, className, on
   // 정리된 스크립트 다운로드
   const handleDownloadCleaned = () => {
     setDownloadMenuOpen(false)
-    // 스크립트를 텍스트 형식으로 변환
-    let content = `인터뷰 스크립트\n`
-    content += `제목: ${interview?.title || '제목 없음'}\n`
-    content += `날짜: ${interview?.interview_date || new Date().toISOString().split('T')[0]}\n`
-    content += `${'='.repeat(50)}\n\n`
-
-    script.forEach((item, index) => {
-      if (index > 0 && script[index - 1].speaker !== item.speaker) {
-        content += '\n'
-      }
-      
+    
+    // 정리된 스크립트 텍스트 생성
+    let content = `${interview?.title || '인터뷰 스크립트'}\n`
+    content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
+    content += '='.repeat(50) + '\n\n'
+    
+    script.forEach(item => {
       const speaker = item.speaker === 'question' ? 'Q' : 'A'
       const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
-      
-      content += `${speaker}: ${item.cleaned_sentence}${category}\n`
+      content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
     })
-
-    // Blob 생성 및 다운로드
+    
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -378,12 +373,40 @@ export default function InterviewScriptViewer({ script, interview, className, on
       <div className="flex-1 relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
-            {/* 헤더 영역 - 제목과 검색 바 */}
-            <div className="px-8 py-4 border-b border-gray-100">
+          {/* 헤더 영역 - 제목과 검색 바 */}
+          <div className="px-8 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
-                <p className="text-xs text-gray-500 mt-1">Interview Script</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
+                  <p className="text-xs text-gray-500 mt-1">Interview Script</p>
+                </div>
+                {/* Realtime presence indicator */}
+                {isConnected && presence.size > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-gray-400" />
+                    <div className="flex -space-x-2">
+                      {Array.from(presence.values())
+                        .filter(p => p.userId !== user?.id)
+                        .slice(0, 3)
+                        .map((p) => (
+                          <div
+                            key={p.userId}
+                            className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white"
+                            style={{ backgroundColor: p.color || '#6B7280' }}
+                            title={p.userName}
+                          >
+                            {p.userName?.[0]?.toUpperCase() || '?'}
+                          </div>
+                        ))}
+                      {presence.size > 4 && (
+                        <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                          +{presence.size - 4}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative max-w-sm">
@@ -435,550 +458,123 @@ export default function InterviewScriptViewer({ script, interview, className, on
           {/* 스크립트 내용 */}
           <div className="flex-1 overflow-y-auto relative" ref={scriptContainerRef}>
             <div className="mx-auto px-8 py-6" style={{ maxWidth: (notes.length > 0 || editingMemoId) ? '1600px' : '1024px' }}>
-            {filteredScript.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-gray-400 text-sm">
-                  {searchTerm ? '검색 결과가 없습니다.' : '대화 내용이 없습니다.'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* 섹션별로 그룹핑하여 렌더링 */}
-                {(() => {
-                  const sections = interview?.script_sections as ScriptSection[] || [];
-                  let lastSectionName = '';
-                  
-                  // 섹션 인덱스를 찾기 위한 맵
-                  const sectionIndexMap = new Map();
-                  sections.forEach((section, idx) => {
-                    sectionIndexMap.set(section.sector_name, idx + 1);
-                  });
-                  
-                  return filteredScript.map((item, index) => {
-                    const scriptId = item.id.join('-')
-                    // index를 포함한 고유한 key 생성
-                    const uniqueKey = `${scriptId}-${index}`
-                    const memo = memosByScriptId[scriptId]
-                    const prevItem = index > 0 ? filteredScript[index - 1] : null
+              {filteredScript.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-400 text-sm">
+                    {searchTerm ? '검색 결과가 없습니다.' : '대화 내용이 없습니다.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 섹션별로 그룹핑하여 렌더링 */}
+                  {(() => {
+                    const sections = interview?.script_sections as ScriptSection[] || [];
+                    let lastSectionName = '';
                     
-                    // item.id 배열의 첫 번째 라인 번호로 섹션 찾기
-                    const firstLineNumber = item.id[0];
-                    const currentSection = sections.find(section => 
-                      firstLineNumber >= section.start_line && 
-                      firstLineNumber <= section.end_line
-                    );
+                    // 섹션 인덱스를 찾기 위한 맵
+                    const sectionIndexMap = new Map();
+                    sections.forEach((section, idx) => {
+                      sectionIndexMap.set(section.sector_name, idx + 1);
+                    });
                     
-                    // 새로운 섹션의 시작인지 확인 (이전 섹션과 다른 경우)
-                    const isNewSection = currentSection && currentSection.sector_name !== lastSectionName;
-                    if (currentSection) {
-                      lastSectionName = currentSection.sector_name;
-                    }
-                    
-                    // 섹션이 바뀌면 연속된 화자여도 새로 표시
-                    const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker && !isNewSection
-                    
-                    return (
-                      <div key={uniqueKey}>
-                        {/* 섹션 헤더 */}
-                        {isNewSection && (
-                          <div 
-                            id={`section-${currentSection.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')}`}
-                            ref={(el) => {
-                              if (el) sectionRefs.current[currentSection.sector_name] = el
-                            }}
-                            className={cn(
-                            "section-header mb-4 pb-2 border-b",
-                            currentSection.is_main_content 
-                              ? "border-gray-200" 
-                              : "border-gray-100"
-                          )}>
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "w-6 h-6 rounded flex items-center justify-center text-xs font-bold",
-                                currentSection.is_main_content
-                                  ? "bg-gray-200 text-gray-700"
-                                  : "bg-gray-100 text-gray-500"
-                              )}>
-                                {sectionIndexMap.get(currentSection.sector_name)}
-                              </span>
-                              <h3 className={cn(
-                                "font-medium",
-                                currentSection.is_main_content
-                                  ? "text-gray-900 text-sm"
-                                  : "text-gray-500 text-xs"
-                              )}>
-                                {currentSection.sector_name}
-                              </h3>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* 기존 스크립트 아이템 */}
-                        <div
-                          className={cn(
-                        "relative flex gap-8",
-                        currentSection && !currentSection.is_main_content && "opacity-60"
-                      )}
-                    >
-                      {/* 왼쪽 화자 표시 영역 */}
-                      <div className="w-12 flex-shrink-0">
-                        <div className={cn(
-                          "text-sm leading-relaxed", // 내용과 동일한 폰트 크기와 line-height
-                          item.category && "mt-5" // 카테고리가 있을 때 위치 조정
-                        )}>
-                          {!isConsecutiveSameSpeaker && (
-                            <span className={cn(
-                              "font-medium",
-                              item.speaker === 'question' 
-                                ? "text-gray-500" 
-                                : "text-blue-600"
-                            )}>
-                              {item.speaker === 'question' ? 'Q.' : 'A.'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    return filteredScript.map((item, index) => {
+                      const scriptId = item.id.join('-')
+                      // index를 포함한 고유한 key 생성
+                      const uniqueKey = `${scriptId}-${index}`
+                      const memo = memosByScriptId[scriptId]
+                      const prevItem = index > 0 ? filteredScript[index - 1] : null
                       
-                      {/* 스크립트 내용 */}
-                      <div className="flex-1 relative group">
-                        {/* 카테고리 라벨 */}
-                        {item.category && (
-                          <div className="mb-1">
-                            <span className={cn(
-                              "text-xs",
-                              item.category === 'painpoint' 
-                                ? "text-red-600" 
-                                : "text-blue-600"
-                            )}>
-                              • {item.category === 'painpoint' ? 'Pain Point' : 'Need'}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* 대화 내용 */}
-                        <div className="relative group">
-                          <div 
-                            data-script-id={scriptId}
-                            className={cn(
-                              "text-sm leading-relaxed select-text",
-                              item.speaker === 'question' 
-                                ? "text-gray-600" 
-                                : "text-gray-700",
-                              memo && "notion-comment-highlight"
-                            )}
-                          >
-                            {highlightText(item.cleaned_sentence, item.category || undefined)}
-                          </div>
-                          
-                          {/* 호버 시 세로 도트 버튼 */}
-                          {!editingMemoId && (
-                            <button
-                              onClick={() => {
-                                // 문장 전체 선택
-                                const scriptElement = document.querySelector(`[data-script-id="${scriptId}"]`)
-                                if (scriptElement) {
-                                  const range = document.createRange()
-                                  range.selectNodeContents(scriptElement)
-                                  const selection = window.getSelection()
-                                  selection?.removeAllRanges()
-                                  selection?.addRange(range)
-                                  
-                                  // 선택 후 약간의 지연을 주어 플로팅 버튼이 나타나도록 함
-                                  setTimeout(() => {
-                                    // mouseup 이벤트를 수동으로 트리거하여 플로팅 버튼 표시
-                                    const event = new MouseEvent('mouseup', {
-                                      bubbles: true,
-                                      cancelable: true,
-                                      view: window
-                                    })
-                                    document.dispatchEvent(event)
-                                  }, 10)
-                                }
-                              }}
-                              className="absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 hover:bg-gray-100 rounded"
-                              title="메모 추가"
-                            >
-                              <svg className="w-3 h-4 text-gray-400" viewBox="0 0 12 16" fill="currentColor">
-                                <circle cx="6" cy="2" r="1.5" />
-                                <circle cx="6" cy="8" r="1.5" />
-                                <circle cx="6" cy="14" r="1.5" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      // item.id 배열의 첫 번째 라인 번호로 섹션 찾기
+                      const firstLineNumber = item.id[0];
+                      const currentSection = sections.find(section => 
+                        firstLineNumber >= section.start_line && 
+                        firstLineNumber <= section.end_line
+                      );
                       
-                      {/* 메모 표시 영역 */}
-                      {(memo || editingMemoId === scriptId) && (
-                        <div className="w-96 flex-shrink-0 pl-8">
-                          {editingMemoId === scriptId && !memo ? (
-                            /* 메모 작성 UI - 노션 스타일 */
-                            <div className="relative">
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <textarea
-                                  autoFocus
-                                  value={memoInput}
-                                  onChange={(e) => setMemoInput(e.target.value)}
-                                  placeholder="댓글을 남겨주세요..."
-                                  className="w-full p-0 text-sm bg-transparent border-0 focus:outline-none resize-none text-gray-700 placeholder-gray-400"
-                                  rows={2}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault()
-                                      if (memoInput.trim()) {
-                                        handleAddMemo(scriptId)
-                                      }
-                                    }
-                                    if (e.key === 'Escape') {
-                                      setEditingMemoId(null)
-                                      setMemoInput('')
-                                    }
-                                  }}
-                                />
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-gray-400">Enter로 작성, Shift+Enter로 줄바꿈</span>
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={() => {
-                                        setEditingMemoId(null)
-                                        setMemoInput('')
-                                      }}
-                                      className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
-                                    >
-                                      취소
-                                    </button>
-                                    <button
-                                      onClick={() => handleAddMemo(scriptId)}
-                                      disabled={!memoInput.trim() || isAddingNote}
-                                      className="text-xs text-gray-700 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      댓글
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ) : memo && (
-                          <div className="relative group/memo">
-                            <div className="">
-                              {/* 메모 */}
-                              <div className="flex gap-3">
-                                <div className="flex-shrink-0">
-                                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <span className="text-xs font-medium text-gray-600">
-                                      {memo.created_by_profile?.name?.charAt(0) || 'U'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-medium text-gray-900">{memo.created_by_profile?.name || '사용자'}</span>
-                                        <span className="text-xs text-gray-400">{new Date(memo.created_at).toLocaleDateString('ko-KR')}</span>
-                                      </div>
-                                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{memo.content}</p>
-                                    </div>
-                                    {memo.created_by === profile?.id && (
-                                      <button
-                                        onClick={() => handleDeleteNote(memo.id)}
-                                        className="opacity-0 group-hover/memo:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded flex-shrink-0"
-                                        disabled={isDeletingNote}
-                                        title="삭제"
-                                      >
-                                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                                      </button>
-                                    )}
-                                  </div>
-                              
-                                  {/* 대댓글 목록 */}
-                                  {memo.replies && memo.replies.length > 0 && (
-                                    <div className="mt-3 space-y-3">
-                                      {/* 댓글 개수 표시 및 토글 버튼 */}
-                                      {memo.replies.length > 2 && !expandedReplies.has(memo.id) && (
-                                        <button
-                                          onClick={() => {
-                                            const newExpanded = new Set(expandedReplies)
-                                            newExpanded.add(memo.id)
-                                            setExpandedReplies(newExpanded)
-                                          }}
-                                          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                        >
-                                          {memo.replies.length}개 댓글 모두 보기
-                                        </button>
-                                      )}
-                                      
-                                      {/* 댓글 목록 */}
-                                      <div className={cn(
-                                        "space-y-3",
-                                        memo.replies.length > 2 && !expandedReplies.has(memo.id) && "hidden"
-                                      )}>
-                                        {memo.replies.map(reply => (
-                                          <div key={reply.id} className="flex gap-3 group/reply">
-                                            <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
-                                              <span className="text-[10px] font-medium text-gray-500">
-                                                {reply.created_by_profile?.name?.charAt(0) || 'U'}
-                                              </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-start justify-between gap-2">
-                                                <div className="flex-1">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-medium text-gray-900">{reply.created_by_profile?.name || '사용자'}</span>
-                                                    <span className="text-xs text-gray-400">{new Date(reply.created_at).toLocaleDateString('ko-KR')}</span>
-                                                  </div>
-                                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
-                                                </div>
-                                                {reply.created_by === profile?.id && (
-                                                  <button
-                                                    onClick={() => handleDeleteReply(memo.id, reply.id)}
-                                                    className="opacity-0 group-hover/reply:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded flex-shrink-0"
-                                                    title="삭제"
-                                                  >
-                                                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                                                  </button>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                  
-                                        {/* 접기 버튼 */}
-                                        {memo.replies.length > 2 && expandedReplies.has(memo.id) && (
-                                          <button
-                                            onClick={() => {
-                                              const newExpanded = new Set(expandedReplies)
-                                              newExpanded.delete(memo.id)
-                                              setExpandedReplies(newExpanded)
-                                            }}
-                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                          >
-                                            접기
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                              
-                                  {/* 대댓글 입력 폼 */}
-                                  <div className="mt-3">
-                                    {replyingTo === memo.id ? (
-                                      <div className="bg-gray-50 rounded-lg p-3">
-                                        <textarea
-                                          autoFocus
-                                          value={replyInput}
-                                          onChange={(e) => setReplyInput(e.target.value)}
-                                          placeholder="답글을 남겨주세요..."
-                                          className="w-full p-0 text-sm bg-transparent border-0 focus:outline-none resize-none text-gray-700 placeholder-gray-400"
-                                          rows={2}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                              e.preventDefault()
-                                              if (replyInput.trim()) {
-                                                handleAddReply(memo.id)
-                                              }
-                                            }
-                                            if (e.key === 'Escape') {
-                                              setReplyingTo(null)
-                                              setReplyInput('')
-                                            }
-                                          }}
-                                        />
-                                        <div className="flex items-center justify-between mt-2">
-                                          <span className="text-xs text-gray-400">Enter로 작성</span>
-                                          <div className="flex gap-1">
-                                            <button
-                                              onClick={() => {
-                                                setReplyingTo(null)
-                                                setReplyInput('')
-                                              }}
-                                              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
-                                            >
-                                              취소
-                                            </button>
-                                            <button
-                                              onClick={() => handleAddReply(memo.id)}
-                                              disabled={!replyInput.trim()}
-                                              className="text-xs text-gray-700 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                              답글
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => setReplyingTo(memo.id)}
-                                        className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-                                      >
-                                        답글 달기
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                      </div>
-                    )
-                  });
-                })()}
-              </div>
-            )}
-            
-            {/* AI 질문 바 - 스크롤 컨테이너 내부에 위치 */}
-            <AIQuestionBar
-              isOpen={aiQuestionBarOpen}
-              onClose={() => {
-                setAiQuestionBarOpen(false)
-                setSelectedTextForAI('')
-                setAiQuestionPosition(null)
-                // Clear the text selection
-                window.getSelection()?.removeAllRanges()
-              }}
-              initialText={selectedTextForAI}
-              selectedText={selectedTextForAI}
-              position={aiQuestionPosition}
-              onSubmit={async (question, onStream, onComplete) => {
-                try {
-                  const response = await fetch('/api/chat/interview-question', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      question,
-                      selectedText: selectedTextForAI,
-                      interviewId: interview?.id,
-                      fullScript: script
-                    })
-                  })
-
-                  if (!response.ok) {
-                    const errorText = await response.text()
-                    throw new Error(errorText || 'AI 응답을 받는데 실패했습니다')
-                  }
-
-                  // 스트리밍 응답 처리
-                  const reader = response.body?.getReader()
-                  const decoder = new TextDecoder()
-                  let buffer = ''
-
-                  if (reader) {
-                    while (true) {
-                      const { done, value } = await reader.read()
-                      if (done) break
-                      
-                      buffer += decoder.decode(value, { stream: true })
-                      const lines = buffer.split('\n')
-                      
-                      // 마지막 불완전한 줄은 버퍼에 남김
-                      buffer = lines.pop() || ''
-                      
-                      for (const line of lines) {
-                        const trimmedLine = line.trim()
-                        if (!trimmedLine) continue
-                        
-                        if (trimmedLine.startsWith('data: ')) {
-                          const dataContent = trimmedLine.slice(6)
-                          
-                          if (dataContent === '[DONE]') {
-                            // 스트리밍 완료 시그널
-                            return
-                          }
-                          
-                          try {
-                            const data = JSON.parse(dataContent)
-                            console.log('MISO API Response:', data) // 디버깅용
-                            
-                            // 다양한 응답 필드 지원
-                            const content = data.answer || data.content || data.message || data.text || data.response || 
-                                          data.choices?.[0]?.delta?.content || data.choices?.[0]?.message?.content
-                            
-                            if (content) {
-                              onStream(content)
-                            } else {
-                              console.warn('Unknown response format:', data)
-                            }
-                          } catch (e) {
-                            console.error('JSON parsing failed:', dataContent, e)
-                          }
-                        }
+                      // 새로운 섹션의 시작인지 확인 (이전 섹션과 다른 경우)
+                      const isNewSection = currentSection && currentSection.sector_name !== lastSectionName;
+                      if (currentSection) {
+                        lastSectionName = currentSection.sector_name;
                       }
-                    }
-                  }
-                  
-                  // 스트리밍 완료
-                  onComplete()
-                } catch (error) {
-                  onStream('\n\n❌ AI 응답을 받는 중 오류가 발생했습니다. 다시 시도해주세요.')
-                  onComplete()
-                }
-              }}
-            />
+                      
+                      // 섹션이 바뀌면 연속된 화자여도 새로 표시
+                      const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker && !isNewSection
+                      
+                      return (
+                        <div key={uniqueKey}>
+                          {/* 섹션 헤더 */}
+                          {isNewSection && (
+                            <div 
+                              id={`section-${currentSection.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')}`}
+                              ref={(el) => {
+                                if (el) sectionRefs.current[currentSection.sector_name] = el
+                              }}
+                              className={cn(
+                                "section-header mb-4 pb-2 border-b",
+                                currentSection.is_main_content 
+                                  ? "border-gray-200" 
+                                  : "border-gray-100"
+                              )}>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "w-6 h-6 rounded flex items-center justify-center text-xs font-bold",
+                                  currentSection.is_main_content
+                                    ? "bg-gray-200 text-gray-700"
+                                    : "bg-gray-100 text-gray-500"
+                                )}>
+                                  {sectionIndexMap.get(currentSection.sector_name)}
+                                </span>
+                                <h3 className={cn(
+                                  "font-medium",
+                                  currentSection.is_main_content
+                                    ? "text-gray-900 text-sm"
+                                    : "text-gray-500 text-xs"
+                                )}>
+                                  {currentSection.sector_name}
+                                </h3>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Script item wrapper */}
+                          <div className="relative">
+                            {/* Editable script item */}
+                            <EditableScriptItem
+                              item={item}
+                              index={index}
+                              isConsecutiveSameSpeaker={isConsecutiveSameSpeaker}
+                              presences={getPresenceForScript(scriptId)}
+                              onEdit={updateScript}
+                              onPresenceUpdate={updatePresence}
+                              userColor={userColor}
+                              className={cn(
+                                currentSection && !currentSection.is_main_content && "opacity-60"
+                              )}
+                            />
+                          </div>
+                        </div>
+                      )
+                    });
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* 플로팅 메모 버튼 */}
-        <FloatingMemoButton 
-          onAddMemo={handleFloatingMemoAdd}
-          onAskMiso={(text) => {
-            setSelectedTextForAI(text)
-            // 선택된 텍스트의 위치 계산
-            const selection = window.getSelection()
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0)
-              const rect = range.getBoundingClientRect()
-              
-              // 스크롤 컨테이너의 위치 가져오기
-              const scrollContainer = scriptContainerRef.current
-              if (scrollContainer) {
-                const containerRect = scrollContainer.getBoundingClientRect()
-                const scrollTop = scrollContainer.scrollTop
-                
-                // 컨테이너 기준 상대 위치 계산
-                const relativeX = rect.left - containerRect.left + rect.width / 2
-                const relativeY = rect.bottom - containerRect.top + scrollTop + 10
-                
-                // AI 질문 바의 너비 (800px)의 절반
-                const halfBarWidth = 400
-                
-                // 왼쪽 경계 체크 및 조정
-                const adjustedX = Math.max(halfBarWidth + 20, relativeX)
-                
-                setAiQuestionPosition({
-                  x: adjustedX,
-                  y: relativeY
-                })
-              }
-            }
-            setAiQuestionBarOpen(true)
-          }}
-        />
       </div>
       
-      {/* 우측 하단 플로팅 AI 도우미 버튼 */}
+      {/* AI Floating Button */}
       {interview && (
         <>
-          {/* 플로팅 버튼 */}
-          <div className="fixed right-6 bottom-6 z-[100]">
-            <button 
-              onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
-              className={cn(
-                "relative",
-                "hover:scale-105 active:scale-95",
-                "transition-all duration-200",
-                floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
-              )}
+          <div className="fixed bottom-8 right-8 z-40">
+            <button
+              onClick={() => setFloatingPanelOpen(true)}
+              className="group relative"
+              title="AI 도우미"
             >
-              <img 
-                src="/chat-icon.png" 
-                alt="AI 도우미" 
+              <img
+                src="/miso-ai-icon.png"
+                alt="AI Assistant"
                 className="w-16 h-16 drop-shadow-lg hover:drop-shadow-xl transition-all duration-200"
               />
             </button>

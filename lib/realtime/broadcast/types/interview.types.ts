@@ -15,7 +15,9 @@ export enum InterviewBroadcastType {
   INTERVIEW = 'interview',
   INTERVIEW_NOTE = 'interview_note',
   INTERVIEW_NOTE_REPLY = 'interview_note_reply',
-  INTERVIEW_PRESENCE = 'interview_presence'
+  INTERVIEW_PRESENCE = 'interview_presence',
+  INTERVIEW_SCRIPT = 'interview_script',
+  INTERVIEW_SCRIPT_PRESENCE = 'interview_script_presence'
 }
 
 // Interview actions
@@ -33,10 +35,38 @@ export interface InterviewNoteReplyPayload extends Partial<InterviewNoteReply> {
   note_id: string
 }
 
+// Script item payload for realtime editing
+export interface ScriptItemPayload {
+  interview_id: string
+  script_id: string // id array joined with '-'
+  cleaned_sentence: string
+  speaker?: 'question' | 'answer'
+  category?: 'painpoint' | 'needs' | null
+  version?: number // for conflict resolution
+  last_edited_by?: string
+  last_edited_at?: string
+}
+
+// Script presence for collaborative editing
+export interface ScriptPresencePayload {
+  userId: string
+  userName?: string
+  avatarUrl?: string
+  scriptId?: string // which script item user is editing
+  cursorPosition?: number
+  selection?: {
+    start: number
+    end: number
+  }
+  color?: string // user color for cursor/selection
+}
+
 // Typed broadcast messages
 export type InterviewBroadcastMessage = BroadcastMessage<InterviewPayload>
 export type InterviewNoteBroadcastMessage = BroadcastMessage<InterviewNotePayload>
 export type InterviewNoteReplyBroadcastMessage = BroadcastMessage<InterviewNoteReplyPayload>
+export type InterviewScriptBroadcastMessage = BroadcastMessage<ScriptItemPayload>
+export type InterviewScriptPresenceBroadcastMessage = BroadcastMessage<ScriptPresencePayload>
 
 // Channel names
 export const getProjectChannelName = (projectId: string) => `project:${projectId}`

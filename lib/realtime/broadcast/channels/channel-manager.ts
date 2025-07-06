@@ -195,8 +195,10 @@ export class ManagedChannel {
    * Send a broadcast message
    */
   async send<T>(message: BroadcastMessage<T>): Promise<void> {
-    if (!this.state.isConnected) {
-      throw new Error('Channel is not connected')
+    // Check both isConnected and isSubscribed states
+    if (!this.state.isConnected && !this.state.isSubscribed) {
+      console.warn('Channel is not connected, skipping message:', message)
+      return Promise.resolve()
     }
     
     const channel = await this.getChannel()
