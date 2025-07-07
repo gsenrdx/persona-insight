@@ -16,8 +16,7 @@ export {
   useBroadcastRealtime as useRealtime,
   useBroadcastInterviews as useInterviews,
   useBroadcastInterview as useInterview,
-  useBroadcastInterviewNotes as useInterviewNotes,
-  useBroadcastPresence as usePresence
+  useBroadcastInterviewNotes as useInterviewNotes
 } from './broadcast'
 
 // Interview-specific hooks
@@ -35,6 +34,5 @@ export type {
   BroadcastAction,
   InterviewPayload,
   InterviewNotePayload,
-  InterviewPresence,
   ChannelState
 } from './broadcast'

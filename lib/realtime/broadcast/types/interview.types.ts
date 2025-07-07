@@ -15,7 +15,6 @@ export enum InterviewBroadcastType {
   INTERVIEW = 'interview',
   INTERVIEW_NOTE = 'interview_note',
   INTERVIEW_NOTE_REPLY = 'interview_note_reply',
-  INTERVIEW_PRESENCE = 'interview_presence',
   INTERVIEW_SCRIPT = 'interview_script',
   INTERVIEW_SCRIPT_PRESENCE = 'interview_script_presence'
 }
@@ -75,18 +74,3 @@ export type InterviewScriptPresenceBroadcastMessage = BroadcastMessage<ScriptPre
 // Channel names
 export const getProjectChannelName = (projectId: string) => `project:${projectId}`
 export const getInterviewChannelName = (interviewId: string) => `interview:${interviewId}`
-
-// Presence types for interviews
-export interface InterviewPresence {
-  userId: string
-  userName?: string
-  email?: string
-  avatarUrl?: string
-  interviewId: string
-  cursorPosition?: {
-    noteId?: string
-    position?: number
-  }
-  isTyping?: boolean
-  lastActiveAt: string
-}

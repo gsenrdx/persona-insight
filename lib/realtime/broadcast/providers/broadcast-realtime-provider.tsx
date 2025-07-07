@@ -16,24 +16,22 @@ import type { ManagedChannel } from '../channels/channel-manager'
 import { 
   InterviewBroadcastType,
   getProjectChannelName,
-  type InterviewPayload,
-  type InterviewPresence
+  type InterviewPayload
 } from '../types'
 
 export interface BroadcastRealtimeState {
   interviews: InterviewPayload[]
   notes: Record<string, any[]> // interviewId -> notes
-  presence: Record<string, InterviewPresence[]> // interviewId -> users
   isConnected: boolean
   isLoading: boolean
   error: Error | null
 }
 
 export interface BroadcastRealtimeContextValue extends BroadcastRealtimeState {
+  projectId: string | null
+  activeInterviewId: string | null
   subscribeToProject: (projectId: string) => Promise<void>
   unsubscribe: () => Promise<void>
-  trackPresence: (interviewId: string) => Promise<void>
-  untrackPresence: () => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -49,7 +47,6 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
   const [state, setState] = useState<BroadcastRealtimeState>({
     interviews: [],
     notes: {},
-    presence: {},
     isConnected: false,
     isLoading: false,
     error: null
@@ -58,7 +55,6 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
   const projectChannelRef = useRef<ManagedChannel | null>(null)
   const currentProjectRef = useRef<string | null>(null)
   const noteHandlerRef = useRef<InterviewNoteHandler | null>(null)
-  const presenceTrackerRef = useRef<{ interviewId: string, interval: NodeJS.Timeout } | null>(null)
   
   // Subscribe to project
   const subscribeToProject = useCallback(async (projectId: string) => {
@@ -102,7 +98,6 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
         const channelName = getProjectChannelName(projectId)
         const channel = channelManager.getChannel({
           name: channelName,
-          presence: true,
           ack: false,
           selfBroadcast: false
         })
@@ -141,38 +136,6 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
         // Note messages (delegate to handler)
         channel.on(InterviewBroadcastType.INTERVIEW_NOTE, (message) => {
           noteHandler.handleMessage(message)
-        })
-      
-        // Presence messages
-        channel.on(InterviewBroadcastType.INTERVIEW_PRESENCE, (message) => {
-        const presence = message.payload as InterviewPresence
-        setState(prev => {
-          const newPresence = { ...prev.presence }
-          const interviewId = presence.interviewId
-          
-          if (!newPresence[interviewId]) {
-            newPresence[interviewId] = []
-          }
-          
-          // Update or add user presence
-          const index = newPresence[interviewId].findIndex(p => p.userId === presence.userId)
-          if (index >= 0) {
-            newPresence[interviewId][index] = presence
-          } else {
-            newPresence[interviewId].push(presence)
-          }
-          
-          // Remove stale presence (older than 90 seconds)
-          const now = Date.now()
-          Object.keys(newPresence).forEach(id => {
-            newPresence[id] = newPresence[id].filter(p => {
-              const lastActive = new Date(p.lastActiveAt).getTime()
-              return now - lastActive < 90000
-            })
-          })
-          
-          return { ...prev, presence: newPresence }
-        })
         })
         
         // Subscribe to channel with retry
@@ -226,76 +189,18 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
       noteHandlerRef.current = null
     }
     
-    if (presenceTrackerRef.current) {
-      clearInterval(presenceTrackerRef.current.interval)
-      presenceTrackerRef.current = null
-    }
     
     currentProjectRef.current = null
     
     setState({
       interviews: [],
       notes: {},
-      presence: {},
       isConnected: false,
       isLoading: false,
       error: null
     })
   }, [])
   
-  // Track presence
-  const trackPresence = useCallback(async (interviewId: string) => {
-    if (!projectChannelRef.current || !user || !profile) return
-    
-    // Clear previous tracker
-    if (presenceTrackerRef.current) {
-      clearInterval(presenceTrackerRef.current.interval)
-    }
-    
-    const sendPresence = async () => {
-      const presence: InterviewPresence = {
-        userId: user.id,
-        userName: profile.name || undefined,
-        email: user.email || undefined,
-        avatarUrl: profile.avatar_url || undefined,
-        interviewId,
-        lastActiveAt: new Date().toISOString()
-      }
-      
-      const message = MessageFactory.presenceAction(
-        InterviewBroadcastType.INTERVIEW_PRESENCE,
-        presence,
-        user.id
-      )
-      
-      // Check if channel exists and is connected
-      if (!projectChannelRef.current) {
-        console.warn('Channel not available for presence update')
-        return
-      }
-      
-      try {
-        await projectChannelRef.current.send(message)
-      } catch (error) {
-        console.error('Failed to send presence:', error)
-      }
-    }
-    
-    // Send immediately
-    await sendPresence()
-    
-    // Then every 30 seconds
-    const interval = setInterval(sendPresence, 30000)
-    presenceTrackerRef.current = { interviewId, interval }
-  }, [user, profile])
-  
-  // Untrack presence
-  const untrackPresence = useCallback(async () => {
-    if (presenceTrackerRef.current) {
-      clearInterval(presenceTrackerRef.current.interval)
-      presenceTrackerRef.current = null
-    }
-  }, [])
   
   // Refresh data
   const refresh = useCallback(async () => {
@@ -377,10 +282,10 @@ export function BroadcastRealtimeProvider({ children }: BroadcastRealtimeProvide
   
   const contextValue: BroadcastRealtimeContextValue = {
     ...state,
+    projectId: currentProjectRef.current,
+    activeInterviewId: null, // TODO: implement active interview tracking
     subscribeToProject,
     unsubscribe,
-    trackPresence,
-    untrackPresence,
     refresh
   }
   
@@ -413,9 +318,4 @@ export function useBroadcastInterview(interviewId: string) {
 export function useBroadcastInterviewNotes(interviewId: string) {
   const { notes } = useBroadcastRealtime()
   return notes[interviewId] || []
-}
-
-export function useBroadcastPresence(interviewId: string) {
-  const { presence } = useBroadcastRealtime()
-  return presence[interviewId] || []
 }
