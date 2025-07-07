@@ -9,21 +9,17 @@ import InterviewInsights from './interview-insights'
 import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
 import { useAuth } from '@/hooks/use-auth'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useUnifiedPresence } from '@/lib/realtime/unified-presence/use-unified-presence'
-import { GoogleStylePresence } from '@/components/presence/google-style-presence'
 
 interface InterviewDetailProps {
   interview: Interview
   onBack: () => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
-  presence?: any[]
-  currentUserId?: string
   onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
   hideHeader?: boolean
 }
 
-export default function InterviewDetail({ interview, onBack, presence = [], currentUserId, onSectionsChange }: InterviewDetailProps) {
+export default function InterviewDetail({ interview, onBack, onSectionsChange }: InterviewDetailProps) {
   const [activeTab, setActiveTab] = useState('insights') // 인사이트 탭을 기본값으로
   const scriptViewerRef = useRef<any>(null)
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
@@ -32,25 +28,8 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
   const [showEditModal, setShowEditModal] = useState(false)
   const { profile, user } = useAuth()
   
-  // Unified presence hook
-  const {
-    allUsers,
-    viewers,
-    editors,
-    commenters,
-    totalCount,
-    activeEditorsCount,
-    isLoading: presenceLoading,
-    isConnected: presenceConnected,
-    error: presenceError
-  } = useUnifiedPresence({
-    interviewId: interview.id,
-    includeCurrentUser: true,
-    enableEditing: activeTab === 'script'
-  })
-  
   // 수정 권한 확인
-  const canEdit = currentUserId && (interview.created_by === currentUserId || profile?.role === 'super_admin' || profile?.role === 'company_admin')
+  const canEdit = profile?.id && (interview.created_by === profile.id || profile?.role === 'super_admin' || profile?.role === 'company_admin')
   
   // 컴포넌트 언마운트 시 목차 정리
   useEffect(() => {
@@ -118,15 +97,6 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
               {interview.title || '제목 없음'}
             </span>
           </div>
-          
-          {/* Google Style Presence - 우측 끝 */}
-          {totalCount > 0 && (
-            <GoogleStylePresence
-              users={[...editors, ...commenters, ...viewers]}
-              className="ml-auto"
-              maxVisible={6}
-            />
-          )}
         </div>
         
         {/* 헤더 컨텐츠 */}

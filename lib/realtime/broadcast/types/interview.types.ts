@@ -71,13 +71,6 @@ export type InterviewNoteReplyBroadcastMessage = BroadcastMessage<InterviewNoteR
 export type InterviewScriptBroadcastMessage = BroadcastMessage<ScriptItemPayload>
 export type InterviewScriptPresenceBroadcastMessage = BroadcastMessage<ScriptPresencePayload>
 
-// Re-export global presence types for compatibility
-export type { 
-  GlobalPresenceData,
-  PresenceSummary,
-  ActivityType,
-  LocationType 
-} from './global-presence.types'
 
 // Channel names
 export const getProjectChannelName = (projectId: string) => `project:${projectId}`

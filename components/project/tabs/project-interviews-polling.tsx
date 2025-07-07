@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Plus, RefreshCw, Loader2, WifiOff } from "lucide-react"
+import { Plus, RefreshCw, Loader2, WifiOff, Wifi } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useAdaptiveInterviews } from '@/hooks/use-adaptive-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'

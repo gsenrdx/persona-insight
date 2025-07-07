@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils/index'
 import { ThemeProvider, MobileNotSupported } from '@/components/shared'
 import { AuthProvider } from '@/hooks/use-auth'
 import { QueryProvider } from '@/components/providers/query-provider'
-import { GlobalPresenceProvider } from '@/components/providers/global-presence-provider'
 import { Toaster } from 'sonner'
 import { AdaptiveRealtimeDebugger } from '@/components/adaptive/adaptive-realtime-debugger'
 
@@ -41,10 +40,8 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              <GlobalPresenceProvider>
-                <MobileNotSupported />
-                {children}
-              </GlobalPresenceProvider>
+              <MobileNotSupported />
+              {children}
             </AuthProvider>
             <Toaster 
               position="top-right" 

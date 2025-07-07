@@ -15,7 +15,7 @@ interface AdaptiveRealtimeDebuggerProps {
  * 개발 환경에서만 표시되며, 현재 전략과 성능 메트릭을 보여줌
  */
 export function AdaptiveRealtimeDebugger({ 
-  features = ['presence', 'interview-list', 'interview-detail'],
+  features = ['interview-list', 'interview-detail'],
   className 
 }: AdaptiveRealtimeDebuggerProps) {
   const [expanded, setExpanded] = useState(false)

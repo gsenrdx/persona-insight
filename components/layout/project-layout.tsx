@@ -9,7 +9,6 @@ import AuthGuard from "@/components/auth/auth-guard"
 import { ProjectSidebar } from "@/components/project/project-sidebar"
 import { cn } from "@/lib/utils"
 import { Menu, X } from "lucide-react"
-import { ProjectPresenceSSE } from "@/components/presence/project-presence-sse"
 
 interface ProjectLayoutProps {
   children: ReactNode
@@ -127,13 +126,6 @@ export function ProjectLayout({
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {projectId && (
-                  <ProjectPresenceSSE 
-                    projectId={projectId} 
-                    className="mr-2"
-                    maxVisible={5}
-                  />
-                )}
                 <Navigation />
                 <UserMenu />
               </div>

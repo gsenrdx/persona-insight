@@ -13,7 +13,6 @@ import { Users, Lock, Globe, MessageSquare, Crown, Shield, User, ToggleLeft } fr
 import { motion } from 'framer-motion'
 import { projectCardVariants } from '@/components/ui/page-transition'
 import { cn } from '@/lib/utils'
-import { ProjectPresenceIndicatorSSECompact } from '@/components/presence/project-presence-sse'
 
 interface ProjectCardProps {
   project: ProjectWithMembership
@@ -142,11 +141,6 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
               <span className="font-medium text-gray-700">{project.member_count || 0}</span>
               <span>멤버</span>
             </div>
-          </div>
-          
-          {/* Presence indicator */}
-          <div className="mb-3">
-            <ProjectPresenceIndicatorSSECompact projectId={project.id} />
           </div>
           
           {/* Footer */}

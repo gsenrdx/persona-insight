@@ -121,25 +121,6 @@ export class AdaptiveRealtime {
 // 기본 설정
 export const defaultFeatureConfigs: FeatureConfig[] = [
   {
-    feature: 'presence',
-    priority: 'high',
-    strategy: {
-      primary: 'sse',
-      fallback: 'polling',
-      pollingInterval: 60000, // 1분
-      maxRetries: 3,
-      reconnectDelay: 1000,
-      autoSwitch: true
-    },
-    switchConditions: {
-      minNetworkQuality: 'fair',
-      maxConcurrentUsers: 100,
-      maxMemoryUsage: 50, // 50MB
-      maxLatency: 2000, // 2초
-      errorRateThreshold: 10 // 10%
-    }
-  },
-  {
     feature: 'interview-list',
     priority: 'medium',
     strategy: {
