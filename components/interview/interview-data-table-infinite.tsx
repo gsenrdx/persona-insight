@@ -82,6 +82,8 @@ export function InterviewDataTableInfinite({
   const creators = React.useMemo(() => {
     const creatorMap = new Map<string, { id: string; name: string }>()
     
+    if (!interviews) return []
+    
     interviews.forEach(interview => {
       if (interview.created_by && interview.created_by_profile?.name) {
         creatorMap.set(interview.created_by, {

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ProjectWithMembership } from '@/types'
@@ -13,7 +13,7 @@ import { Users, Lock, Globe, MessageSquare, Crown, Shield, User, ToggleLeft } fr
 import { motion } from 'framer-motion'
 import { projectCardVariants } from '@/components/ui/page-transition'
 import { cn } from '@/lib/utils'
-import { ProjectPresenceIndicatorCompact } from '@/components/presence/project-presence-indicator'
+import { ProjectPresenceIndicatorSSECompact } from '@/components/presence/project-presence-sse'
 
 interface ProjectCardProps {
   project: ProjectWithMembership
@@ -28,7 +28,7 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
   const { profile } = useAuth()
 
   // 프로젝트 카드 hover 시 프리페칭
-  const handleMouseEnter = async () => {
+  const handleMouseEnter = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.access_token && profile?.id) {
       queryClient.prefetchQuery({
@@ -43,7 +43,7 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
         staleTime: 5 * 60 * 1000,
       })
     }
-  }
+  }, [project.id, profile?.id])
 
   const getRoleIcon = () => {
     switch (project.user_role) {
@@ -146,7 +146,7 @@ export function ProjectCard({ project, onEdit, onInvite, onSelect, showJoinBadge
           
           {/* Presence indicator */}
           <div className="mb-3">
-            <ProjectPresenceIndicatorCompact projectId={project.id} />
+            <ProjectPresenceIndicatorSSECompact projectId={project.id} />
           </div>
           
           {/* Footer */}

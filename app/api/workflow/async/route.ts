@@ -148,7 +148,6 @@ export async function POST(req: NextRequest) {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-          console.error(`Background processing failed with status ${response.status}:`, errorData)
           
           await supabase
             .from('interviews')
@@ -165,7 +164,6 @@ export async function POST(req: NextRequest) {
             .eq('id', interviewId)
         }
       } catch (error: any) {
-        console.error('Background processing error:', error)
         
         await supabase
           .from('interviews')
@@ -210,7 +208,6 @@ export async function POST(req: NextRequest) {
         })
         channel.unsubscribe()
       } catch (error) {
-        console.error('Failed to broadcast interview-added event:', error)
       }
     }, 0)
     

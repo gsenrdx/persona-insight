@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject, useProjectMembers } from '@/hooks/use-projects'
 import ProjectSettings from '@/components/project/tabs/project-settings'
-import ProjectInterviewsRealtime from '@/components/project/tabs/project-interviews-realtime'
+import ProjectInterviewsPolling from '@/components/project/tabs/project-interviews-polling'
 import ProjectInsights from '@/components/project/tabs/project-insights'
 import { ProjectLayout } from '@/components/layout/project-layout'
 import { AnimatePresence } from 'framer-motion'
@@ -88,13 +88,14 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
     switch (activeView) {
       case 'interviews':
-        return <ProjectInterviewsRealtime key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        // Polling 버전 사용 (더 안정적)
+        return <ProjectInterviewsPolling key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
       case 'insights':
         return <ProjectInsights key="insights" project={project} onInsightsChange={handleInsightsChange} />
       case 'settings':
         return <ProjectSettings key="settings" project={project} onProjectUpdate={() => refetch()} />
       default:
-        return <ProjectInterviewsRealtime key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviewsPolling key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
     }
   }
 
@@ -102,6 +103,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   if (isLoading) {
     return (
       <ProjectLayout
+        projectId={projectId}
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName="로딩 중..."
@@ -120,6 +122,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   if (authLoading || !user) {
     return (
       <ProjectLayout
+        projectId={projectId}
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName="로딩 중..."
@@ -172,6 +175,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   return (
     <>
       <ProjectLayout
+        projectId={projectId}
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName={project?.name}

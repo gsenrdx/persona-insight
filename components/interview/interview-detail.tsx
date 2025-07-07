@@ -20,6 +20,7 @@ interface InterviewDetailProps {
   presence?: any[]
   currentUserId?: string
   onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
+  hideHeader?: boolean
 }
 
 export default function InterviewDetail({ interview, onBack, presence = [], currentUserId, onSectionsChange }: InterviewDetailProps) {
@@ -94,7 +95,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full p-6">
       {/* 헤더 영역 */}
       <div className="mb-6">
         {/* Breadcrumb with Script Presence */}
@@ -228,7 +229,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
       </div>
       
       {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-0 overflow-auto">
         <AnimatePresence mode="wait">
           {activeTab === 'insights' && (
             <motion.div
@@ -237,7 +238,7 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="h-full"
+              className=""
             >
               <InterviewInsights 
                 interview={interview} 
@@ -253,12 +254,12 @@ export default function InterviewDetail({ interview, onBack, presence = [], curr
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="h-full"
+              className=""
             >
               <InterviewScriptViewer 
                 script={interview.cleaned_script || []} 
                 interview={interview}
-                className="h-full"
+                className=""
                 onSectionsChange={handleScriptSectionsChange}
               />
             </motion.div>

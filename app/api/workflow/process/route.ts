@@ -122,11 +122,6 @@ export async function POST(req: NextRequest) {
     
     if (!workflowResponse.ok) {
       const errorMessage = await workflowResponse.text().catch(() => '')
-      console.error(`MISO API error for interview ${interviewId}:`, {
-        status: workflowResponse.status,
-        statusText: workflowResponse.statusText,
-        error: errorMessage
-      })
       
       // 실패 상태로 업데이트
       await supabase
@@ -195,7 +190,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error(`Processing error for interview ${interviewId}:`, error)
     
     // 오류 발생 시 상태 업데이트
     const errorInfo = {

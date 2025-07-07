@@ -79,7 +79,6 @@ export async function GET(
         .filter(Boolean) || []
     )].sort((a, b) => parseInt(b) - parseInt(a))
     
-    console.log('Available years from interviews:', years)
 
     // If no years found, return empty result
     if (years.length === 0) {
@@ -118,7 +117,6 @@ export async function GET(
     return NextResponse.json(response, { headers })
 
   } catch (error) {
-    console.error('Project insights error:', error)
     return NextResponse.json(
       { 
         error: "서버 내부 오류", 

@@ -95,13 +95,6 @@ export default function EditableScriptItem({
       (p.selectionCoords || p.cursorCoords || p.selection || p.cursorPosition !== undefined)
     )
     
-    console.log('[EditableScript] Presences for script', scriptId, ':', {
-      total: presences.length,
-      otherUsers: otherPresences.length,
-      currentUser: currentUserPresence,
-      isEditing
-    })
-    
     // Always include current user presence when editing this script
     const currentUserInScript = currentUserPresence && 
       currentUserPresence.scriptId === scriptId && 
