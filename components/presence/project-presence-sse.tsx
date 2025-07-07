@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { usePresenceSSE } from '@/hooks/use-presence-sse'
+import { useAdaptivePresence } from '@/hooks/use-adaptive-presence'
 
 interface ProjectPresenceSSEProps {
   projectId: string
@@ -17,7 +17,7 @@ export function ProjectPresenceSSE({
   maxVisible = 3,
   showCount = true 
 }: ProjectPresenceSSEProps) {
-  const { users, isConnected, error } = usePresenceSSE(projectId)
+  const { users, isConnected, error } = useAdaptivePresence(projectId)
   
   // 색상 생성 함수 메모화
   const getColorFromId = useMemo(() => {
@@ -123,7 +123,7 @@ export function ProjectPresenceSSEDetailed({
   projectId, 
   className 
 }: ProjectPresenceSSEProps) {
-  const { users, isConnected, updateMyPresence } = usePresenceSSE(projectId)
+  const { users, isConnected, updateMyPresence } = useAdaptivePresence(projectId)
   
   // 색상 생성 함수 메모화
   const getColorFromId = useMemo(() => {
@@ -215,9 +215,9 @@ export function ProjectPresenceIndicatorSSECompact({
   maxUsers?: number
   showCount?: boolean
 }) {
-  const { users, isLoading, error } = usePresenceSSE(projectId)
+  const { users, isConnected, error } = useAdaptivePresence(projectId)
   
-  if (isLoading || error || !users || users.length === 0) {
+  if (!isConnected || error || !users || users.length === 0) {
     return null
   }
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Plus, RefreshCw, Loader2, WifiOff, Wifi } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
-import { useInterviewsPolling } from '@/hooks/use-interviews-polling'
+import { useAdaptiveInterviews } from '@/hooks/use-adaptive-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'
 import { useAssignPersonaDefinitionToInterview } from '@/hooks/use-interview-persona'
 import { Interview } from '@/types/interview'
@@ -61,7 +61,7 @@ export default function ProjectInterviewsPolling({
   const currentUserMember = members?.find(m => m.user_id === profile?.id)
   const isProjectAdmin = currentUserMember?.role === 'admin' || currentUserMember?.role === 'owner'
   
-  // Polling 기반 인터뷰 목록
+  // 적응형 인터뷰 목록 (네트워크 상태에 따라 자동 최적화)
   const { 
     interviews, 
     isLoading, 
@@ -72,10 +72,7 @@ export default function ProjectInterviewsPolling({
     refetch,
     isUpdating,
     isDeleting
-  } = useInterviewsPolling(project.id, {
-    refetchInterval: 30000, // 30초마다 자동 새로고침
-    refetchOnWindowFocus: true
-  })
+  } = useAdaptiveInterviews(project.id)
   
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
   const [isCreatingInterview, setIsCreatingInterview] = useState(false)
