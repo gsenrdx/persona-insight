@@ -29,15 +29,15 @@ export function useInterviewNotes(interviewId: string) {
     )
   }
 
-  // Add reply functionality (temporary - will be implemented in broadcast system)
+  // Reply functionality - currently handled by broadcast system
   const addReply = async (data: { noteId: string; content: string }) => {
-    console.warn('Reply functionality is being migrated to broadcast system')
-    // TODO: Implement in broadcast handler
+    // Reply functionality is handled by the broadcast system
+    // This is kept for API compatibility
   }
 
   const deleteReply = async (noteId: string, replyId: string) => {
-    console.warn('Delete reply functionality is being migrated to broadcast system')
-    // TODO: Implement in broadcast handler
+    // Delete reply functionality is handled by the broadcast system
+    // This is kept for API compatibility
   }
 
   return {

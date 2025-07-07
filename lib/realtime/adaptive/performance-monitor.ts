@@ -20,6 +20,7 @@ export class PerformanceMonitor {
   private latencies: number[] = []
   private startTime = Date.now()
   private updateInterval: NodeJS.Timer | null = null
+  private memoryInterval: NodeJS.Timer | null = null
   private listeners: Set<(metrics: PerformanceMetrics) => void> = new Set()
   
   // 연결 추적을 위한 Map
@@ -49,7 +50,7 @@ export class PerformanceMonitor {
     }
     
     // 메모리는 더 자주 업데이트
-    setInterval(updateMemory, 2000)
+    this.memoryInterval = setInterval(updateMemory, 2000)
   }
   
   private updateMetrics() {
@@ -151,6 +152,11 @@ export class PerformanceMonitor {
     if (this.updateInterval) {
       clearInterval(this.updateInterval)
       this.updateInterval = null
+    }
+    
+    if (this.memoryInterval) {
+      clearInterval(this.memoryInterval)
+      this.memoryInterval = null
     }
     
     this.listeners.clear()

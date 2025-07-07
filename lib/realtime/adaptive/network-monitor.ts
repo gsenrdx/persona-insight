@@ -17,6 +17,7 @@ export class NetworkMonitor {
   private pingInterval: NodeJS.Timer | null = null
   private listeners: Set<(quality: NetworkQuality) => void> = new Set()
   private lastQuality: NetworkQuality = 'good'
+  private connectionChangeHandler: (() => void) | null = null
   
   constructor(private checkInterval: number = 10000) {
     this.initializeConnection()
@@ -30,10 +31,11 @@ export class NetworkMonitor {
       
       // 연결 변경 이벤트 리스너
       if (this.connection) {
-        this.connection.addEventListener('change', () => {
+        this.connectionChangeHandler = () => {
           this.updateMetricsFromConnection()
           this.evaluateQuality()
-        })
+        }
+        this.connection.addEventListener('change', this.connectionChangeHandler)
         
         // 초기 메트릭 업데이트
         this.updateMetricsFromConnection()
@@ -80,11 +82,16 @@ export class NetworkMonitor {
     
     for (let i = 0; i < attempts; i++) {
       try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 3000)
+        
         const response = await fetch('/api/health', {
           method: 'HEAD',
           cache: 'no-cache',
-          signal: AbortSignal.timeout(3000)
+          signal: controller.signal
         })
+        
+        clearTimeout(timeoutId)
         
         if (!response.ok) failures++
       } catch {
@@ -174,8 +181,9 @@ export class NetworkMonitor {
       this.pingInterval = null
     }
     
-    if (this.connection) {
-      this.connection.removeEventListener('change', this.updateMetricsFromConnection)
+    if (this.connection && this.connectionChangeHandler) {
+      this.connection.removeEventListener('change', this.connectionChangeHandler)
+      this.connectionChangeHandler = null
     }
     
     this.listeners.clear()

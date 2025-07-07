@@ -195,20 +195,22 @@ export const debugOptions: Partial<AdaptiveRealtimeOptions> = {
   monitoringInterval: 2000, // 2초
   networkCheckInterval: 5000, // 5초
   onTransition: (transition: StrategyTransition) => {
-    console.log(`[AdaptiveRealtime] Strategy transition:`, {
-      feature: `${transition.from} → ${transition.to}`,
-      reason: transition.reason,
-      duration: transition.endTime ? transition.endTime - transition.startTime : 'ongoing',
-      success: transition.success
-    })
+    // 디버그 전환 로그는 개발자가 필요시 활성화
+    // console.log(`[AdaptiveRealtime] Strategy transition:`, {
+    //   feature: `${transition.from} → ${transition.to}`,
+    //   reason: transition.reason,
+    //   duration: transition.endTime ? transition.endTime - transition.startTime : 'ongoing',
+    //   success: transition.success
+    // })
   },
   onMetricsUpdate: (metrics: PerformanceMetrics) => {
-    console.log(`[AdaptiveRealtime] Metrics:`, {
-      connections: metrics.activeConnections,
-      messageRate: `${metrics.messageRate}/s`,
-      memory: `${metrics.memoryUsage}MB`,
-      latency: `${metrics.avgLatency}ms`,
-      errorRate: `${metrics.errorRate}%`
-    })
+    // 디버그 메트릭 로그는 개발자가 필요시 활성화
+    // console.log(`[AdaptiveRealtime] Metrics:`, {
+    //   connections: metrics.activeConnections,
+    //   messageRate: `${metrics.messageRate}/s`,
+    //   memory: `${metrics.memoryUsage}MB`,
+    //   latency: `${metrics.avgLatency}ms`,
+    //   errorRate: `${metrics.errorRate}%`
+    // })
   }
 }

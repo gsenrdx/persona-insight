@@ -28,7 +28,7 @@ export function useAdaptiveInterviews(projectId: string) {
       case 'polling':
         return 30000 // 30초 (기본값)
       case 'none':
-        return false // 폴링 비활성화
+        return 0 // 폴링 비활성화 (0은 폴링 중지를 의미)
       default:
         return 30000
     }
@@ -39,7 +39,7 @@ export function useAdaptiveInterviews(projectId: string) {
   // 기존 useInterviewsPolling 사용
   const result = useInterviewsPolling(projectId, {
     enabled: strategy !== 'none',
-    refetchInterval: pollingInterval,
+    refetchInterval: pollingInterval || undefined, // 0일 때 undefined로 변환
     refetchOnWindowFocus: true
   })
   
@@ -92,14 +92,14 @@ export function useAdaptiveInterview(interviewId: string) {
     switch (strategy) {
       case 'websocket':
         // WebSocket이 활성화되면 폴링 비활성화 (향후 WebSocket 구현 시)
-        return false
+        return 0
       case 'sse':
         // SSE가 활성화되면 폴링 비활성화 (향후 SSE 구현 시)
-        return false
+        return 0
       case 'polling':
         return 60000 // 60초
       case 'none':
-        return false
+        return 0
       default:
         return 60000
     }
@@ -109,8 +109,8 @@ export function useAdaptiveInterview(interviewId: string) {
   
   // 기존 useInterviewPolling 사용
   const result = useInterviewPolling(interviewId, {
-    enabled: strategy !== 'none',
-    refetchInterval: pollingInterval,
+    enabled: strategy !== 'none' && pollingInterval > 0,
+    refetchInterval: pollingInterval || undefined,
     refetchOnWindowFocus: true
   })
   

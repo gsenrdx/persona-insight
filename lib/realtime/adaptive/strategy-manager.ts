@@ -206,10 +206,10 @@ export class StrategyManager implements IStrategyManager {
       this.options.onTransition(transition)
     }
     
-    // 디버그 모드에서 로그 출력
-    if (this.options.debug && process.env.NODE_ENV === 'development') {
-      console.log('[StrategyManager] Transition:', transition)
-    }
+    // 디버그 모드에서 로그 출력 (개발자가 필요시 활성화)
+    // if (this.options.debug && process.env.NODE_ENV === 'development') {
+    //   console.log('[StrategyManager] Transition:', transition)
+    // }
   }
   
   // Public API Implementation
