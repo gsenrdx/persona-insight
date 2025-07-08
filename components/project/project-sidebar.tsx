@@ -4,7 +4,6 @@ import { FileText, BarChart3, Settings, ArrowLeft } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
 
 interface ProjectSidebarProps {
   activeView: string
@@ -82,18 +81,18 @@ export function ProjectSidebar({ activeView, onViewChange, projectName, classNam
   return (
     <div className={cn("flex flex-col", className)}>
       {/* 프로젝트 헤더 */}
-      <div className="px-6 py-5 border-b border-white/10">
+      <div className="px-6 py-5 border-b border-white/15">
         <button
           onClick={() => router.push('/projects')}
-          className="flex items-center gap-2 text-sm text-white font-bold hover:text-white/90 transition-colors group"
+          className="flex items-center gap-3 text-sm text-white font-semibold hover:bg-white/10 transition-all duration-200 group px-3 py-2 rounded-xl backdrop-blur-sm"
         >
-          <ArrowLeft className="w-5 h-5 text-white" />
+          <ArrowLeft className="w-4 h-4 text-white/80 group-hover:text-white transition-colors" />
           <span>프로젝트 목록</span>
         </button>
       </div>
       
       {/* 네비게이션 */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-5 space-y-2">
         {navigationItems.map((item) => {
           const isActive = activeView === item.id
           const Icon = item.icon
@@ -103,45 +102,33 @@ export function ProjectSidebar({ activeView, onViewChange, projectName, classNam
               key={item.id}
               onClick={() => onViewChange(item.id)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative",
+                "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative",
                 isActive 
-                  ? "" 
+                  ? "bg-white/95 backdrop-blur-sm shadow-lg" 
                   : "hover:bg-white/10"
               )}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeMenuItem"
-                  className="absolute inset-0 bg-white shadow-lg rounded-lg"
-                  initial={false}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30
-                  }}
-                />
-              )}
               <div className={cn(
-                "w-9 h-9 rounded-lg flex items-center justify-center transition-all relative z-10",
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all relative z-10",
                 isActive 
-                  ? "bg-blue-600" 
-                  : "bg-white/10 group-hover:bg-white/15"
+                  ? "bg-gradient-to-br from-blue-700 to-blue-800 shadow-md" 
+                  : "bg-white/10 group-hover:bg-white/15 backdrop-blur-sm"
               )}>
                 <Icon className={cn(
-                  "w-4 h-4 transition-colors",
-                  isActive ? "text-white" : "text-white/80"
+                  "w-5 h-5 transition-colors",
+                  isActive ? "text-white" : "text-white/90"
                 )} />
               </div>
               <div className="flex-1 text-left relative z-10">
                 <div className={cn(
-                  "text-sm font-medium transition-colors",
-                  isActive ? "text-blue-600" : "text-white/90"
+                  "text-sm font-semibold transition-colors",
+                  isActive ? "text-blue-700" : "text-white/95"
                 )}>
                   {item.label}
                 </div>
                 <div className={cn(
-                  "text-xs mt-0.5 transition-colors",
-                  isActive ? "text-gray-600" : "text-white/60"
+                  "text-xs mt-0.5 transition-colors leading-relaxed",
+                  isActive ? "text-gray-600" : "text-white/70"
                 )}>
                   {item.description}
                 </div>
@@ -168,36 +155,24 @@ export function ProjectSidebar({ activeView, onViewChange, projectName, classNam
                       onSectionClick?.(section.sector_name)
                     }}
                     className={cn(
-                      "w-full text-left px-2.5 py-1.5 rounded-md text-xs",
-                      "flex items-center gap-2 group relative",
+                      "w-full text-left px-3 py-2 rounded-lg text-xs",
+                      "flex items-center gap-3 group relative",
                       isActive 
-                        ? "" 
+                        ? "bg-white/95 backdrop-blur-sm" 
                         : "text-white hover:bg-white/10"
                     )}
                   >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeScriptSection"
-                        className="absolute inset-0 bg-white rounded-md"
-                        initial={false}
-                        transition={{
-                          type: "spring",
-                          stiffness: 350,
-                          damping: 25
-                        }}
-                      />
-                    )}
                     <span className={cn(
-                      "w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 relative z-10",
+                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 relative z-10",
                       isActive 
-                        ? "bg-blue-600 text-white" 
-                        : "bg-white/10 text-white/90"
+                        ? "bg-gradient-to-br from-blue-700 to-blue-800 text-white shadow-sm" 
+                        : "bg-white/15 text-white/90"
                     )}>
                       {index + 1}
                     </span>
                     <span className={cn(
                       "flex-1 line-clamp-1 relative z-10",
-                      isActive ? "font-medium text-blue-600" : ""
+                      isActive ? "font-medium text-blue-700" : ""
                     )}>
                       {section.sector_name}
                     </span>
@@ -210,9 +185,9 @@ export function ProjectSidebar({ activeView, onViewChange, projectName, classNam
       
       {/* 네비게이션 - 인사이트 페이지에서만 표시 */}
       {activeView === 'insights' && insightSections && insightSections.length > 0 && (
-        <div className="border-t border-white/10 px-4 py-3">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2">인사이트 네비게이션</h3>
-          <div ref={insightNavigationRef} className="space-y-0 max-h-96 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+        <div className="border-t border-white/15 px-5 py-4 bg-white/5">
+          <h3 className="text-xs font-bold text-white/90 uppercase tracking-wider mb-3">인사이트 네비게이션</h3>
+          <div ref={insightNavigationRef} className="space-y-1 max-h-96 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             {insightSections
               .map((insight: any, index: number) => {
                 const isActive = activeInsight === insight.id
@@ -225,36 +200,24 @@ export function ProjectSidebar({ activeView, onViewChange, projectName, classNam
                       onInsightClick?.(insight.id)
                     }}
                     className={cn(
-                      "w-full text-left px-2.5 py-1.5 rounded-md text-xs",
-                      "flex items-center gap-2 group relative",
+                      "w-full text-left px-3 py-2 rounded-lg text-xs",
+                      "flex items-center gap-3 group relative",
                       isActive 
-                        ? "" 
+                        ? "bg-white/95 backdrop-blur-sm" 
                         : "text-white hover:bg-white/10"
                     )}
                   >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeInsightSection"
-                        className="absolute inset-0 bg-white rounded-md"
-                        initial={false}
-                        transition={{
-                          type: "spring",
-                          stiffness: 350,
-                          damping: 25
-                        }}
-                      />
-                    )}
                     <span className={cn(
-                      "w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 relative z-10",
+                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 relative z-10",
                       isActive 
-                        ? "bg-blue-600 text-white" 
-                        : "bg-white/10 text-white/90"
+                        ? "bg-gradient-to-br from-blue-700 to-blue-800 text-white shadow-sm" 
+                        : "bg-white/15 text-white/90"
                     )}>
                       {index + 1}
                     </span>
                     <span className={cn(
                       "flex-1 line-clamp-1 relative z-10",
-                      isActive ? "font-medium text-blue-600" : ""
+                      isActive ? "font-medium text-blue-700" : ""
                     )}>
                       {insight.title}
                     </span>

@@ -1,29 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Interview, InsightItem } from '@/types/interview'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import InterviewSummarySidebar from './interview-summary-sidebar'
-import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
-import InterviewAssistantPanel from './interview-assistant-panel'
+import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface InterviewInsightsProps {
   interview: Interview
-  onEvidenceClick?: (scriptIds: number[]) => void
 }
 
-export default function InterviewInsights({ interview, onEvidenceClick }: InterviewInsightsProps) {
-  const { key_takeaways, primary_pain_points, primary_needs, hmw_questions } = interview
+export default function InterviewInsights({ interview }: InterviewInsightsProps) {
+  const { key_takeaways, primary_pain_points, primary_needs } = interview
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
-  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
 
-  const handleEvidenceClick = (evidence: number[]) => {
-    if (onEvidenceClick) {
-      onEvidenceClick(evidence)
-    }
-  }
 
   const toggleExpanded = (itemId: string) => {
     const newExpanded = new Set(expandedItems)
@@ -80,10 +70,10 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
               <div 
                 key={`evidence-${idx}`}
                 className={cn(
-                  "relative pl-4 before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full",
+                  "relative pl-4",
                   sentence.speaker === 'question' 
-                    ? "before:bg-blue-400" 
-                    : "before:bg-gray-300"
+                    ? "border-l-2 border-blue-400" 
+                    : "border-l-2 border-gray-300"
                 )}
               >
                 <blockquote className="text-sm text-gray-600 leading-relaxed">
@@ -101,8 +91,7 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
   }
 
   return (
-    <>
-      <div className="flex h-full overflow-auto">
+    <div className="flex h-full overflow-auto">
       {/* 왼쪽 사이드바 - 인터뷰 요약 */}
       <InterviewSummarySidebar interview={interview} />
       
@@ -118,7 +107,8 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
               {key_takeaways && key_takeaways.length > 0 ? (
                 <div className="space-y-3">
                   {key_takeaways.map((takeaway, index) => (
-                    <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-gray-400">
+                    <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative">
+                      <span className="absolute left-0 text-gray-400">•</span>
                       {takeaway}
                     </p>
                   ))}
@@ -180,48 +170,5 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
           </div>
         </div>
       </div>
-      
-      {/* Floating button for AI assistant */}
-      {typeof window !== 'undefined' && createPortal(
-        <>
-          {/* 플로팅 버튼 */}
-          <div className="fixed right-6 bottom-6 z-[100]">
-            <button
-              onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
-              className={cn(
-                "group relative w-16 h-16 bg-white rounded-full shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:scale-105 active:scale-95",
-                floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
-              )}
-              title="AI 도우미"
-            >
-              {/* 동그란 배경 */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* AI 아이콘 */}
-              <div className="relative flex items-center justify-center w-full h-full">
-                <img
-                  src="/chat-icon.png"
-                  alt="AI Assistant"
-                  className="w-8 h-8 transition-transform duration-200 group-hover:scale-110"
-                />
-              </div>
-              
-              {/* 활성 표시 점 */}
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse" />
-            </button>
-          </div>
-          
-          <InterviewAssistantPanel
-            isOpen={floatingPanelOpen}
-            onClose={() => setFloatingPanelOpen(false)}
-            interview={interview}
-            script={interview.cleaned_script || []}
-            hideToc={true}
-            context="insights"
-          />
-        </>,
-        document.body
-      )}
-    </>
   )
 }

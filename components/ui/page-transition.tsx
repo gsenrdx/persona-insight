@@ -47,29 +47,21 @@ export function PageTransition({ children, className }: PageTransitionProps) {
 // Table row animation variants
 export const tableRowVariants = {
   initial: { 
-    opacity: 0,
-    x: -20 
+    opacity: 0
   },
   animate: (i: number = 0) => ({ 
     opacity: 1,
-    x: 0,
     transition: {
-      delay: i * 0.05,
-      duration: 0.3,
+      delay: i * 0.02,
+      duration: 0.15,
       ease: "easeOut"
     }
   }),
-  hover: {
-    x: 4,
-    transition: {
-      duration: 0.2,
-      ease: "easeInOut"
-    }
-  },
+  hover: {},
   tap: {
-    scale: 0.98,
+    scale: 0.995,
     transition: {
-      duration: 0.1
+      duration: 0.05
     }
   }
 }
@@ -78,31 +70,28 @@ export const tableRowVariants = {
 export const projectCardVariants = {
   initial: { 
     opacity: 0, 
-    y: 20,
-    scale: 0.95
+    y: 8
   },
   animate: (i: number = 0) => ({ 
     opacity: 1, 
     y: 0,
-    scale: 1,
     transition: {
-      delay: i * 0.08,
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1] // cubic-bezier easing
+      delay: i * 0.05,
+      duration: 0.2,
+      ease: "easeOut"
     }
   }),
   hover: { 
-    y: -8,
-    scale: 1.02,
+    y: -4,
     transition: { 
-      duration: 0.3,
+      duration: 0.2,
       ease: "easeOut"
     }
   },
   tap: { 
     scale: 0.98,
     transition: { 
-      duration: 0.1 
+      duration: 0.05 
     }
   }
 }

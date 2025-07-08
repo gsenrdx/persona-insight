@@ -50,7 +50,8 @@ export default function RootLayout({
               expand={false}
               toastOptions={{
                 style: {
-                  marginTop: '80px',
+                  marginTop: '20px',
+                  marginRight: '0px',
                 },
                 className: 'toast-slide-in',
               }} 

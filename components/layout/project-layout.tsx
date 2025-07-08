@@ -57,22 +57,24 @@ export function ProjectLayout({
         
         {/* 통합된 사이드바 (헤더 포함) */}
         <aside className={cn(
-          "w-64 h-screen bg-blue-600 text-white flex flex-col transition-transform duration-200 z-50 shadow-lg relative overflow-hidden",
+          "w-64 h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white flex flex-col transition-transform duration-200 z-50 shadow-2xl relative overflow-hidden",
           "fixed top-0 left-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}>
-          {/* 깔끔한 그라데이션 오버레이 */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-black/10 pointer-events-none" />
+          {/* 장식용 배경 요소 - 브랜드 일관성 */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-300/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-400/15 rounded-full blur-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/10 pointer-events-none" />
           {/* 로고 영역 */}
-          <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 relative z-10">
+          <div className="h-20 flex items-center justify-between px-6 border-b border-white/15 relative z-10 bg-white/5 backdrop-blur-sm">
             <Link href="/" className="flex-1 block">
               <div className="space-y-1">
-                <h2 className="text-xl font-bold text-white">Persona Insight</h2>
-                <CompanyBranding className="text-blue-100 text-xs" />
+                <h2 className="text-xl font-bold text-white drop-shadow-sm">Persona Insight</h2>
+                <CompanyBranding className="text-blue-100/80 text-xs" />
               </div>
             </Link>
             <button
-              className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="lg:hidden p-2 hover:bg-white/15 rounded-xl transition-all duration-200 backdrop-blur-sm"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-5 h-5 text-white" />

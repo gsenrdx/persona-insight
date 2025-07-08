@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { AddInterviewModalProps } from "@/types/components";
 import { toast } from "sonner";
-import { X, Upload, FileText, Plus, Loader2, Type, Calendar, FileIcon, ChevronDown, Mic, FileAudio } from "lucide-react";
+import { X, Upload, FileText, Plus, Loader2, Type, Calendar, FileIcon, ChevronDown, Mic, FileAudio, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_FILE_EXTENSIONS, MAX_FILE_SIZE_MB, getFileTypeDescription } from "@/lib/constants/file-upload";
@@ -245,22 +245,44 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl p-0 gap-0 h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl p-0 gap-0 h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="sr-only">인터뷰 추가</DialogTitle>
         
-        {/* 헤더 - Medium 스타일 */}
-        <div className="px-6 py-5 border-b">
-          <h2 className="text-xl font-medium text-gray-900">인터뷰 추가</h2>
-          <p className="text-sm text-gray-500 mt-1">인터뷰 데이터를 업로드하거나 직접 입력하세요</p>
+        {/* 상단 헤더 영역 - 프로젝트 생성 모달과 동일한 스타일 */}
+        <div className="relative bg-gradient-to-br from-indigo-50 to-purple-50 px-8 pt-8 pb-6">
+          <DialogHeader className="relative z-10">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Search className="w-6 h-6 text-indigo-600" />
+              인터뷰 추가
+            </h2>
+            <DialogDescription className="text-base text-gray-600 mt-2">
+              인터뷰 데이터를 업로드하거나 직접 입력하여 고객의 목소리를 분석하세요
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* 핀 캐릭터 */}
+          <div className="absolute right-8 top-1/2 -translate-y-1/2">
+            <img 
+              src="/assets/pin/pin-interview-search.png" 
+              alt="Pin character"
+              className="w-32 h-32 object-contain"
+            />
+          </div>
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6 space-y-6">
-            {/* 입력 방식 선택 - Flex wrap 스타일 */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">입력 방식 선택</label>
-              <div className="flex flex-wrap gap-3">
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="px-8 py-6 space-y-6">
+            {/* 입력 방식 선택 섹션 */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-xs font-bold text-indigo-600">1</span>
+                </div>
+                입력 방식 선택
+              </h3>
+              
+              <div className="ml-8 flex flex-wrap gap-3">
                 {inputTypeOptions.map((option) => {
                   const Icon = option.icon;
                   const isSelected = inputType === option.value;
@@ -274,16 +296,16 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                       }}
                       disabled={option.disabled}
                       className={cn(
-                        "relative flex items-center gap-3 px-4 py-3 rounded-lg border transition-all",
+                        "relative flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all cursor-pointer",
                         isSelected
-                          ? "border-blue-500 bg-blue-50 text-gray-900"
-                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
-                        option.disabled && "opacity-50 cursor-not-allowed"
+                          ? "border-indigo-400 bg-indigo-50 text-gray-900"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/30",
+                        option.disabled && "opacity-50 cursor-not-allowed hover:bg-white hover:border-gray-200"
                       )}
                     >
                       <div className={cn(
-                        "w-8 h-8 rounded-md flex items-center justify-center",
-                        isSelected ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600"
+                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                        isSelected ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-600"
                       )}>
                         <Icon className="w-4 h-4" />
                       </div>
@@ -320,6 +342,14 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {/* STT 변환본 업로드 - 드래그 앤 드롭 영역 */}
             {inputType === 'stt' && (
               <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600">2</span>
+                  </div>
+                  파일 업로드
+                </h3>
+                
+                <div className="ml-8 space-y-4">
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   onDragEnter={handleDragEnter}
@@ -327,10 +357,10 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   className={cn(
-                    "relative border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all",
+                    "relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all",
                     isDragging 
-                      ? "border-gray-900 bg-gray-50" 
-                      : "border-gray-300 hover:border-gray-400"
+                      ? "border-indigo-400 bg-indigo-50" 
+                      : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/20"
                   )}
                 >
                   {isDragging ? (
@@ -340,7 +370,9 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                     </>
                   ) : (
                     <>
-                      <FileAudio className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <FileAudio className="w-8 h-8 text-indigo-600" />
+                      </div>
                       <p className="text-base font-medium text-gray-900 mb-1">
                         클릭하거나 파일을 드래그하세요
                       </p>
@@ -350,9 +382,12 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="font-medium">팁:</span>
-                  <p>STT(Speech-to-Text) 변환본은 음성을 텍스트로 변환한 문서입니다</p>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-indigo-700">STT(Speech-to-Text) 변환본은 음성을 텍스트로 변환한 문서입니다</p>
+                  </div>
+                </div>
                 </div>
               </div>
             )}
@@ -360,6 +395,14 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {/* 텍스트 직접 입력 영역 */}
             {inputType === 'text' && (
               <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600">2</span>
+                  </div>
+                  텍스트 입력
+                </h3>
+                
+                <div className="ml-8 space-y-4">
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
@@ -400,43 +443,52 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                   <Button
                     onClick={handleAddText}
                     disabled={!textInput.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     인터뷰 추가
                   </Button>
+                </div>
               </div>
             )}
 
             {/* 음성 파일 업로드 (준비중) */}
             {inputType === 'audio' && (
               <div className="space-y-4">
-                <div className="relative border-2 border-dashed rounded-lg p-16 text-center bg-gray-50">
-                  <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                    <Mic className="w-10 h-10 text-gray-500" />
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600">2</span>
                   </div>
-                  <p className="text-xl font-medium text-gray-700 mb-2">
-                    음성 파일 업로드
-                  </p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    음성 파일을 업로드하면 자동으로 텍스트로 변환됩니다
-                  </p>
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-300 text-gray-700">
-                    🚧 준비중
-                  </span>
-                </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span className="text-yellow-600">!</span>
-                      </div>
+                  음성 파일 업로드
+                </h3>
+                
+                <div className="ml-8 space-y-4">
+                  <div className="relative border-2 border-dashed rounded-xl p-16 text-center bg-gray-50">
+                    <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                      <Mic className="w-10 h-10 text-gray-500" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-yellow-800">준비중인 기능입니다</p>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        음성 파일 업로드 기능은 현재 개발 중입니다. STT 변환본을 텍스트 파일로 업로드해주세요.
-                      </p>
+                    <p className="text-xl font-medium text-gray-700 mb-2">
+                      음성 파일 업로드
+                    </p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      음성 파일을 업로드하면 자동으로 텍스트로 변환됩니다
+                    </p>
+                    <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-300 text-gray-700">
+                      🚧 준비중
+                    </span>
+                  </div>
+                  
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-amber-600">!</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">준비중인 기능입니다</p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          음성 파일 업로드 기능은 현재 개발 중입니다. STT 변환본을 텍스트 파일로 업로드해주세요.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -445,29 +497,31 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
 
             {/* 추가된 인터뷰 목록 - 동적 그리드 카드 스타일 */}
             {interviews.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    추가된 인터뷰 ({interviews.length})
-                  </h3>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600">3</span>
+                  </div>
+                  추가된 인터뷰 검토
+                  <span className="text-sm font-normal text-gray-500">({interviews.length}개)</span>
                   {interviews.some(item => !item.title.trim()) && (
-                    <span className="text-xs text-red-500">제목은 필수입니다</span>
+                    <span className="text-xs text-red-500 font-normal ml-auto">* 제목은 필수입니다</span>
                   )}
-                </div>
+                </h3>
                 
-                <div className="flex flex-wrap gap-3">
+                <div className="ml-8 flex flex-wrap gap-3">
                   {interviews.map((item, index) => (
-                    <div key={item.id} className="group relative inline-flex flex-col p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div key={item.id} className="group relative inline-flex flex-col p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all">
                       {/* 헤더 영역 */}
                       <div className="flex items-start gap-2 mb-2">
                         <div className={cn(
-                          "w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0",
-                          item.type === 'file' ? "bg-blue-100" : "bg-gray-200"
+                          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                          item.type === 'file' ? "bg-indigo-100" : "bg-gray-100"
                         )}>
                           {item.type === 'file' ? (
-                            <FileAudio className="w-4 h-4 text-blue-600" />
+                            <FileAudio className="w-4 h-4 text-indigo-600" />
                           ) : (
-                            <Type className="w-4 h-4 text-gray-700" />
+                            <Type className="w-4 h-4 text-gray-600" />
                           )}
                         </div>
                         
@@ -479,10 +533,10 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                             placeholder="제목 입력"
                             data-interview-id={item.id}
                             className={cn(
-                              "w-full text-sm font-medium bg-transparent border-0 border-b p-0 pb-0.5 focus:outline-none transition-colors",
+                              "w-full text-sm font-medium bg-transparent border-0 border-b p-0 pb-1 focus:outline-none transition-colors",
                               item.title.trim() 
-                                ? "border-gray-300 hover:border-gray-400 focus:border-gray-900" 
-                                : "border-red-300 text-red-500 placeholder-red-400"
+                                ? "border-gray-300 hover:border-indigo-300 focus:border-indigo-500" 
+                                : "border-red-300 text-red-500 placeholder-red-400 hover:border-red-400"
                             )}
                           />
                         </div>
@@ -524,28 +578,41 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
         </div>
 
         {/* 하단 액션 */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            취소
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={interviews.length === 0 || isSubmitting}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                처리 중...
-              </>
+        <div className="flex justify-between items-center px-8 py-4 bg-gray-50 border-t">
+          <p className="text-sm text-gray-500">
+            {interviews.length === 0 ? (
+              '인터뷰 데이터를 추가해주세요'
             ) : (
-              `분석 시작${interviews.length > 0 ? ` (${interviews.length})` : ''}`
+              <><span className="text-indigo-600 font-medium">{interviews.length}개</span>의 인터뷰가 준비되었습니다</>
             )}
-          </Button>
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="hover:bg-gray-100"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={interviews.length === 0 || isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  처리 중...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  분석 시작
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

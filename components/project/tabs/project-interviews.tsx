@@ -8,14 +8,11 @@ import { useAuth } from '@/hooks/use-auth'
 import { useInterviews } from '@/hooks/use-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'
 import { useAssignPersonaDefinitionToInterview } from '@/hooks/use-interview-persona'
-import { Interview } from '@/types/interview'
 import { InterviewDataTableInfinite } from '@/components/interview/interview-data-table-infinite'
 import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { motion, AnimatePresence } from 'framer-motion'
-import { fadeVariants } from '@/components/ui/page-transition'
 
 // 모달 동적 import
 const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod => {
@@ -67,19 +64,12 @@ export default function ProjectInterviews({
     error,
     isFetching,
     processingCount,
-    completedCount,
-    failedCount,
     totalCount,
     createInterview,
     updateInterview, 
     deleteInterview,
     refetch,
-    isCreating,
-    isUpdating,
-    isDeleting,
-    hasProcessing,
-    hasFailed,
-    isEmpty
+    isCreating
   } = useInterviews({
     projectId: project.id,
     enabled: true
@@ -123,16 +113,20 @@ export default function ProjectInterviews({
       toast.success('인터뷰 분석을 다시 시작했습니다.')
       
       // 상태를 processing으로 낙관적 업데이트
-      updateInterview(interviewId, { workflow_status: 'processing' })
+      updateInterview({ id: interviewId, updates: { status: 'processing' } })
     } catch (error) {
       toast.error('인터뷰 재시도에 실패했습니다.')
     }
   }, [session, updateInterview])
 
   // 인터뷰 생성 핸들러
-  const handleCreateInterview = useCallback(async (content: File | string, projectId: string, title: string, lastModified?: number) => {
+  const handleCreateInterview = useCallback(async (content: string | File, _projectId?: string, title?: string, lastModified?: number) => {
+    if (!title) {
+      toast.error('제목을 입력해주세요')
+      return
+    }
     try {
-      await createInterview({ content, title, lastModified })
+      createInterview({ content, title, lastModified })
       setShowAddInterviewModal(false)
     } catch (error) {
       // 에러는 mutation에서 처리됨
@@ -142,7 +136,10 @@ export default function ProjectInterviews({
   // 페르소나 할당
   const assignPersonaMutation = useAssignPersonaDefinitionToInterview()
   
-  const handlePersonaAssignment = useCallback(async (interviewId: string, personaDefinitionId: string) => {
+  const handlePersonaAssignment = useCallback(async (personaDefinitionId: string) => {
+    const { interviewId } = personaAssignmentModal
+    if (!interviewId) return
+    
     try {
       await assignPersonaMutation.mutateAsync({
         interviewId,
@@ -152,7 +149,7 @@ export default function ProjectInterviews({
     } catch (error) {
       // Error handled by mutation onError
     }
-  }, [assignPersonaMutation])
+  }, [assignPersonaMutation, personaAssignmentModal])
 
   // 상태 분석은 useInterviews 훅에서 제공됨
   
@@ -177,139 +174,151 @@ export default function ProjectInterviews({
     <div className="flex flex-col h-full min-h-0">
       {/* 헤더 - 인터뷰 상세에서는 숨김 */}
       {!selectedInterviewId && (
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold">인터뷰 목록</h2>
-            {/* 상태 표시 */}
-            <div className="flex items-center gap-2">
-              {processingCount > 0 && (
-                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
-                  <Activity className="w-4 h-4 animate-pulse" />
-                  <span>{processingCount}개 처리 중</span>
+        <div className="mb-6">
+          {/* 헤더 배경 카드 */}
+          <div className="relative bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-2xl p-6 overflow-hidden">
+            {/* 메인 콘텐츠 - 좌측 영역 */}
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                {/* 핀 캐릭터 - 좌측에 배치 */}
+                <div className="w-24 h-24 flex-shrink-0">
+                  <img 
+                    src="/assets/pin/pin-interview-list.png" 
+                    alt="Pin character with papers"
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
                 </div>
-              )}
+                
+                {/* 텍스트 콘텐츠 */}
+                <div>
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {!isLoading && totalCount > 0 ? (
+                        <>
+                          <span className="text-3xl text-blue-600">{totalCount}개</span>의 인터뷰가 있어요!
+                        </>
+                      ) : !isLoading && totalCount === 0 ? (
+                        '아직 인터뷰가 없어요'
+                      ) : (
+                        '인터뷰 목록'
+                      )}
+                    </h2>
+                  </div>
+                  
+                  {/* 상태 메시지 - 심플하게 */}
+                  <p className="text-sm text-gray-600">
+                    {processingCount > 0 ? (
+                      <span className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-blue-500 animate-pulse" />
+                        <span className="text-blue-600 font-medium">{processingCount}개</span>를 열심히 분석하고 있어요
+                      </span>
+                    ) : totalCount > 0 ? (
+                      '고객의 소중한 이야기들이 모여있어요'
+                    ) : (
+                      '새로운 인터뷰를 추가해보세요'
+                    )}
+                  </p>
+                </div>
+              </div>
               
-              {isFetching && !isLoading && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>동기화 중</span>
-                </div>
-              )}
-              
-              {!isLoading && totalCount > 0 && (
-                <div className="text-sm text-gray-500">
-                  총 {totalCount}개 인터뷰
-                </div>
-              )}
+              {/* 우측 액션 버튼 - 헤더에 맞는 크기 */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={handleManualRefresh}
+                  disabled={isLoading || isFetching}
+                  className="h-10 w-10 p-0 rounded-xl hover:bg-white/70 transition-all duration-200 border border-white/40 backdrop-blur-sm"
+                  title="새로고침"
+                >
+                  <RefreshCw className={cn(
+                    "w-5 h-5 text-gray-600",
+                    (isLoading || isFetching) && "animate-spin text-blue-600"
+                  )} />
+                </Button>
+                
+                <Button
+                  onClick={() => setShowAddInterviewModal(true)}
+                  size="default"
+                  disabled={isCreating}
+                  className="bg-white/90 hover:bg-white text-gray-800 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200/60 backdrop-blur-sm px-4 py-2.5 h-10 rounded-xl font-medium"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <span className="text-sm">추가 중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      <span className="text-sm">인터뷰 추가</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-              <span className="ml-2 hidden sm:inline">새로고침</span>
-            </Button>
             
-            <Button
-              onClick={() => setShowAddInterviewModal(true)}
-              size="sm"
-              disabled={isCreating}
-            >
-              {isCreating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              <span className="ml-2 hidden sm:inline">인터뷰 추가</span>
-            </Button>
+            {/* 장식용 배경 요소 - 브랜드 컴러로 통일 */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-200/25 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200/25 rounded-full blur-2xl" />
           </div>
         </div>
       )}
 
       {/* 콘텐츠 영역 */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {!selectedInterviewId ? (
-            <motion.div 
-              key="list"
-              className="h-full"
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={fadeVariants}
-            >
-              <div className="bg-white rounded-lg shadow-sm h-full overflow-hidden">
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <InterviewDataTableInfinite
-                    interviews={interviews}
-                    onView={(id) => {
-                      router.push(`/projects/${project.id}?interview=${id}`, { scroll: false })
-                    }}
-                    isAdmin={isProjectAdmin}
-                    onDelete={(id) => deleteInterview(id)}
-                    onRetry={handleRetry}
-                    onAssignPersona={(interviewId) => {
-                      const interview = interviews.find(i => i.id === interviewId)
-                      if (interview) {
-                        setPersonaAssignmentModal({
-                          open: true,
-                          interviewId: interview.id,
-                          currentPersonaDefinitionId: interview.confirmed_persona_definition_id,
-                          recommendedPersona: interview.ai_persona_match
-                        })
-                      }
-                    }}
-                    projectId={project.id}
-                    currentUserId={profile?.id}
-                  />
-                )}
-              </div>
-            </motion.div>
-          ) : !selectedInterview ? (
-            <motion.div 
-              key="loading"
-              className="h-full"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="flex items-center justify-center h-full">
+        {!selectedInterviewId ? (
+          <div className="h-full overflow-hidden">
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 rounded-2xl shadow-xl border border-white/20">
                 <div className="text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
+                  <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
+                  <p className="text-sm text-gray-600">인터뷰 목록을 불러오는 중...</p>
                 </div>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="detail"
-              className="h-full"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="bg-white rounded-lg shadow-sm h-full overflow-auto">
-                <InterviewDetail
-                  interview={selectedInterview}
-                  onBack={() => {
-                    router.push(`/projects/${project.id}`, { scroll: false })
-                  }}
-                  onSectionsChange={onSectionsChange}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <InterviewDataTableInfinite
+                interviews={interviews}
+                onView={(id) => {
+                  router.push(`/projects/${project.id}?interview=${id}`, { scroll: false })
+                }}
+                isAdmin={isProjectAdmin}
+                onDelete={(id) => deleteInterview(id)}
+                onRetry={handleRetry}
+                onAssignPersona={(interviewId) => {
+                  const interview = interviews.find(i => i.id === interviewId)
+                  if (interview) {
+                    setPersonaAssignmentModal({
+                      open: true,
+                      interviewId: interview.id,
+                      currentPersonaDefinitionId: interview.confirmed_persona_definition_id,
+                      recommendedPersona: interview.ai_persona_match ?? undefined
+                    })
+                  }
+                }}
+                projectId={project.id}
+                currentUserId={profile?.id}
+              />
+            )}
+          </div>
+        ) : !selectedInterview ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm h-full overflow-auto">
+            <InterviewDetail
+              interview={selectedInterview}
+              onBack={() => {
+                router.push(`/projects/${project.id}`, { scroll: false })
+              }}
+              onSectionsChange={onSectionsChange}
+            />
+          </div>
+        )}
       </div>
 
       {/* 모달들 */}
@@ -321,9 +330,9 @@ export default function ProjectInterviews({
       />
       
       <PersonaAssignmentModal
-        isOpen={personaAssignmentModal.open}
-        onClose={() => setPersonaAssignmentModal({ open: false, interviewId: '' })}
-        onConfirm={handlePersonaAssignment}
+        open={personaAssignmentModal.open}
+        onOpenChange={(open) => !open && setPersonaAssignmentModal({ open: false, interviewId: '' })}
+        onAssign={handlePersonaAssignment}
         interviewId={personaAssignmentModal.interviewId}
         currentPersonaDefinitionId={personaAssignmentModal.currentPersonaDefinitionId}
         recommendedPersona={personaAssignmentModal.recommendedPersona}

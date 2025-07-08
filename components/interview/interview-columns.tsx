@@ -410,58 +410,45 @@ export const createInterviewColumns = (
       // 페르소나가 전혀 없는 경우
       if (!confirmedPersonaDefinitionId && !aiPersonaMatch && !aiPersonaDefinition) return <span className="text-sm text-gray-500 pl-2">-</span>
       
+      // AI 추천이 있지만 아직 확정되지 않은 경우를 확정된 것처럼 표시
+      const effectivePersonaDefinitionId = confirmedPersonaDefinitionId || aiPersonaMatch
+      const effectivePersonaDefinition = confirmedPersonaDefinition || aiPersonaDefinition
       
-      // confirmed_persona_definition_id가 있는 경우 (확정된 경우) - 형광펜 스타일
-      if (confirmedPersonaDefinitionId) {
-        // confirmed_persona_definition 관계 데이터가 있으면 그것을 사용, 없으면 ai_persona_definition 사용
-        let displayName = ''
-        if (confirmedPersonaDefinition) {
-          displayName = confirmedPersonaDefinition.name_ko
-        } else if (aiPersonaDefinition) {
-          // confirmed_persona_definition 관계 데이터가 없는 경우 AI 추천 데이터 사용
-          displayName = aiPersonaDefinition.name_ko
-        }
+      // 표시할 페르소나가 있는 경우 - 형광펜 스타일
+      if (effectivePersonaDefinitionId && effectivePersonaDefinition) {
+        const displayName = effectivePersonaDefinition.name_ko
+        const color = getPersonaHighlightColor(displayName)
+        const isAutoConfirmed = !confirmedPersonaDefinitionId && aiPersonaMatch // AI 자동 확정 여부
         
-        if (displayName) {
-          const color = getPersonaHighlightColor(displayName)
-          
-          return (
-            <div className="pl-2 min-w-0">
-              <span className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
-                color?.bg || 'bg-gray-200/60', color?.text || 'text-gray-900'
-              )}>
-                <Check className="h-3 w-3" />
-                {displayName}
-              </span>
-            </div>
-          )
-        }
+        return (
+          <div className="pl-2 min-w-0 flex items-center gap-2">
+            <span className={cn(
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+              color?.bg || 'bg-gray-200/60', color?.text || 'text-gray-900'
+            )}>
+              <Check className="h-3 w-3" />
+              {displayName}
+              {isAutoConfirmed && <span className="text-[10px] opacity-70">(AI)</span>}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onAssignPersona) {
+                  onAssignPersona(row.original.id)
+                }
+              }}
+            >
+              변경
+            </Button>
+          </div>
+        )
       }
       
-      // confirmed_persona_definition_id가 null인 경우 (미확정) - AI 추천과 버튼 표시
-      return (
-        <div className="pl-2 min-w-0 flex items-center gap-2">
-          {aiPersonaDefinition && (
-            <span className="text-xs text-gray-500">
-              추천: {aiPersonaDefinition.name_ko}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (onAssignPersona) {
-                onAssignPersona(row.original.id)
-              }
-            }}
-          >
-            확정하기
-          </Button>
-        </div>
-      )
+      // 기타 경우 (발생하지 않아야 함)
+      return <span className="text-sm text-gray-500 pl-2">-</span>
     },
   },
   {

@@ -7,8 +7,9 @@ import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, Chev
 import { cn } from '@/lib/utils'
 import { useInterviewNotes } from '@/hooks/use-interview-notes'
 import { useAuth } from '@/hooks/use-auth'
+import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 // Removed FloatingMemoButton and AIQuestionBar - using read-only view
-import InterviewAssistantPanel from './interview-assistant-panel'
 import { ReadOnlyScriptItem } from './readonly-script-item'
 
 interface InterviewScriptViewerProps {
@@ -16,18 +17,23 @@ interface InterviewScriptViewerProps {
   interview?: Interview
   className?: string
   onSectionsChange?: (sections: ScriptSection[] | null, activeSection: string | null, scrollToSection: (sectionName: string) => void) => void
+  canEdit?: boolean
 }
 
-export default function InterviewScriptViewer({ script, interview, className, onSectionsChange }: InterviewScriptViewerProps) {
+export default function InterviewScriptViewer({ script, interview, className, onSectionsChange, canEdit = false }: InterviewScriptViewerProps) {
   const { user, profile, session } = useAuth()
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
   
-  // Script data (no realtime updates)
-  const scripts = script // 전달받은 script 데이터 사용
+  // Script data with optimistic updates
+  const [scripts, setScripts] = useState(script)
+  
+  // script prop이 변경되면 상태 업데이트
+  useEffect(() => {
+    setScripts(script)
+  }, [script])
   
   // scrollToSection 함수를 먼저 정의
   const scrollToSection = useCallback((sectionName: string) => {
@@ -132,6 +138,67 @@ export default function InterviewScriptViewer({ script, interview, className, on
     isDeletingNote 
   } = useInterviewNotes(interview?.id || '', interview?.project_id)
   
+  // 카테고리 업데이트 mutation with optimistic update
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ scriptId, category, currentScripts }: { scriptId: number[], category: 'painpoint' | 'needs' | null, currentScripts: CleanedScriptItem[] }) => {
+      if (!session?.access_token || !interview?.id) throw new Error('인증이 필요합니다')
+      
+      // 현재 cleaned_script를 복사하고 해당 항목만 업데이트
+      const updatedScript = currentScripts.map(item => {
+        if (JSON.stringify(item.id) === JSON.stringify(scriptId)) {
+          return { ...item, category }
+        }
+        return item
+      })
+      
+      const response = await fetch(`/api/interviews/${interview.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cleaned_script: updatedScript
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('카테고리 업데이트 실패')
+      }
+      
+      return { updatedScript }
+    },
+    onMutate: async ({ scriptId, category }) => {
+      // 현재 상태 저장
+      const previousScripts = scripts
+      
+      // 낙관적 업데이트 - 함수형 업데이트로 최신 상태 보장
+      setScripts(prev => prev.map(item => {
+        if (JSON.stringify(item.id) === JSON.stringify(scriptId)) {
+          return { ...item, category }
+        }
+        return item
+      }))
+      
+      // 롤백을 위한 이전 상태 반환
+      return { previousScripts }
+    },
+    onError: (error, variables, context) => {
+      // 에러 시 롤백
+      if (context?.previousScripts) {
+        setScripts(context.previousScripts)
+      }
+      toast.error('카테고리 업데이트 중 오류가 발생했습니다')
+    },
+    onSuccess: () => {
+      toast.success('카테고리가 업데이트되었습니다')
+    }
+  })
+  
+  const handleCategoryChange = useCallback((scriptId: number[], category: 'painpoint' | 'needs' | null) => {
+    updateCategoryMutation.mutate({ scriptId, category, currentScripts: scripts })
+  }, [updateCategoryMutation, scripts])
+  
   // 스크립트 ID별 메모 맵핑
   const memosByScriptId = useMemo(() => {
     const map: Record<string, typeof notes[0]> = {}
@@ -146,17 +213,23 @@ export default function InterviewScriptViewer({ script, interview, className, on
     return map
   }, [notes])
 
-  // 스크립트 데이터 (실시간 업데이트 제거)
-  const scriptItems = script
+  // 스크립트 데이터 (낙관적 업데이트 상태 사용)
+  const scriptItems = scripts
   
   // 필터링된 스크립트
   const filteredScript = useMemo(() => {
-    if (!searchTerm) return scriptItems
+    // 먼저 빈 내용 제거
+    const nonEmptyItems = scriptItems.filter(item => 
+      item.cleaned_sentence && 
+      item.cleaned_sentence.trim().length > 0
+    )
     
-    return scriptItems.filter(item =>
+    if (!searchTerm) return nonEmptyItems
+    
+    return nonEmptyItems.filter(item =>
       item.cleaned_sentence.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }, [scriptItems, searchTerm])
+  }, [scripts, searchTerm])
 
   // Removed memo/reply handlers - using read-only view
 
@@ -166,14 +239,10 @@ export default function InterviewScriptViewer({ script, interview, className, on
       : [text]
     
     return (
-      <span className={cn(
-        "relative inline",
-        category === 'painpoint' && "bg-gradient-to-r from-red-100/60 to-red-100/40 px-1 -mx-1 rounded",
-        category === 'needs' && "bg-gradient-to-r from-blue-100/60 to-blue-100/40 px-1 -mx-1 rounded"
-      )}>
+      <span className="relative inline">
         {parts.map((part, i) => 
           searchTerm && part.toLowerCase() === searchTerm.toLowerCase() 
-            ? <mark key={i} className="bg-yellow-300/50 rounded px-0.5">{part}</mark>
+            ? <mark key={i} className="bg-yellow-200/60 text-yellow-900 rounded-sm px-1 py-0.5 font-medium">{part}</mark>
             : part
         )}
       </span>
@@ -226,7 +295,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
     content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
     content += '='.repeat(50) + '\n\n'
     
-    scriptItems.forEach(item => {
+    scripts.forEach(item => {
       const speaker = item.speaker === 'question' ? 'Q' : 'A'
       const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
       content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
@@ -312,77 +381,82 @@ export default function InterviewScriptViewer({ script, interview, className, on
       <div className="flex-1 relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
-          {/* 헤더 영역 - 제목과 검색 바 */}
-          <div className="px-8 py-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900">대화 스크립트</h3>
-                  <p className="text-xs text-gray-500 mt-1">Interview Script</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative max-w-sm">
+          {/* 검색 및 도구 영역 - 깔끔한 상단바 */}
+          <div className="px-6 py-3 bg-gray-50/50 border-b border-gray-100">
+            <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+              <div className="flex-1 max-w-lg">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="검색..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all"
+                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
                   />
                 </div>
-                <div className="relative" ref={downloadMenuRef}>
-                  <button
-                    onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-                    title="다운로드 옵션"
-                  >
-                    <Download className="w-4 h-4" />
-                    다운로드
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-                  
-                  {downloadMenuOpen && (
-                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+              </div>
+              
+              <div className="relative" ref={downloadMenuRef}>
+                <button
+                  onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+                  title="다운로드"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">다운로드</span>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                
+                {downloadMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-10 overflow-hidden">
+                    <div className="py-1">
                       <button
                         onClick={handleDownloadOriginal}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors disabled:opacity-50"
                         disabled={!interview?.raw_text}
                       >
-                        <FileText className="w-4 h-4" />
+                        <FileText className="w-4 h-4 text-gray-400" />
                         원본 인터뷰
                       </button>
-                      <div className="border-t border-gray-100" />
                       <button
                         onClick={handleDownloadCleaned}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4 text-gray-400" />
                         정리된 스크립트
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* 스크립트 내용 */}
-          <div className="flex-1 overflow-y-auto relative" ref={scriptContainerRef}>
-            <div className="mx-auto px-8 py-6" style={{ maxWidth: '1024px' }}>
+          <div className="flex-1 overflow-y-auto relative bg-white" ref={scriptContainerRef}>
+            <div className="mx-auto px-10 py-6" style={{ maxWidth: '1000px' }}>
               {filteredScript.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">
-                    {searchTerm ? '검색 결과가 없습니다.' : '대화 내용이 없습니다.'}
+                <div className="text-center py-20">
+                  <div className="text-gray-300 mb-3">
+                    <MessageSquare className="w-12 h-12 mx-auto opacity-20" />
+                  </div>
+                  <p className="text-gray-500 text-base font-medium">
+                    {searchTerm ? '검색 결과가 없습니다' : '대화 내용이 없습니다'}
                   </p>
+                  {searchTerm && (
+                    <p className="text-gray-400 text-sm mt-1">
+                      다른 키워드로 검색해보세요
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* 섹션별로 그룹핑하여 렌더링 */}
+                <div>
+                  {/* 노션 스타일 마크다운 구조 */}
                   {(() => {
                     const sections = interview?.script_sections as ScriptSection[] || [];
                     let lastSectionName = '';
+                    let isFirstSection = true;
                     
                     // 섹션 인덱스를 찾기 위한 맵
                     const sectionIndexMap = new Map();
@@ -392,7 +466,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
                     
                     return filteredScript.map((item, index) => {
                       const scriptId = item.id.join('-')
-                      // index를 포함한 고유한 key 생성
                       const uniqueKey = `${scriptId}-${index}`
                       const prevItem = index > 0 ? filteredScript[index - 1] : null
                       
@@ -409,55 +482,54 @@ export default function InterviewScriptViewer({ script, interview, className, on
                         lastSectionName = currentSection.sector_name;
                       }
                       
-                      // 섹션이 바뀌면 연속된 화자여도 새로 표시
-                      const isConsecutiveSameSpeaker = item.speaker === prevItem?.speaker && !isNewSection
+                      // 연속된 같은 화자 확인 (섹션이 바뀌면 연속 아님)
+                      const isConsecutiveSameSpeaker = !isNewSection && 
+                        prevItem && 
+                        item.speaker === prevItem.speaker;
+                      
+                      const showSpeaker = !isConsecutiveSameSpeaker;
                       
                       return (
                         <div key={uniqueKey}>
-                          {/* 섹션 헤더 */}
-                          {isNewSection && (
+                          {/* 마크다운 스타일 섹션 헤더 */}
+                          {isNewSection && currentSection && (
                             <div 
                               id={`section-${currentSection.sector_name.replace(/\s+/g, '-').replace(/[^\w가-힣-]/g, '')}`}
                               ref={(el) => {
                                 if (el) sectionRefs.current[currentSection.sector_name] = el
                               }}
                               className={cn(
-                                "section-header mb-4 pb-2 border-b",
-                                currentSection.is_main_content 
-                                  ? "border-gray-200" 
-                                  : "border-gray-100"
+                                "mb-6",
+                                // 섹션 시작 전 적절한 간격
+                                index === 0 ? "mt-0" : "mt-10",
                               )}>
-                              <div className="flex items-center gap-2">
-                                <span className={cn(
-                                  "w-6 h-6 rounded flex items-center justify-center text-xs font-bold",
-                                  currentSection.is_main_content
-                                    ? "bg-gray-200 text-gray-700"
-                                    : "bg-gray-100 text-gray-500"
-                                )}>
-                                  {sectionIndexMap.get(currentSection.sector_name)}
+                              {/* 심플한 섹션 헤더 */}
+                              <h2 className={cn(
+                                "font-semibold border-b pb-2",
+                                currentSection.is_main_content
+                                  ? "text-gray-900 text-lg border-gray-300"
+                                  : "text-gray-700 text-base border-gray-200"
+                              )}>
+                                <span className="text-gray-400 font-normal mr-2">
+                                  {sectionIndexMap.get(currentSection.sector_name)}.
                                 </span>
-                                <h3 className={cn(
-                                  "font-medium",
-                                  currentSection.is_main_content
-                                    ? "text-gray-900 text-sm"
-                                    : "text-gray-500 text-xs"
-                                )}>
-                                  {currentSection.sector_name}
-                                </h3>
-                              </div>
+                                {currentSection.sector_name}
+                              </h2>
                             </div>
                           )}
                           
-                          {/* Script item wrapper */}
-                          <div className="relative">
-                            {/* Read-only script item */}
-                            <ReadOnlyScriptItem
-                              script={item}
-                              className={cn(
-                                currentSection && !currentSection.is_main_content && "opacity-60"
-                              )}
-                            />
-                          </div>
+                          {/* Script item */}
+                          <ReadOnlyScriptItem
+                            script={item}
+                            showSpeaker={showSpeaker}
+                            isConsecutive={isConsecutiveSameSpeaker}
+                            canEdit={canEdit}
+                            onCategoryChange={handleCategoryChange}
+                            className={cn(
+                              // 비주요 섹션은 미묘하게 흐리게
+                              currentSection && !currentSection.is_main_content && "opacity-80"
+                            )}
+                          />
                         </div>
                       )
                     });
@@ -469,42 +541,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
         </div>
       </div>
       
-      {/* AI Floating Button */}
-      {interview && (
-        <>
-          <div className="fixed bottom-8 right-8 z-40">
-            <button
-              onClick={() => setFloatingPanelOpen(true)}
-              className="group relative w-16 h-16 bg-white rounded-full shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:scale-105 active:scale-95"
-              title="AI 도우미"
-            >
-              {/* 동그란 배경 */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* AI 아이콘 */}
-              <div className="relative flex items-center justify-center w-full h-full">
-                <img
-                  src="/chat-icon.png"
-                  alt="AI Assistant"
-                  className="w-8 h-8 transition-transform duration-200 group-hover:scale-110"
-                />
-              </div>
-              
-              {/* 활성 표시 점 */}
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse" />
-            </button>
-          </div>
-          
-          {/* AI 도우미 패널 */}
-          <InterviewAssistantPanel
-            isOpen={floatingPanelOpen}
-            onClose={() => setFloatingPanelOpen(false)}
-            interview={interview}
-            script={scriptItems}
-            session={session}
-          />
-        </>
-      )}
     </div>
   )
 }

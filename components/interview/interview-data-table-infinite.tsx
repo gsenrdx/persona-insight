@@ -31,8 +31,6 @@ import { cn } from "@/lib/utils"
 import { useInView } from "react-intersection-observer"
 import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
 import { EditInterviewMetadataModal } from "@/components/modal/edit-interview-metadata-modal"
-import { motion } from "framer-motion"
-import { tableRowVariants } from "@/components/ui/page-transition"
 
 interface InterviewDataTableInfiniteProps {
   interviews: Interview[]
@@ -215,21 +213,25 @@ export function InterviewDataTableInfinite({
   // 로딩 상태
   if (isLoading && interviews.length === 0) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 rounded-2xl overflow-hidden shadow-xl border border-white/20">
+        {/* 장식용 배경 요소 */}
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-200/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200/10 rounded-full blur-2xl" />
+        
         {/* 검색 바 스켈레톤 */}
-        <div className="flex-shrink-0 px-6 lg:px-8 py-4">
+        <div className="relative z-10 flex-shrink-0 px-6 lg:px-8 py-5 bg-white/60 backdrop-blur-sm border-b border-gray-200/50">
           <div className="flex items-center justify-between gap-4">
             <div className="relative max-w-md flex-1">
-              <div className="h-9 w-full animate-pulse bg-gray-100 rounded-md" />
+              <div className="h-10 w-full animate-pulse bg-white/80 rounded-xl shadow-sm" />
             </div>
           </div>
         </div>
 
         {/* 테이블 스켈레톤 */}
-        <div className="flex-1 overflow-y-auto bg-white relative px-6 lg:px-8">
+        <div className="relative z-10 flex-1 overflow-y-auto bg-white/40 backdrop-blur-sm px-6 lg:px-8">
           <table className="w-full">
-            <thead className="sticky top-0 z-20 bg-white">
-              <tr className="border-b border-gray-100">
+            <thead className="sticky top-0 z-20 bg-white/80 backdrop-blur-md">
+              <tr className="border-b border-gray-200/60">
                 {/* 체크박스 컬럼 */}
                 <th className="text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3 w-[40px] pl-0">
                   <div className="h-4 w-4 animate-pulse bg-gray-100 rounded" />
@@ -266,7 +268,7 @@ export function InterviewDataTableInfinite({
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="bg-transparent">
               {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i} className="border-b border-gray-100">
                   {/* 체크박스 */}
@@ -329,30 +331,34 @@ export function InterviewDataTableInfinite({
   // 빈 상태
   if (!isLoading && interviews.length === 0) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 rounded-2xl overflow-hidden shadow-xl border border-white/20">
+        {/* 장식용 배경 요소 */}
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-200/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200/10 rounded-full blur-2xl" />
+        
         {/* 검색 바 - 빈 상태에서도 표시 */}
-        <div className="flex-shrink-0 px-6 py-4">
+        <div className="relative z-10 flex-shrink-0 px-6 py-5 bg-white/60 backdrop-blur-sm border-b border-gray-200/50">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
             <input
               type="text"
               placeholder="검색..."
               value={globalFilter ?? ""}
               onChange={(event) => setGlobalFilter(event.target.value)}
-              className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 opacity-50 cursor-not-allowed"
+              className="block w-full pl-9 pr-3 py-2.5 text-sm bg-white/60 backdrop-blur-sm border border-gray-300/50 rounded-xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all opacity-50 cursor-not-allowed"
               disabled
             />
           </div>
         </div>
         
-        <div className="flex-1 flex items-center justify-center bg-white">
+        <div className="relative z-10 flex-1 flex items-center justify-center bg-white/20 backdrop-blur-sm">
           <div className="text-center py-12">
-            <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <FileText className="h-8 w-8 text-gray-400" />
+            <div className="mx-auto h-20 w-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+              <FileText className="h-10 w-10 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">아직 인터뷰가 없습니다</h3>
-            <p className="text-sm text-gray-500">
-              첫 번째 인터뷰를 추가해보세요
+            <h3 className="text-xl font-bold text-gray-900 mb-3">아직 인터뷰가 없어요</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              첫 번째 인터뷰를 추가해서 고객의 소리를 들어보세요
             </p>
           </div>
         </div>
@@ -370,20 +376,24 @@ export function InterviewDataTableInfinite({
   ).length
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative bg-gradient-to-br from-blue-50/50 via-slate-50 to-blue-100/40 rounded-2xl overflow-hidden shadow-xl border border-white/20">
+      {/* 장식용 배경 요소 - 브랜드 일관성 */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-200/15 rounded-full blur-3xl" />
+      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-300/15 rounded-full blur-2xl" />
+      
       {/* 테이블 헤더 - 고정 */}
-      <div className="flex-shrink-0 px-6 lg:px-8 py-4 border-b border-gray-200">
+      <div className="relative z-10 flex-shrink-0 px-6 lg:px-8 py-5 bg-white/60 backdrop-blur-sm border-b border-gray-200/50">
         <div className="flex items-center justify-between">
           {/* 왼쪽: 검색 바 및 AI 버튼 */}
           <div className="flex items-center gap-4 flex-1">
             <div className="relative w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-600 pointer-events-none" />
               <input
                 type="text"
                 placeholder="검색..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
-                className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-full pl-10 pr-3 py-2.5 text-sm bg-white border border-gray-300 rounded-xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:shadow-md"
               />
             </div>
             
@@ -403,7 +413,7 @@ export function InterviewDataTableInfinite({
                   }
                 }}
                 disabled={isBatchAssigning}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 {isBatchAssigning ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -430,7 +440,7 @@ export function InterviewDataTableInfinite({
                   setShowMyInterviewsOnly(false)
                   setGlobalFilter("")
                 }}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-white/60"
               >
                 필터 초기화
               </button>
@@ -449,7 +459,7 @@ export function InterviewDataTableInfinite({
                   id="my-interviews-only"
                   checked={showMyInterviewsOnly}
                   onCheckedChange={setShowMyInterviewsOnly}
-                  className="data-[state=checked]:bg-blue-600"
+                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-600 data-[state=checked]:to-indigo-600"
                 />
               </div>
             )}
@@ -458,20 +468,20 @@ export function InterviewDataTableInfinite({
       </div>
 
       {/* 테이블 - 스크롤 영역 */}
-      <div className="flex-1 overflow-y-auto bg-white relative px-6 lg:px-8">
+      <div className="relative z-10 flex-1 overflow-y-auto bg-white/40 backdrop-blur-sm px-6 lg:px-8">
         <table className="w-full">
-          <thead className="sticky top-0 z-20 bg-white">
-            <tr className="border-b border-gray-100">
+          <thead className="sticky top-0 z-20 bg-white/80 backdrop-blur-md">
+            <tr className="border-b border-gray-200/60">
               {table.getHeaderGroups()[0].headers.map((header) => {
                 return (
                   <th key={header.id} className={cn(
-                    "text-left text-sm font-medium text-gray-700 whitespace-nowrap py-3",
+                    "text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap py-4 bg-gradient-to-r from-gray-50/50 to-blue-50/30 backdrop-blur-sm",
                     header.id === "select" ? "w-[40px] pl-0" : "",
-                    header.id === "status" ? "px-2 w-[100px]" : "",
-                    header.id === "title" ? "px-2 w-[180px] max-w-[180px]" : "",
-                    header.id === "persona" ? "px-2 w-[200px] hidden md:table-cell" : "",
-                    header.id === "created_at" ? "px-2 w-[120px]" : "",
-                    header.id === "created_by" ? "px-2 w-[110px] hidden lg:table-cell" : "",
+                    header.id === "status" ? "px-3 w-[100px]" : "",
+                    header.id === "title" ? "px-3 w-[180px] max-w-[180px]" : "",
+                    header.id === "persona" ? "px-3 w-[200px] hidden md:table-cell" : "",
+                    header.id === "created_at" ? "px-3 w-[120px]" : "",
+                    header.id === "created_by" ? "px-3 w-[110px] hidden lg:table-cell" : "",
                     header.id === "actions" ? "pr-0 w-[40px]" : "",
                     !["status", "title", "persona", "quality", "created_at", "created_by", "actions"].includes(header.id) ? "px-4" : ""
                   )}>
@@ -486,20 +496,14 @@ export function InterviewDataTableInfinite({
               })}
             </tr>
           </thead>
-          <tbody className="bg-white">
+          <tbody className="bg-transparent">
             {filteredRows.length ? (
               <>
                 {filteredRows.map((row, index) => (
-                  <motion.tr
+                  <tr
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
-                    variants={tableRowVariants}
-                    initial="initial"
-                    animate="animate"
-                    whileHover="hover"
-                    whileTap="tap"
-                    custom={index}
+                    className="cursor-pointer hover:bg-white/60 hover:shadow-md transition-all duration-200 border-b border-gray-200/40 hover:border-blue-200/60 group"
                     onClick={(e) => {
                       const target = e.target as HTMLElement
                       // 체크박스, 버튼, 메뉴 아이템을 클릭한 경우에는 상세보기로 이동하지 않음
@@ -513,13 +517,13 @@ export function InterviewDataTableInfinite({
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className={cn(
-                        "py-3",
+                        "py-4 text-sm text-gray-700 group-hover:text-gray-900 transition-colors",
                         cell.column.id === "select" ? "pl-0" : "",
-                        cell.column.id === "status" ? "px-2" : "",
-                        cell.column.id === "persona" ? "px-2 hidden md:table-cell" : "",
-                        cell.column.id === "created_by" ? "px-2 hidden lg:table-cell" : "",
+                        cell.column.id === "status" ? "px-3" : "",
+                        cell.column.id === "persona" ? "px-3 hidden md:table-cell" : "",
+                        cell.column.id === "created_by" ? "px-3 hidden lg:table-cell" : "",
                         cell.column.id === "actions" ? "pr-0" : "",
-                        !["select", "status", "actions", "persona", "created_by"].includes(cell.column.id) ? "px-2" : ""
+                        !["select", "status", "actions", "persona", "created_by"].includes(cell.column.id) ? "px-3" : ""
                       )}>
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -527,15 +531,15 @@ export function InterviewDataTableInfinite({
                         )}
                       </td>
                     ))}
-                  </motion.tr>
+                  </tr>
                 ))}
                 {/* 더 많은 데이터가 있으면 로딩 인디케이터 표시 */}
                 {visibleRows < processedData.length && !isLoading && (
                   <tr ref={ref}>
-                    <td colSpan={columns.length} className="text-center py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">더 불러오는 중...</span>
+                    <td colSpan={columns.length} className="text-center py-6">
+                      <div className="flex items-center justify-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl mx-4 py-3 shadow-sm">
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                        <span className="text-sm text-gray-600 font-medium">더 불러오는 중...</span>
                       </div>
                     </td>
                   </tr>
@@ -545,9 +549,15 @@ export function InterviewDataTableInfinite({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-32 text-center"
                 >
-                  검색 결과가 없습니다.
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                      <Search className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-600 font-medium">검색 결과가 없어요</p>
+                    <p className="text-xs text-gray-500 mt-1">다른 검색어를 시도해보세요</p>
+                  </div>
                 </td>
               </tr>
             )}

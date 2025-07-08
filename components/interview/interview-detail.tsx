@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Interview } from '@/types/interview'
-import { ChevronRight, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
+import InterviewAssistantPanel from './interview-assistant-panel'
 import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
 import { useAuth } from '@/hooks/use-auth'
-import { motion, AnimatePresence } from 'framer-motion'
 
 interface InterviewDetailProps {
   interview: Interview
@@ -21,12 +22,12 @@ interface InterviewDetailProps {
 
 export default function InterviewDetail({ interview, onBack, onSectionsChange }: InterviewDetailProps) {
   const [activeTab, setActiveTab] = useState('insights') // 인사이트 탭을 기본값으로
-  const scriptViewerRef = useRef<any>(null)
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
-  const { profile, user } = useAuth()
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
+  const { profile } = useAuth()
   
   // 컴포넌트 언마운트 시 목차 정리
   useEffect(() => {
@@ -79,173 +80,131 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
   }
 
   // 인사이트에서 근거 문장 클릭 시 스크립트 탭으로 이동
-  const handleEvidenceClick = (scriptIds: number[]) => {
+  const handleEvidenceClick = () => {
     handleTabChange('script')
     // TODO: 스크립트 뷰어에서 해당 ID로 스크롤하는 기능 추가
   }
 
   return (
-    <div className="flex flex-col h-full p-6">
-      {/* 헤더 영역 */}
-      <div className="mb-6">
-        {/* Breadcrumb with Script Presence */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                // 목차 정보 초기화
-                if (onSectionsChange) {
-                  onSectionsChange(null, null, null)
-                }
-                onBack()
-              }}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-            >
-              인터뷰 관리
-            </button>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-            <span className="text-sm font-medium text-foreground">
-              {interview.title || '제목 없음'}
-            </span>
-          </div>
+    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* 개선된 헤더 */}
+      <div className="bg-white border-b border-gray-200">
+        {/* 브레드크럼 */}
+        <div className="px-4 sm:px-6 pt-4 pb-2">
+          <button
+            onClick={() => {
+              if (onSectionsChange) {
+                onSectionsChange(null, null, null)
+              }
+              onBack()
+            }}
+            className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            인터뷰 관리
+          </button>
         </div>
         
-        {/* 헤더 컨텐츠 */}
-        <div>
-          {/* 제목과 탭 네비게이션 - 같은 줄 */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {interview.title || '제목 없음'}
-              </h1>
-              {canEdit && (
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all"
-                  title="정보 수정"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
+        {/* 메인 제목 영역 */}
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
+                  {interview.title || '제목 없음'}
+                </h1>
+                {canEdit && (
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all"
+                    title="정보 수정"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* 메타 정보 */}
+              {(interview.interview_date || interview.session_info?.[0]?.interview_topic) && (
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                  {interview.interview_date && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 text-gray-400">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">
+                        {new Date(interview.interview_date).toLocaleDateString('ko-KR', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {interview.session_info?.[0]?.interview_topic && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 text-gray-400">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium line-clamp-1">
+                        {interview.session_info[0].interview_topic}
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             
-            {/* 탭 네비게이션 - 우측 배치 */}
-            <div className="flex items-center gap-6 relative">
+            {/* 탭 네비게이션 - 우측으로 이동 */}
+            <div className="flex bg-gray-50 rounded-lg p-1">
               <button
                 onClick={() => handleTabChange('insights')}
                 className={cn(
-                  "text-sm transition-all relative pb-1",
+                  "px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap",
                   activeTab === 'insights' 
-                    ? "text-gray-900 font-semibold" 
-                    : "text-gray-400 hover:text-gray-600 font-medium"
+                    ? "text-blue-600 bg-white shadow-sm" 
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 )}
               >
                 인사이트
-                {activeTab === 'insights' && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-blue-600"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
               </button>
-              <span className="text-gray-300">|</span>
               <button
                 onClick={() => handleTabChange('script')}
                 className={cn(
-                  "text-sm transition-all relative pb-1",
+                  "px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap",
                   activeTab === 'script' 
-                    ? "text-gray-900 font-semibold" 
-                    : "text-gray-400 hover:text-gray-600 font-medium"
+                    ? "text-blue-600 bg-white shadow-sm" 
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 )}
               >
-                대화 스크립트
-                {activeTab === 'script' && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-blue-600"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
+                스크립트
               </button>
             </div>
           </div>
-          
-          {/* 메타 정보와 실시간 시청자 정보 */}
-          <div className="flex items-center justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              {/* 세션 정보 */}
-              {interview.interview_date && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-md">
-                  <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs text-gray-700 font-medium">
-                    {new Date(interview.interview_date).toLocaleDateString('ko-KR', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </span>
-                </div>
-              )}
-              
-              {interview.session_info?.[0]?.interview_topic && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 rounded-md">
-                  <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                  </svg>
-                  <span className="text-xs text-indigo-700 font-medium">
-                    {interview.session_info[0].interview_topic}
-                  </span>
-                </div>
-              )}
-            </div>
-            
-          </div>
         </div>
-        
-        {/* 구분선 */}
-        <div className="h-px bg-gradient-to-r from-gray-200 via-gray-200/50 to-transparent mt-6" />
       </div>
       
       {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1 relative min-h-0 overflow-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === 'insights' && (
-            <motion.div
-              key="insights"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className=""
-            >
-              <InterviewInsights 
-                interview={interview} 
-                onEvidenceClick={handleEvidenceClick}
-              />
-            </motion.div>
-          )}
-          
-          {activeTab === 'script' && (
-            <motion.div
-              key="script"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className=""
-            >
-              <InterviewScriptViewer 
-                script={interview.cleaned_script || []} 
-                interview={interview}
-                className=""
-                onSectionsChange={handleScriptSectionsChange}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="flex-1 min-h-0 overflow-auto">
+        {activeTab === 'insights' ? (
+          <InterviewInsights 
+            interview={interview} 
+          />
+        ) : (
+          <InterviewScriptViewer 
+            script={interview.cleaned_script || []} 
+            interview={interview}
+            className=""
+            onSectionsChange={handleScriptSectionsChange}
+            canEdit={canEdit}
+          />
+        )}
       </div>
       
       {/* 메타데이터 수정 모달 */}
@@ -258,6 +217,51 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
           // 실시간 업데이트로 인해 자동으로 반영됨
         }}
       />
+      
+      {/* Floating button for AI assistant */}
+      {typeof window !== 'undefined' && createPortal(
+        <>
+          {/* 플로팅 버튼 */}
+          <div className="fixed right-6 bottom-6 z-[100]">
+            <button
+              onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
+              className={cn(
+                "group relative flex flex-col items-center gap-1 p-2 transition-transform duration-200 hover:scale-[1.02] active:scale-95",
+                floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
+              )}
+              title="AI 도우미"
+            >
+              {/* AI 캐릭터 - CSS로 hover 처리 */}
+              <div className="relative w-16 h-16">
+                <img
+                  src="/chat-icon.png"
+                  alt="AI Assistant"
+                  className="absolute inset-0 w-full h-full object-contain opacity-100 group-hover:opacity-0 transition-opacity duration-200"
+                />
+                <img
+                  src="/pin-smile.png"
+                  alt="AI Assistant Hover"
+                  className="absolute inset-0 w-full h-full object-contain opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                />
+              </div>
+              
+              {/* 명찰 */}
+              <div className="text-gray-900 text-xs font-thin px-3 py-1">
+                Ask Pin!
+              </div>
+            </button>
+          </div>
+          
+          <InterviewAssistantPanel
+            isOpen={floatingPanelOpen}
+            onClose={() => setFloatingPanelOpen(false)}
+            interview={interview}
+            script={interview.cleaned_script || []}
+            context={activeTab === 'script' ? 'interview' : 'insights'}
+          />
+        </>,
+        document.body
+      )}
     </div>
   )
 }
