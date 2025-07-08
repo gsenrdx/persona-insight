@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { ProjectWithMembership } from '@/types'
 import { ProjectCard } from '../components/project-card'
-import { motion } from 'framer-motion'
-import { staggerContainerVariants } from '@/components/ui/page-transition'
 
 interface ProjectGridProps {
   projects: ProjectWithMembership[]
@@ -27,12 +25,7 @@ export function ProjectGrid({
 }: ProjectGridProps) {
 
   return (
-    <motion.div 
-      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-      variants={staggerContainerVariants}
-      initial="initial"
-      animate="animate"
-    >
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {projects.map((project, index) => (
         <ProjectCard
           key={project.id}
@@ -44,6 +37,6 @@ export function ProjectGrid({
           showJoinBadge={showJoinBadge}
         />
       ))}
-    </motion.div>
+    </div>
   )
 }

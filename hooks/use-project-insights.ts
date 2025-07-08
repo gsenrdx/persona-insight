@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
-import { supabase } from '@/lib/supabase'
 
 interface InsightKeyword {
   name: string
@@ -46,18 +45,13 @@ interface ProjectInsightsResponse {
 }
 
 export function useProjectInsights(projectId: string | null) {
-  const { user } = useAuth()
+  const { session } = useAuth()
 
   return useQuery<ProjectInsightsResponse>({
     queryKey: ['project-insights', projectId],
     queryFn: async () => {
-      if (!projectId || !user) {
+      if (!projectId || !session?.access_token) {
         throw new Error('Project ID and authentication required')
-      }
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        throw new Error('No active session')
       }
 
       const response = await fetch(`/api/projects/${projectId}/insights`, {
@@ -74,9 +68,9 @@ export function useProjectInsights(projectId: string | null) {
 
       return response.json()
     },
-    enabled: !!projectId && !!user,
+    enabled: !!projectId && !!session?.access_token,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
   })
 }

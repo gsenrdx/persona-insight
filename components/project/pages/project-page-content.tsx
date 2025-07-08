@@ -11,8 +11,6 @@ import { toast } from 'sonner'
 import { AppLayout } from "@/components/layout/app-layout"
 import { PersonaCriteriaModal } from '@/components/modal'
 import { Plus, Sparkles, FolderOpen } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { fadeVariants } from '@/components/ui/page-transition'
 import { ProjectHeader } from '../sections/project-header'
 import { ProjectGrid } from '../sections/project-grid'
 import { ProjectSearchBar } from '../components/project-search-bar'
@@ -232,34 +230,27 @@ export function ProjectPageContent() {
 
   return (
     <AppLayout>
-      <motion.div 
-        className="container mx-auto px-4 py-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <ProjectHeader
-          projectCount={filteredProjects.length}
-          onShowPersonaCriteria={() => setShowPersonaCriteriaModal(true)}
-          onCreateProject={() => setShowCreateForm(true)}
-        />
+      <div className="flex flex-col h-full min-h-0">
+        {/* 헤더 - container와 일치하는 패딩 */}
+        <div className="container mx-auto px-4">
+          <ProjectHeader
+            projectCount={filteredProjects.length}
+            onShowPersonaCriteria={() => setShowPersonaCriteriaModal(true)}
+            onCreateProject={() => setShowCreateForm(true)}
+          />
+        </div>
 
-        <ProjectSearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
+        {/* 콘텐츠 영역 */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="container mx-auto px-4">
+          <ProjectSearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
 
-        <AnimatePresence mode="wait">
           {/* 참여한 프로젝트 */}
           {joinedProjects.length > 0 && (
-            <motion.div 
-              key="joined-projects"
-              className="mb-10"
-              variants={fadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
+            <div className="mb-10">
               <div className="flex items-center gap-2 mb-6">
                 <div className="h-8 w-1 bg-blue-600 rounded-full" />
                 <h2 className="text-xl font-semibold text-gray-900">내 프로젝트</h2>
@@ -275,18 +266,12 @@ export function ProjectPageContent() {
                 onSelectProject={handleSelectProject}
                 onCreateProject={() => setShowCreateForm(true)}
               />
-            </motion.div>
+            </div>
           )}
 
           {/* 참여하지 않은 공개 프로젝트 */}
           {notJoinedProjects.length > 0 && (
-            <motion.div
-              key="not-joined-projects"
-              variants={fadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
+            <div>
               <div className="flex items-center gap-2 mb-6">
                 <div className="h-8 w-1 bg-green-600 rounded-full" />
                 <h2 className="text-xl font-semibold text-gray-900">참여 가능한 프로젝트</h2>
@@ -303,24 +288,17 @@ export function ProjectPageContent() {
                 onCreateProject={() => setShowCreateForm(true)}
                 showJoinBadge={true}
               />
-            </motion.div>
+            </div>
           )}
 
           {/* 검색 결과가 없을 때 */}
           {filteredProjects.length === 0 && (
-            <motion.div 
-              key="empty-state"
-              className="text-center py-20"
-              variants={fadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mb-6 shadow-lg">
                 {searchQuery ? (
-                  <FolderOpen className="w-10 h-10 text-gray-400" />
+                  <FolderOpen className="w-10 h-10 text-blue-600" />
                 ) : (
-                  <Sparkles className="w-10 h-10 text-gray-400" />
+                  <Sparkles className="w-10 h-10 text-blue-600" />
                 )}
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -333,16 +311,17 @@ export function ProjectPageContent() {
                 <Button 
                   onClick={() => setShowCreateForm(true)}
                   size="lg"
-                  className="shadow-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 py-3 font-medium shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   새 프로젝트 생성
                 </Button>
               )}
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </motion.div>
+          </div>
+        </div>
+      </div>
 
       {/* 프로젝트 생성 다이얼로그 */}
       {profile?.company_id && profile?.id && (
