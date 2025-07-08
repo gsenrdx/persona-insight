@@ -231,21 +231,3 @@ export const API_ENDPOINTS = {
   AUTH: AUTH_ENDPOINTS,
   MISO: MISO_ENDPOINTS,
 } as const
-
-// =============================================================================
-// 레거시 호환성 (점진적 마이그레이션용)
-// =============================================================================
-
-/**
- * 기존 코드와의 호환성을 위한 개별 export
- * @deprecated API_ENDPOINTS를 사용하세요
- */
-export const ENDPOINTS = {
-  PROJECTS: '/api/projects',
-  PERSONAS: '/api/personas',
-  INTERVIEWS: '/api/interviews',
-  CHAT: '/api/chat',
-  WORKFLOW: '/api/workflow',
-  FILES: '/api/files',
-  INSIGHTS: '/api/insights',
-} as const

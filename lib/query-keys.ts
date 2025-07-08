@@ -53,9 +53,6 @@ export const queryKeys = {
     byProject: (projectId: string, params?: any) => ['interviews', 'project', projectId] as const,
     details: () => ['interviews', 'detail'] as const,
     detail: (id: string) => ['interviews', 'detail', id] as const,
-    extractionCriteria: (projectId?: string) => 
-      projectId ? ['interviews', 'criteria', 'project', projectId] as const
-                : ['interviews', 'criteria'] as const,
   },
 
   // === 워크플로우 관련 쿼리 키 ===

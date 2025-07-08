@@ -19,8 +19,8 @@ Successfully implemented a comprehensive test suite for the Persona Insight code
 - **api.ts** (10 tests): MISO Knowledge API integration, document creation
 - **workflow.ts** (4 tests): Topic synchronization workflows
 
-### 3. File Processing Workflow (16 tests)
-- **use-workflow-queue.ts** (16 tests): Queue management, concurrent processing, localStorage persistence
+### 3. File Processing Workflow
+- File upload and processing tests moved to integration testing
 
 ### 4. API Integration (8 tests)
 - **workflow/route.ts** (8 tests): File upload workflow, persona matching, topic extraction

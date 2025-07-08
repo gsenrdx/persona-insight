@@ -11,8 +11,8 @@ export function useInterviewStatusMonitor({
   interviews, 
   onRetry 
 }: UseInterviewStatusMonitorProps) {
-  // interviews가 undefined일 경우 빈 배열로 처리
-  const safeInterviews = interviews || []
+  // interviews가 undefined이거나 배열이 아닐 경우 빈 배열로 처리
+  const safeInterviews = Array.isArray(interviews) ? interviews : []
   
   // processing 상태 타임아웃 체크 (5분)
   const checkProcessingTimeouts = useCallback(() => {
@@ -31,7 +31,7 @@ export function useInterviewStatusMonitor({
 
       if (elapsed > timeoutDuration) {
         // 5분이 지났는데도 processing 상태면 알림
-        toast.error(`"${interview.name}" 인터뷰 처리가 지연되고 있습니다.`, {
+        toast.error(`"${interview.title || 'Untitled'}" 인터뷰 처리가 지연되고 있습니다.`, {
           description: '처리 시간이 오래 걸리고 있습니다. 잠시 후 다시 확인해주세요.',
           action: onRetry ? {
             label: '다시 시도',

@@ -489,7 +489,7 @@ export default function ProjectInsights({ project, onInsightsChange }: ProjectIn
                       <div>
                         <h4 className="text-sm font-medium text-gray-600 mb-3">사용자 인용</h4>
                         <div className="relative bg-gray-50 rounded-lg p-6 border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-                          <div className="absolute top-4 left-4 text-6xl text-gray-300 leading-none">"</div>
+                          <div className="absolute top-4 left-4 text-6xl text-gray-300 leading-none">&ldquo;</div>
                           <div className="relative z-10 pl-8">
                             <p className="text-gray-700 italic mb-3 dark:text-gray-300 leading-relaxed">
                               {safeInsight.quotes[activeQuoteIndex]?.text || '인용구가 없습니다.'}

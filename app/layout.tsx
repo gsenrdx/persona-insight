@@ -6,7 +6,6 @@ import { ThemeProvider, MobileNotSupported } from '@/components/shared'
 import { AuthProvider } from '@/hooks/use-auth'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { Toaster } from 'sonner'
-import { AdaptiveRealtimeDebugger } from '@/components/adaptive/adaptive-realtime-debugger'
 
 const fontSans = FontSans({ 
   subsets: ['latin'],
@@ -56,7 +55,6 @@ export default function RootLayout({
                 className: 'toast-slide-in',
               }} 
             />
-            <AdaptiveRealtimeDebugger />
           </ThemeProvider>
         </QueryProvider>
       </body>

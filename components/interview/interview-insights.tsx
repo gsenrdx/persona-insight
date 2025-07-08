@@ -90,7 +90,7 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
                   {sentence.speaker === 'question' && (
                     <span className="text-gray-500 font-medium mr-1.5">Q.</span>
                   )}
-                  "{sentence.cleaned_sentence}"
+                  &ldquo;{sentence.cleaned_sentence}&rdquo;
                 </blockquote>
               </div>
             ))}
@@ -186,20 +186,28 @@ export default function InterviewInsights({ interview, onEvidenceClick }: Interv
         <>
           {/* 플로팅 버튼 */}
           <div className="fixed right-6 bottom-6 z-[100]">
-            <button 
+            <button
               onClick={() => setFloatingPanelOpen(!floatingPanelOpen)}
               className={cn(
-                "relative",
-                "hover:scale-105 active:scale-95",
-                "transition-all duration-200",
+                "group relative w-16 h-16 bg-white rounded-full shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:scale-105 active:scale-95",
                 floatingPanelOpen && "scale-0 opacity-0 pointer-events-none"
               )}
+              title="AI 도우미"
             >
-              <img 
-                src="/chat-icon.png" 
-                alt="AI 도우미" 
-                className="w-16 h-16 drop-shadow-lg hover:drop-shadow-xl transition-all duration-200"
-              />
+              {/* 동그란 배경 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              {/* AI 아이콘 */}
+              <div className="relative flex items-center justify-center w-full h-full">
+                <img
+                  src="/chat-icon.png"
+                  alt="AI Assistant"
+                  className="w-8 h-8 transition-transform duration-200 group-hover:scale-110"
+                />
+              </div>
+              
+              {/* 활성 표시 점 */}
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse" />
             </button>
           </div>
           

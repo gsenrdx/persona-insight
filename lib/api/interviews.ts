@@ -2,12 +2,9 @@ import { apiClient } from './base'
 import { 
   ApiResponse, 
   Interview,
-  InterviewUploadRequest,
   InterviewListQuery,
-  InterviewProcessingResult,
-  ExtractionCriteria
+  InterviewProcessingResult
 } from '@/types/api'
-import { WorkflowJob } from '@/types/components'
 
 /**
  * 인터뷰 관련 API 함수들
@@ -46,33 +43,6 @@ export const interviewsApi = {
     )
   },
 
-  /**
-   * 인터뷰 파일 업로드 및 처리 시작
-   */
-  async uploadInterviews(
-    token: string,
-    uploadData: InterviewUploadRequest
-  ): Promise<ApiResponse<WorkflowJob[]>> {
-    const formData = new FormData()
-    
-    // 파일들 추가
-    uploadData.files.forEach((file) => {
-      formData.append(`files`, file)
-    })
-    
-    // 메타데이터 추가
-    formData.append('projectId', uploadData.projectId)
-    formData.append('extractionCriteria', JSON.stringify(uploadData.extractionCriteria))
-
-    return apiClient.authenticatedRequest<WorkflowJob[]>(
-      '/api/interviews/upload',
-      token,
-      {
-        method: 'POST',
-        body: formData
-      }
-    )
-  },
 
   /**
    * 인터뷰 처리 재시도
@@ -82,9 +52,12 @@ export const interviewsApi = {
     interviewId: string
   ): Promise<ApiResponse<InterviewProcessingResult>> {
     return apiClient.authenticatedRequest<InterviewProcessingResult>(
-      `/api/interviews/${interviewId}/retry`,
+      '/api/workflow/retry',
       token,
-      { method: 'POST' }
+      { 
+        method: 'POST',
+        body: JSON.stringify({ interviewId })
+      }
     )
   },
 
@@ -102,22 +75,6 @@ export const interviewsApi = {
     )
   },
 
-  /**
-   * 여러 인터뷰 일괄 삭제
-   */
-  async deleteMultipleInterviews(
-    token: string,
-    interviewIds: string[]
-  ): Promise<ApiResponse<void>> {
-    return apiClient.authenticatedRequest<void>(
-      '/api/interviews/bulk-delete',
-      token,
-      {
-        method: 'DELETE',
-        body: JSON.stringify({ interviewIds })
-      }
-    )
-  },
 
   /**
    * 인터뷰 메타데이터 업데이트
@@ -137,82 +94,5 @@ export const interviewsApi = {
     )
   },
 
-  /**
-   * 워크플로우 상태 조회
-   */
-  async getWorkflowStatus(
-    token: string,
-    jobIds: string[]
-  ): Promise<ApiResponse<WorkflowJob[]>> {
-    const searchParams = new URLSearchParams()
-    jobIds.forEach(id => searchParams.append('jobIds', id))
 
-    return apiClient.authenticatedRequest<WorkflowJob[]>(
-      `/api/workflow/status?${searchParams.toString()}`,
-      token
-    )
-  },
-
-  /**
-   * 추출 기준 목록 조회
-   */
-  async getExtractionCriteria(
-    token: string,
-    projectId?: string
-  ): Promise<ApiResponse<ExtractionCriteria[]>> {
-    const endpoint = projectId 
-      ? `/api/extraction-criteria?projectId=${projectId}`
-      : '/api/extraction-criteria'
-      
-    return apiClient.authenticatedRequest<ExtractionCriteria[]>(endpoint, token)
-  },
-
-  /**
-   * 추출 기준 생성
-   */
-  async createExtractionCriteria(
-    token: string,
-    criteria: Omit<ExtractionCriteria, 'id'>
-  ): Promise<ApiResponse<ExtractionCriteria>> {
-    return apiClient.authenticatedRequest<ExtractionCriteria>(
-      '/api/extraction-criteria',
-      token,
-      {
-        method: 'POST',
-        body: JSON.stringify(criteria)
-      }
-    )
-  },
-
-  /**
-   * 추출 기준 수정
-   */
-  async updateExtractionCriteria(
-    token: string,
-    criteriaId: string,
-    criteria: Partial<ExtractionCriteria>
-  ): Promise<ApiResponse<ExtractionCriteria>> {
-    return apiClient.authenticatedRequest<ExtractionCriteria>(
-      `/api/extraction-criteria/${criteriaId}`,
-      token,
-      {
-        method: 'PUT',
-        body: JSON.stringify(criteria)
-      }
-    )
-  },
-
-  /**
-   * 추출 기준 삭제
-   */
-  async deleteExtractionCriteria(
-    token: string,
-    criteriaId: string
-  ): Promise<ApiResponse<void>> {
-    return apiClient.authenticatedRequest<void>(
-      `/api/extraction-criteria/${criteriaId}`,
-      token,
-      { method: 'DELETE' }
-    )
-  }
 }

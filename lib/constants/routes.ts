@@ -327,18 +327,3 @@ export type NavigationItem = {
   icon?: string
   description?: string
 }
-
-// =============================================================================
-// 레거시 호환성 (점진적 마이그레이션용)
-// =============================================================================
-
-/**
- * 기존 코드와의 호환성을 위한 개별 export
- * @deprecated ROUTES를 사용하세요
- */
-export const PATHS = {
-  HOME: '/',
-  PROJECTS: '/projects',
-  INSIGHTS: '/insights',
-  LOGIN: '/login',
-} as const

@@ -48,10 +48,8 @@ export type {
   
   // Interview types
   Interview,
-  InterviewUploadRequest,
   InterviewListQuery,
   InterviewProcessingResult,
-  ExtractionCriteria,
   
   // Persona types
   PersonaListQuery,

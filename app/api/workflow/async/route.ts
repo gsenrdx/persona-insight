@@ -129,7 +129,6 @@ export async function POST(req: NextRequest) {
     const interviewId = insertedData?.[0]?.id
 
     // 2. 백그라운드 처리 시작 (비동기)
-    // 지연 시간을 두고 처리하여 웹소켓 업데이트가 먼저 전파되도록 함
     setTimeout(async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin}/api/workflow/process`, {
@@ -181,37 +180,26 @@ export async function POST(req: NextRequest) {
       }
     }, 1000) // 1초 지연
 
-    // 3. 즉시 응답 반환
-    const response = new Response(JSON.stringify({
+    // 3. 즉시 응답 반환 (낙관적 업데이트용)
+    return new Response(JSON.stringify({
       success: true,
       interview_id: interviewId,
       status: 'processing',
-      message: '인터뷰가 제출되었습니다. 백그라운드에서 처리 중입니다.'
+      message: '인터뷰가 제출되었습니다. 백그라운드에서 처리 중입니다.',
+      interview: {
+        id: interviewId,
+        title,
+        workflow_status: 'processing',
+        created_at: new Date().toISOString(),
+        created_by: userId,
+        interview_date: lastModified ? new Date(lastModified).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        project_id: projectId,
+        company_id: companyId
+      }
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })
-    
-    // 4. 응답 후 실시간 브로드캐스트 (비동기)
-    setTimeout(async () => {
-      try {
-        // Supabase 채널로 직접 브로드캐스트
-        const channel = supabase.channel(`project-realtime-${projectId}`)
-        await channel.send({
-          type: 'broadcast',
-          event: 'interview-added',
-          payload: { 
-            interviewId, 
-            projectId,
-            action: 'refresh'
-          }
-        })
-        channel.unsubscribe()
-      } catch (error) {
-      }
-    }, 0)
-    
-    return response
 
   } catch (error: any) {
     return new Response(JSON.stringify({

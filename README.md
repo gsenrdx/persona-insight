@@ -198,6 +198,15 @@ persona-insight/
 
 ---
 
+## 📚 **프로젝트 문서**
+
+- **[WORKFLOW_ARCHITECTURE.md](./WORKFLOW_ARCHITECTURE.md)** - 시스템 워크플로우 및 데이터 동기화 패턴
+- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - 전체 프로젝트 구조 분석 (394개 파일)
+- **[PROJECT_FILE_LISTING.md](./PROJECT_FILE_LISTING.md)** - 모든 파일의 상세 목록 및 역할
+- **[CLAUDE.md](./CLAUDE.md)** - AI 어시스턴트 개발 가이드라인
+
+---
+
 ## 🛠️ **개발 명령어**
 
 ```bash

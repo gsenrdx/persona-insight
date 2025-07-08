@@ -252,7 +252,6 @@ export default function ProjectSettings({ project, onProjectUpdate }: ProjectSet
         })
 
       if (error) {
-        console.error('Failed to add member:', error)
         throw error
       }
     }

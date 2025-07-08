@@ -73,7 +73,6 @@ export function InviteMemberDialog({
       if (error) throw error
       setCompanyMembers(members || [])
     } catch (error) {
-      console.error('Failed to load company members:', error)
       toast.error('회사 멤버를 불러오는데 실패했습니다')
     } finally {
       setLoading(false)
@@ -93,7 +92,6 @@ export function InviteMemberDialog({
       onOpenChange(false)
       toast.success(`${selectedUsers.length}명의 멤버를 초대했습니다`)
     } catch (error) {
-      console.error('Failed to invite members:', error)
       toast.error('멤버 초대에 실패했습니다')
     } finally {
       setInviting(false)

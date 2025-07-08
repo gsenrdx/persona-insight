@@ -99,12 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setSession(null)
       
-      // localStorage의 workflow queue 데이터 정리
-      localStorage.removeItem('workflow_queue_jobs')
-      
-      // 다른 관련 localStorage 데이터 정리 (필요시)
-      // localStorage.clear() // 전체 정리가 필요한 경우
-      
       // 로그인 페이지로 리다이렉트
       window.location.href = '/login'
       
@@ -183,8 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setSession(null)
               setProfile(null)
               setError(null)
-              // localStorage 정리
-              localStorage.removeItem('workflow_queue_jobs')
               return
             }
 
@@ -219,8 +211,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setProfile(null)
                 setSession(null)
                 setError(null)
-                // localStorage 정리
-                localStorage.removeItem('workflow_queue_jobs')
               }
             } catch (error) {
               if (mounted) {

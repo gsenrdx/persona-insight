@@ -5,13 +5,11 @@ import { CleanedScriptItem, ScriptSection } from '@/types/interview'
 import { Interview } from '@/types/interview'
 import { Search, MessageSquare, X, Plus, MoreVertical, Trash2, ChevronDown, ChevronUp, Download, FileText, ListOrdered, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useInterviewNotesRealtime } from '@/hooks/use-interview-notes'
+import { useInterviewNotes } from '@/hooks/use-interview-notes'
 import { useAuth } from '@/hooks/use-auth'
-import FloatingMemoButton from '@/components/ui/floating-memo-button'
-import AIQuestionBar from '@/components/ui/ai-question-bar'
+// Removed FloatingMemoButton and AIQuestionBar - using read-only view
 import InterviewAssistantPanel from './interview-assistant-panel'
-import EditableScriptItem from './editable-script-item'
-import { useInterviewScriptBroadcast } from '@/lib/realtime/broadcast/hooks/use-interview-script-broadcast'
+import { ReadOnlyScriptItem } from './readonly-script-item'
 
 interface InterviewScriptViewerProps {
   script: CleanedScriptItem[]
@@ -28,19 +26,8 @@ export default function InterviewScriptViewer({ script, interview, className, on
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
   
-  // Realtime script editing
-  const {
-    scripts,
-    presence,
-    updateScript,
-    updatePresence,
-    getPresenceForScript,
-    userColor,
-    isConnected
-  } = useInterviewScriptBroadcast({
-    interviewId: interview?.id || '',
-    enabled: !!interview?.id
-  })
+  // Script data (no realtime updates)
+  const scripts = script // 전달받은 script 데이터 사용
   
   // scrollToSection 함수를 먼저 정의
   const scrollToSection = useCallback((sectionName: string) => {
@@ -68,11 +55,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
   }, [interview?.script_sections, activeSection, onSectionsChange, scrollToSection])
   
   const [searchTerm, setSearchTerm] = useState('')
-  const [editingMemoId, setEditingMemoId] = useState<string | null>(null)
-  const [memoInput, setMemoInput] = useState('')
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyInput, setReplyInput] = useState('')
-  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
+  // Removed memo editing states - using read-only view
   const [aiQuestionBarOpen, setAiQuestionBarOpen] = useState(false)
   const [selectedTextForAI, setSelectedTextForAI] = useState('')
   const [aiQuestionPosition, setAiQuestionPosition] = useState<{ x: number; y: number } | null>(null)
@@ -140,104 +123,42 @@ export default function InterviewScriptViewer({ script, interview, className, on
     }
   }, [])
   
-  // DB 연동 훅 사용 (Realtime)
+  // DB 연동 훅 사용 (SSE 기반)
   const { 
     notes, 
-    getNotesByScriptId, 
     addNote, 
-    deleteNote, 
-    addReply, 
-    deleteReply,
+    deleteNote,
     isAddingNote,
     isDeletingNote 
-  } = useInterviewNotesRealtime(interview?.id || '')
+  } = useInterviewNotes(interview?.id || '', interview?.project_id)
   
   // 스크립트 ID별 메모 맵핑
   const memosByScriptId = useMemo(() => {
     const map: Record<string, typeof notes[0]> = {}
-    notes.forEach(note => {
-      note.script_item_ids.forEach(scriptId => {
-        map[scriptId] = note
-      })
+    const safeNotes = Array.isArray(notes) ? notes : []
+    safeNotes.forEach(note => {
+      if (note.script_item_ids && Array.isArray(note.script_item_ids)) {
+        note.script_item_ids.forEach(scriptId => {
+          map[scriptId] = note
+        })
+      }
     })
     return map
   }, [notes])
 
-  // 실시간 업데이트된 스크립트 생성
-  const realtimeScript = useMemo(() => {
-    // scripts Map에서 업데이트된 항목들을 가져와서 원본 script와 병합
-    return script.map(item => {
-      const scriptId = item.id.join('-')
-      const updatedScript = scripts.get(scriptId)
-      
-      if (updatedScript) {
-        // 실시간 업데이트된 내용이 있으면 적용
-        return {
-          ...item,
-          cleaned_sentence: updatedScript.cleaned_sentence
-        }
-      }
-      
-      return item
-    })
-  }, [script, scripts])
+  // 스크립트 데이터 (실시간 업데이트 제거)
+  const scriptItems = script
   
   // 필터링된 스크립트
   const filteredScript = useMemo(() => {
-    if (!searchTerm) return realtimeScript
+    if (!searchTerm) return scriptItems
     
-    return realtimeScript.filter(item =>
+    return scriptItems.filter(item =>
       item.cleaned_sentence.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }, [realtimeScript, searchTerm])
+  }, [scriptItems, searchTerm])
 
-  const handleAddMemo = async (scriptId: string) => {
-    if (!memoInput.trim()) return
-
-    await addNote({
-      scriptItemIds: [scriptId],
-      content: memoInput.trim()
-    })
-    
-    setMemoInput('')
-    setEditingMemoId(null)
-  }
-
-  const handleAddReply = async (noteId: string) => {
-    if (!replyInput.trim()) return
-
-    await addReply({
-      noteId,
-      content: replyInput.trim()
-    })
-
-    setReplyInput('')
-    setReplyingTo(null)
-  }
-
-  const handleDeleteNote = async (noteId: string) => {
-    await deleteNote(noteId)
-  }
-
-  const handleDeleteReply = async (noteId: string, replyId: string) => {
-    await deleteReply({ noteId, replyId })
-  }
-
-  const handleFloatingMemoAdd = (text: string, range: Range) => {
-    // 선택된 텍스트가 포함된 스크립트 아이템 찾기
-    const scriptElement = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
-      ? range.commonAncestorContainer.parentElement
-      : range.commonAncestorContainer as Element
-    
-    const scriptContainer = scriptElement?.closest('[data-script-id]')
-    if (scriptContainer) {
-      const scriptId = scriptContainer.getAttribute('data-script-id')
-      if (scriptId) {
-        setMemoInput('')
-        setEditingMemoId(scriptId)
-      }
-    }
-  }
+  // Removed memo/reply handlers - using read-only view
 
   const highlightText = (text: string, category?: string) => {
     const parts = searchTerm 
@@ -305,7 +226,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
     content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
     content += '='.repeat(50) + '\n\n'
     
-    realtimeScript.forEach(item => {
+    scriptItems.forEach(item => {
       const speaker = item.speaker === 'question' ? 'Q' : 'A'
       const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
       content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
@@ -384,7 +305,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
   return (
     <div className={cn(
       "h-full flex bg-white interview-script-content",
-      aiQuestionBarOpen && "ai-selection-active maintain-selection",
       className
     )}>
       
@@ -450,7 +370,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
 
           {/* 스크립트 내용 */}
           <div className="flex-1 overflow-y-auto relative" ref={scriptContainerRef}>
-            <div className="mx-auto px-8 py-6" style={{ maxWidth: (notes.length > 0 || editingMemoId) ? '1600px' : '1024px' }}>
+            <div className="mx-auto px-8 py-6" style={{ maxWidth: '1024px' }}>
               {filteredScript.length === 0 ? (
                 <div className="text-center py-16">
                   <p className="text-gray-400 text-sm">
@@ -474,7 +394,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
                       const scriptId = item.id.join('-')
                       // index를 포함한 고유한 key 생성
                       const uniqueKey = `${scriptId}-${index}`
-                      const memo = memosByScriptId[scriptId]
                       const prevItem = index > 0 ? filteredScript[index - 1] : null
                       
                       // item.id 배열의 첫 번째 라인 번호로 섹션 찾기
@@ -531,15 +450,9 @@ export default function InterviewScriptViewer({ script, interview, className, on
                           
                           {/* Script item wrapper */}
                           <div className="relative">
-                            {/* Editable script item */}
-                            <EditableScriptItem
-                              item={item}
-                              index={index}
-                              isConsecutiveSameSpeaker={isConsecutiveSameSpeaker}
-                              presences={getPresenceForScript(scriptId)}
-                              onEdit={updateScript}
-                              onPresenceUpdate={updatePresence}
-                              userColor={userColor}
+                            {/* Read-only script item */}
+                            <ReadOnlyScriptItem
+                              script={item}
                               className={cn(
                                 currentSection && !currentSection.is_main_content && "opacity-60"
                               )}
@@ -562,14 +475,23 @@ export default function InterviewScriptViewer({ script, interview, className, on
           <div className="fixed bottom-8 right-8 z-40">
             <button
               onClick={() => setFloatingPanelOpen(true)}
-              className="group relative"
+              className="group relative w-16 h-16 bg-white rounded-full shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:scale-105 active:scale-95"
               title="AI 도우미"
             >
-              <img
-                src="/miso-ai-icon.png"
-                alt="AI Assistant"
-                className="w-16 h-16 drop-shadow-lg hover:drop-shadow-xl transition-all duration-200"
-              />
+              {/* 동그란 배경 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              {/* AI 아이콘 */}
+              <div className="relative flex items-center justify-center w-full h-full">
+                <img
+                  src="/chat-icon.png"
+                  alt="AI Assistant"
+                  className="w-8 h-8 transition-transform duration-200 group-hover:scale-110"
+                />
+              </div>
+              
+              {/* 활성 표시 점 */}
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse" />
             </button>
           </div>
           
@@ -578,7 +500,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
             isOpen={floatingPanelOpen}
             onClose={() => setFloatingPanelOpen(false)}
             interview={interview}
-            script={realtimeScript}
+            script={scriptItems}
             session={session}
           />
         </>

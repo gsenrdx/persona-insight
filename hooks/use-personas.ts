@@ -463,15 +463,6 @@ export function useGenerateChatSummary() {
   })
 }
 
-// === Legacy 함수들 (하위 호환성을 위해 유지) ===
-
-/**
- * @deprecated Use usePersonas with query parameters instead
- */
-export function usePersonasLegacy(companyId?: string, projectId?: string) {
-  return usePersonas({ companyId, projectId })
-}
-
 // 타입 재export
 export type { 
   PersonaListQuery,

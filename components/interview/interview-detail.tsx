@@ -28,9 +28,6 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
   const [showEditModal, setShowEditModal] = useState(false)
   const { profile, user } = useAuth()
   
-  // 수정 권한 확인
-  const canEdit = profile?.id && (interview.created_by === profile.id || profile?.role === 'super_admin' || profile?.role === 'company_admin')
-  
   // 컴포넌트 언마운트 시 목차 정리
   useEffect(() => {
     return () => {
@@ -39,6 +36,20 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
       }
     }
   }, [onSectionsChange])
+
+  // 인터뷰가 없으면 로딩 표시
+  if (!interview) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // 수정 권한 확인
+  const canEdit = profile?.id && interview.created_by && (interview.created_by === profile.id || profile?.role === 'super_admin' || profile?.role === 'company_admin')
 
   // 스크립트 뷰어에서 섹션 정보가 변경될 때
   const handleScriptSectionsChange = (sections: any[] | null, active: string | null, scrollFn: (sectionName: string) => void) => {

@@ -30,9 +30,6 @@ export const WORKFLOW_CONFIG = {
     CANCELLED: 'cancelled',
     PERSONA_SYNTHESIZING: 'persona_synthesizing',
   } as const,
-  
-  /** 로컬 스토리지 키 */
-  STORAGE_KEY: 'workflow_queue_jobs',
 } as const
 
 /**

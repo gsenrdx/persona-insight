@@ -55,7 +55,6 @@ export const CACHE_CONFIG = {
     USER_PREFERENCES: 'user_preferences',
     RECENT_PROJECTS: 'recent_projects',
     DRAFT_MESSAGES: 'draft_messages',
-    WORKFLOW_QUEUE: 'workflow_queue_jobs',
     SIDEBAR_STATE: 'sidebar_state',
   } as const,
 } as const

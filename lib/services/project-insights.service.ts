@@ -195,7 +195,6 @@ export class ProjectInsightsService {
       throw new Error(`인터뷰 테이블 조회 실패: ${error.message}`)
     }
 
-    console.log(`Found ${allInterviews?.length || 0} interviews for project ${projectId}`)
     
     // Group by year and generate insights
     const results: Record<string, YearInsights> = {}
@@ -207,7 +206,6 @@ export class ProjectInsightsService {
         return interviewYear === parseInt(year)
       }) || []
 
-      console.log(`Year ${year}: ${yearInterviews.length} interviews`)
       
       // Transform to insights
       const insights = this.processInterviewsToInsights(yearInterviews)

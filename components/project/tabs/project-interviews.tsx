@@ -1,16 +1,15 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Plus, RefreshCw, Loader2, WifiOff, Wifi } from "lucide-react"
+import { Plus, RefreshCw, Loader2, Activity, AlertCircle } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
-import { useAdaptiveInterviews } from '@/hooks/use-adaptive-interviews'
+import { useInterviews } from '@/hooks/use-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'
 import { useAssignPersonaDefinitionToInterview } from '@/hooks/use-interview-persona'
 import { Interview } from '@/types/interview'
 import { InterviewDataTableInfinite } from '@/components/interview/interview-data-table-infinite'
-import { useInterviewStatusMonitor } from '@/hooks/use-interview-status-monitor'
 import InterviewDetail from '@/components/interview/interview-detail'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
@@ -42,17 +41,17 @@ interface Project {
   created_at: string
 }
 
-interface ProjectInterviewsPollingProps {
+interface ProjectInterviewsProps {
   project: Project
   selectedInterviewId?: string | null
   onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
 }
 
-export default function ProjectInterviewsPolling({ 
+export default function ProjectInterviews({ 
   project, 
   selectedInterviewId, 
   onSectionsChange 
-}: ProjectInterviewsPollingProps) {
+}: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
   const { data: members } = useProjectMembers(project.id)
@@ -61,21 +60,32 @@ export default function ProjectInterviewsPolling({
   const currentUserMember = members?.find(m => m.user_id === profile?.id)
   const isProjectAdmin = currentUserMember?.role === 'admin' || currentUserMember?.role === 'owner'
   
-  // 적응형 인터뷰 목록 (네트워크 상태에 따라 자동 최적화)
+  // 낙관적 업데이트 기반 인터뷰 목록
   const { 
     interviews, 
     isLoading, 
+    error,
     isFetching,
-    error, 
+    processingCount,
+    completedCount,
+    failedCount,
+    totalCount,
+    createInterview,
     updateInterview, 
     deleteInterview,
     refetch,
+    isCreating,
     isUpdating,
-    isDeleting
-  } = useAdaptiveInterviews(project.id)
+    isDeleting,
+    hasProcessing,
+    hasFailed,
+    isEmpty
+  } = useInterviews({
+    projectId: project.id,
+    enabled: true
+  })
   
   const [showAddInterviewModal, setShowAddInterviewModal] = useState(false)
-  const [isCreatingInterview, setIsCreatingInterview] = useState(false)
   const [personaAssignmentModal, setPersonaAssignmentModal] = useState<{
     open: boolean
     interviewId: string
@@ -97,90 +107,37 @@ export default function ProjectInterviewsPolling({
     }
     
     try {
-      const response = await fetch(`/api/interviews/${interviewId}/retry`, {
+      const response = await fetch('/api/workflow/retry', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ interviewId })
       })
       
       if (!response.ok) {
         throw new Error('재시도 실패')
       }
       
-      const result = await response.json()
-      
-      // 목록 새로고침
-      refetch()
-      
       toast.success('인터뷰 분석을 다시 시작했습니다.')
+      
+      // 상태를 processing으로 낙관적 업데이트
+      updateInterview(interviewId, { workflow_status: 'processing' })
     } catch (error) {
       toast.error('인터뷰 재시도에 실패했습니다.')
     }
-  }, [session, refetch])
+  }, [session, updateInterview])
 
   // 인터뷰 생성 핸들러
   const handleCreateInterview = useCallback(async (content: File | string, projectId: string, title: string, lastModified?: number) => {
-    setIsCreatingInterview(true)
     try {
-      if (!session?.access_token) {
-        toast.error('다시 로그인해주세요.')
-        return
-      }
-
-      let response: Response
-
-      if (content instanceof File) {
-        // 파일 업로드 방식
-        const formData = new FormData()
-        formData.append('file', content)
-        formData.append('projectId', projectId)
-        formData.append('title', title)
-        if (lastModified) {
-          formData.append('lastModified', lastModified.toString())
-        }
-
-        response = await fetch('/api/workflow/async', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: formData
-        })
-      } else {
-        // 텍스트 입력 방식
-        response = await fetch('/api/workflow/async', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            text: content,
-            projectId,
-            title
-          })
-        })
-      }
-
-      if (!response.ok) {
-        const errorData = await response.text()
-        throw new Error(`인터뷰 생성에 실패했습니다 (${response.status}: ${response.statusText})`)
-      }
-
-      const result = await response.json()
-      
-      // 인터뷰 목록 새로고침
-      refetch()
+      await createInterview({ content, title, lastModified })
       setShowAddInterviewModal(false)
-      toast.success('인터뷰가 생성되어 분석을 시작합니다')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '인터뷰 생성에 실패했습니다')
-    } finally {
-      setIsCreatingInterview(false)
+      // 에러는 mutation에서 처리됨
     }
-  }, [session, refetch])
+  }, [createInterview])
 
   // 페르소나 할당
   const assignPersonaMutation = useAssignPersonaDefinitionToInterview()
@@ -192,21 +149,12 @@ export default function ProjectInterviewsPolling({
         personaDefinitionId
       })
       setPersonaAssignmentModal({ open: false, interviewId: '' })
-      refetch() // 목록 새로고침
     } catch (error) {
       // Error handled by mutation onError
     }
-  }, [assignPersonaMutation, refetch])
+  }, [assignPersonaMutation])
 
-  // 인터뷰 상태 모니터링
-  const { statusCounts, hasProcessing, hasFailed } = useInterviewStatusMonitor({
-    interviews: interviews || [],
-    onRetry: handleRetry
-  })
-  
-  // 현재 코드에서는 status monitoring이 별도로 필요하지 않으므로
-  // interviews를 그대로 사용
-  const interviewsWithStatus = interviews
+  // 상태 분석은 useInterviews 훅에서 제공됨
   
   // 선택된 인터뷰
   const selectedInterview = interviews.find(i => i.id === selectedInterviewId)
@@ -215,7 +163,7 @@ export default function ProjectInterviewsPolling({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <WifiOff className="w-12 h-12 text-gray-400" />
+        <AlertCircle className="w-12 h-12 text-gray-400" />
         <p className="text-gray-600">인터뷰 목록을 불러올 수 없습니다</p>
         <Button onClick={() => refetch()} variant="outline">
           <RefreshCw className="w-4 h-4 mr-2" />
@@ -232,12 +180,27 @@ export default function ProjectInterviewsPolling({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold">인터뷰 목록</h2>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Wifi className={cn(
-                "w-4 h-4",
-                isFetching ? "text-blue-500 animate-pulse" : "text-green-500"
-              )} />
-              <span>자동 새로고침 30초</span>
+            {/* 상태 표시 */}
+            <div className="flex items-center gap-2">
+              {processingCount > 0 && (
+                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
+                  <Activity className="w-4 h-4 animate-pulse" />
+                  <span>{processingCount}개 처리 중</span>
+                </div>
+              )}
+              
+              {isFetching && !isLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>동기화 중</span>
+                </div>
+              )}
+              
+              {!isLoading && totalCount > 0 && (
+                <div className="text-sm text-gray-500">
+                  총 {totalCount}개 인터뷰
+                </div>
+              )}
             </div>
           </div>
           
@@ -246,21 +209,18 @@ export default function ProjectInterviewsPolling({
               variant="outline"
               size="sm"
               onClick={handleManualRefresh}
-              disabled={isFetching}
+              disabled={isLoading}
             >
-              <RefreshCw className={cn(
-                "w-4 h-4",
-                isFetching && "animate-spin"
-              )} />
+              <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
               <span className="ml-2 hidden sm:inline">새로고침</span>
             </Button>
             
             <Button
               onClick={() => setShowAddInterviewModal(true)}
               size="sm"
-              disabled={isCreatingInterview}
+              disabled={isCreating}
             >
-              {isCreatingInterview ? (
+              {isCreating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Plus className="w-4 h-4" />
@@ -290,7 +250,7 @@ export default function ProjectInterviewsPolling({
                   </div>
                 ) : (
                   <InterviewDataTableInfinite
-                    interviews={interviewsWithStatus}
+                    interviews={interviews}
                     onView={(id) => {
                       router.push(`/projects/${project.id}?interview=${id}`, { scroll: false })
                     }}
@@ -314,6 +274,21 @@ export default function ProjectInterviewsPolling({
                 )}
               </div>
             </motion.div>
+          ) : !selectedInterview ? (
+            <motion.div 
+              key="loading"
+              className="h-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                  <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
+                </div>
+              </div>
+            </motion.div>
           ) : (
             <motion.div 
               key="detail"
@@ -325,7 +300,7 @@ export default function ProjectInterviewsPolling({
             >
               <div className="bg-white rounded-lg shadow-sm h-full overflow-auto">
                 <InterviewDetail
-                  interview={selectedInterview!}
+                  interview={selectedInterview}
                   onBack={() => {
                     router.push(`/projects/${project.id}`, { scroll: false })
                   }}

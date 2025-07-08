@@ -34,8 +34,6 @@ export const {
   createApiEndpoint,
   createUrlWithParams,
   replaceRouteParams,
-  // 레거시 호환성
-  ENDPOINTS,
 } = ApiConstants
 
 // 라우트 경로 상수
@@ -57,8 +55,6 @@ export const {
   isCurrentRoute,
   createBreadcrumbs,
   isRouteAuthorized,
-  // 레거시 호환성
-  PATHS,
 } = RouteConstants
 
 // UI 메시지 상수
@@ -109,8 +105,6 @@ export const CONSTANTS = {
   API: {
     BASE: API_BASE,
     ENDPOINTS: API_ENDPOINTS,
-    // 레거시 호환성
-    LEGACY: ENDPOINTS,
   },
   
   /** 라우트 경로들 */
@@ -315,19 +309,3 @@ export type ConfigCategory = keyof typeof CONFIG
 if (typeof window !== 'undefined' && ENV_CONFIG.IS_DEVELOPMENT) {
   debugConstants()
 }
-
-// 레거시 호환성 - @deprecated
-export const LEGACY_CONSTANTS = {
-  // API 엔드포인트 (레거시)
-  API_ENDPOINTS: ENDPOINTS,
-  
-  // 라우트 (레거시)
-  PATHS: PATHS,
-  
-  // 에러 메시지 (레거시)
-  ERROR_MESSAGES: COMMON_ERROR_MESSAGES,
-  
-  // 기본 설정 (레거시)
-  DEFAULT_PAGE_SIZE: PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
-  MAX_FILE_SIZE: FILE_UPLOAD_CONFIG.MAX_FILE_SIZE,
-} as const

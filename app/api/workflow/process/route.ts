@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', interviewId)
 
+      // 실패 상태 - 폴링으로 자동 감지됨
+
       return new Response(JSON.stringify({
         error: 'MISO API 오류',
         message: errorMessage || '외부 API 호출에 실패했습니다.',
@@ -181,6 +183,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // 처리 완료 - 폴링으로 자동 감지됨
+
     return new Response(JSON.stringify({
       success: true,
       message: '인터뷰 처리가 완료되었습니다.'
@@ -206,6 +210,8 @@ export async function POST(req: NextRequest) {
         metadata: errorInfo
       })
       .eq('id', interviewId)
+
+    // 실패 상태 - 폴링으로 자동 감지됨
 
     if (error.name === 'AbortError') {
       return new Response(JSON.stringify({

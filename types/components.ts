@@ -15,16 +15,6 @@ export enum WorkflowStatus {
   FAILED = 'FAILED'
 }
 
-export interface WorkflowJob {
-  id: string
-  status: WorkflowStatus
-  projectId: string
-  fileName?: string
-  progress?: number
-  error?: string
-  createdAt: string
-  updatedAt: string
-}
 
 // === 기본 Props 타입들 ===
 export interface BaseComponentProps {

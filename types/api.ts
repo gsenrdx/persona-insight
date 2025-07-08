@@ -179,21 +179,8 @@ export interface Interview {
   status: 'pending' | 'processing' | 'completed' | 'failed'
   extractedData?: any
   error?: string
-  extractionCriteria?: ExtractionCriteria[]
 }
 
-export interface ExtractionCriteria {
-  id: string
-  name: string
-  description: string
-  isDefault: boolean
-}
-
-export interface InterviewUploadRequest {
-  files: File[]
-  projectId: string
-  extractionCriteria: ExtractionCriteria[]
-}
 
 export interface InterviewListQuery {
   companyId?: string
