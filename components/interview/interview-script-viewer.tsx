@@ -18,12 +18,12 @@ interface InterviewScriptViewerProps {
   className?: string
   onSectionsChange?: (sections: ScriptSection[] | null, activeSection: string | null, scrollToSection: (sectionName: string) => void) => void
   canEdit?: boolean
+  tagFilter?: Set<'pain' | 'need'>
+  onTagFilterChange?: (filters: Set<'pain' | 'need'>) => void
 }
 
-export default function InterviewScriptViewer({ script, interview, className, onSectionsChange, canEdit = false }: InterviewScriptViewerProps) {
+export default function InterviewScriptViewer({ script, interview, className, onSectionsChange, canEdit = false, tagFilter = new Set(), onTagFilterChange }: InterviewScriptViewerProps) {
   const { user, profile, session } = useAuth()
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
-  const downloadMenuRef = useRef<HTMLDivElement>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   
@@ -34,6 +34,34 @@ export default function InterviewScriptViewer({ script, interview, className, on
   useEffect(() => {
     setScripts(script)
   }, [script])
+  
+  // 태그 필터에 따라 필터링된 스크립트
+  const filteredScripts = useMemo(() => {
+    // 필터가 비어있으면 전체 표시
+    if (tagFilter.size === 0) {
+      return scripts
+    }
+    
+    // 선택된 필터에 따라 evidence ids 수집
+    const evidenceIds = new Set<number>()
+    
+    if (tagFilter.has('pain') && interview?.primary_pain_points) {
+      interview.primary_pain_points.forEach(painPoint => {
+        painPoint.evidence.forEach(id => evidenceIds.add(id))
+      })
+    }
+    
+    if (tagFilter.has('need') && interview?.primary_needs) {
+      interview.primary_needs.forEach(need => {
+        need.evidence.forEach(id => evidenceIds.add(id))
+      })
+    }
+    
+    // evidence에 포함된 스크립트 아이템만 필터링
+    return scripts.filter(item => 
+      item.id.some(id => evidenceIds.has(id))
+    )
+  }, [scripts, tagFilter, interview])
   
   // scrollToSection 함수를 먼저 정의
   const scrollToSection = useCallback((sectionName: string) => {
@@ -213,10 +241,10 @@ export default function InterviewScriptViewer({ script, interview, className, on
     return map
   }, [notes])
 
-  // 스크립트 데이터 (낙관적 업데이트 상태 사용)
-  const scriptItems = scripts
+  // 스크립트 데이터 (태그 필터 적용)
+  const scriptItems = filteredScripts
   
-  // 필터링된 스크립트
+  // 필터링된 스크립트 (검색어 필터)
   const filteredScript = useMemo(() => {
     // 먼저 빈 내용 제거
     const nonEmptyItems = scriptItems.filter(item => 
@@ -229,7 +257,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
     return nonEmptyItems.filter(item =>
       item.cleaned_sentence.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }, [scripts, searchTerm])
+  }, [scriptItems, searchTerm])
 
   // Removed memo/reply handlers - using read-only view
 
@@ -249,75 +277,6 @@ export default function InterviewScriptViewer({ script, interview, className, on
     )
   }
 
-  // 드롭다운 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
-        setDownloadMenuOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // 원본 인터뷰 텍스트 다운로드
-  const handleDownloadOriginal = () => {
-    if (!interview?.raw_text) {
-      alert('원본 인터뷰 텍스트가 없습니다.')
-      return
-    }
-
-    const content = interview.raw_text
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    
-    const fileName = interview?.title 
-      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
-      : 'interview'
-    link.download = `${fileName}_original.txt`
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setDownloadMenuOpen(false)
-  }
-
-  // 정리된 스크립트 다운로드
-  const handleDownloadCleaned = () => {
-    setDownloadMenuOpen(false)
-    
-    // 정리된 스크립트 텍스트 생성
-    let content = `${interview?.title || '인터뷰 스크립트'}\n`
-    content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
-    content += '='.repeat(50) + '\n\n'
-    
-    scripts.forEach(item => {
-      const speaker = item.speaker === 'question' ? 'Q' : 'A'
-      const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
-      content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
-    })
-    
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    
-    // 파일명 생성 (제목을 사용하고, 특수문자 제거)
-    const fileName = interview?.title 
-      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
-      : 'interview_script'
-    link.download = `${fileName}.txt`
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setDownloadMenuOpen(false)
-  }
 
   // 스크롤 위치에 따른 현재 섹션 감지
   useEffect(() => {
@@ -381,10 +340,83 @@ export default function InterviewScriptViewer({ script, interview, className, on
       <div className="flex-1 relative overflow-hidden">
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
-          {/* 검색 및 도구 영역 - 깔끔한 상단바 */}
-          <div className="px-6 py-3 bg-gray-50/50 border-b border-gray-100">
-            <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
-              <div className="flex-1 max-w-lg">
+          {/* 검색 및 태그 필터 영역 */}
+          <div className="px-8 py-3 bg-white border-b border-gray-100">
+            <div className="flex items-center justify-between gap-4">
+              {/* 좌측: 태그 필터 버튼 */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    const newFilters = new Set(tagFilter)
+                    if (newFilters.has('pain')) {
+                      newFilters.delete('pain')
+                    } else {
+                      newFilters.add('pain')
+                    }
+                    // 상위 컴포넌트로 전달하기 위해 직접 호출
+                    if (onTagFilterChange) {
+                      onTagFilterChange(newFilters)
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-all",
+                    tagFilter.has('pain')
+                      ? "bg-red-50 border-red-200 text-red-700" 
+                      : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800"
+                  )}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-sm border transition-all flex items-center justify-center",
+                    tagFilter.has('pain')
+                      ? "bg-red-500 border-red-500"
+                      : "border-gray-300"
+                  )}>
+                    {tagFilter.has('pain') && (
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  문제점
+                </button>
+                <button
+                  onClick={() => {
+                    const newFilters = new Set(tagFilter)
+                    if (newFilters.has('need')) {
+                      newFilters.delete('need')
+                    } else {
+                      newFilters.add('need')
+                    }
+                    // 상위 컴포넌트로 전달하기 위해 직접 호출
+                    if (onTagFilterChange) {
+                      onTagFilterChange(newFilters)
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-all",
+                    tagFilter.has('need')
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
+                      : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800"
+                  )}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-sm border transition-all flex items-center justify-center",
+                    tagFilter.has('need')
+                      ? "bg-emerald-500 border-emerald-500"
+                      : "border-gray-300"
+                  )}>
+                    {tagFilter.has('need') && (
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  니즈
+                </button>
+              </div>
+              
+              {/* 우측: 컴팩트 검색바 */}
+              <div className="w-72">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -392,50 +424,16 @@ export default function InterviewScriptViewer({ script, interview, className, on
                     placeholder="검색..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                    className="w-full pl-9 pr-4 py-2 text-sm border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors bg-white hover:border-gray-300"
                   />
                 </div>
-              </div>
-              
-              <div className="relative" ref={downloadMenuRef}>
-                <button
-                  onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
-                  title="다운로드"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">다운로드</span>
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                
-                {downloadMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-10 overflow-hidden">
-                    <div className="py-1">
-                      <button
-                        onClick={handleDownloadOriginal}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors disabled:opacity-50"
-                        disabled={!interview?.raw_text}
-                      >
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        원본 인터뷰
-                      </button>
-                      <button
-                        onClick={handleDownloadCleaned}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                      >
-                        <Download className="w-4 h-4 text-gray-400" />
-                        정리된 스크립트
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           {/* 스크립트 내용 */}
           <div className="flex-1 overflow-y-auto relative bg-white" ref={scriptContainerRef}>
-            <div className="mx-auto px-10 py-6" style={{ maxWidth: '1000px' }}>
+            <div className="px-8 py-4">
               {filteredScript.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="text-gray-300 mb-3">

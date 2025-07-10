@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { Interview, InsightItem } from '@/types/interview'
-import InterviewSummarySidebar from './interview-summary-sidebar'
-import { Lightbulb, AlertCircle, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface InterviewInsightsProps {
@@ -42,133 +42,221 @@ export default function InterviewInsights({ interview }: InterviewInsightsProps)
     const isExpanded = expandedItems.has(itemId)
     
     return (
-      <div 
-        key={itemId}
-        className="group"
-      >
+      <div key={itemId}>
         <div 
-          className="py-3 cursor-pointer hover:bg-gray-50/50 rounded-lg transition-all px-3 -mx-3"
-          onClick={() => toggleExpanded(itemId)}
+          className={cn(
+            "p-4 rounded-xl transition-all duration-200",
+            "bg-gray-50 hover:bg-gray-100",
+            evidenceSentences.length > 0 && "cursor-pointer"
+          )}
+          onClick={() => evidenceSentences.length > 0 && toggleExpanded(itemId)}
         >
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-sm text-gray-700 leading-relaxed flex-1">
-              {item.description}
-            </p>
-            {evidenceSentences.length > 0 && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-700 transition-colors">
-                <span>{evidenceSentences.length}</span>
-                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </div>
-            )}
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0",
+              type === 'pain' ? "bg-red-500" : "bg-emerald-500"
+            )} />
+            
+            <div className="flex-1">
+              <p className="text-base text-gray-800 leading-relaxed">
+                {item.description}
+              </p>
+              
+              {evidenceSentences.length > 0 && (
+                <button 
+                  className="flex items-center gap-1.5 mt-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleExpanded(itemId)
+                  }}
+                >
+                  <span>근거 {evidenceSentences.length}개</span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform",
+                    isExpanded && "rotate-180"
+                  )} />
+                </button>
+              )}
+            </div>
           </div>
+          
+          {/* 근거 문장들 - 토글 가능 */}
+          {evidenceSentences.length > 0 && isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-4 pt-4 border-t border-gray-200"
+            >
+              <div className="space-y-3 pl-8">
+                {evidenceSentences.map((sentence, idx) => (
+                  <div key={`evidence-${idx}`} className="text-sm text-gray-600 leading-relaxed">
+                    {sentence.speaker === 'question' && (
+                      <span className="font-medium text-gray-700">Q. </span>
+                    )}
+                    {sentence.cleaned_sentence}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
-        
-        {/* 근거 문장들 - 토글 가능 */}
-        {evidenceSentences.length > 0 && isExpanded && (
-          <div className="ml-4 mt-2 space-y-3">
-            {evidenceSentences.map((sentence, idx) => (
-              <div 
-                key={`evidence-${idx}`}
-                className={cn(
-                  "relative pl-4",
-                  sentence.speaker === 'question' 
-                    ? "border-l-2 border-blue-400" 
-                    : "border-l-2 border-gray-300"
-                )}
-              >
-                <blockquote className="text-sm text-gray-600 leading-relaxed">
-                  {sentence.speaker === 'question' && (
-                    <span className="text-gray-500 font-medium mr-1.5">Q.</span>
-                  )}
-                  &ldquo;{sentence.cleaned_sentence}&rdquo;
-                </blockquote>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     )
   }
 
   return (
-    <div className="flex h-full overflow-auto">
-      {/* 왼쪽 사이드바 - 인터뷰 요약 */}
-      <InterviewSummarySidebar interview={interview} />
-      
-      {/* 오른쪽 인사이트 영역 */}
-      <div className="flex-1 bg-white">
-          <div className="max-w-4xl mx-auto px-8 py-8">
-            {/* 핵심 시사점 - 1단 구조 */}
-            <div className="mb-10">
-              <div className="flex items-center gap-2.5 mb-5">
-                <Lightbulb className="w-5 h-5 text-amber-500" />
-                <h3 className="text-lg font-semibold text-gray-900">핵심 시사점</h3>
+    <div className="h-full overflow-auto bg-white">
+      <div className="w-full">
+        
+        {/* 프로필 정보 섹션 */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white px-10 py-6"
+        >
+          <h2 className="text-lg font-bold text-gray-900 mb-4">프로필</h2>
+          
+          <p className="text-base text-gray-700 mb-4 leading-relaxed">
+            {interview.interviewee_profile?.[0]?.profile_summary || '프로필 정보가 없습니다'}
+          </p>
+          
+          <div className="flex flex-wrap gap-3 text-sm">
+            {interview.interview_date && (
+              <div className="bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700">
+                {new Date(interview.interview_date).toLocaleDateString('ko-KR')}
               </div>
-              {key_takeaways && key_takeaways.length > 0 ? (
-                <div className="space-y-3">
-                  {key_takeaways.map((takeaway, index) => (
-                    <p key={index} className="text-sm text-gray-700 leading-relaxed pl-4 relative">
-                      <span className="absolute left-0 text-gray-400">•</span>
-                      {takeaway}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 italic">분석된 시사점이 없습니다</p>
-              )}
-            </div>
-
-            {/* 하단 2단 구조 - Pain Points와 Needs */}
-            <div className="grid grid-cols-2 gap-10 pt-10 border-t border-gray-200">
-              {/* Pain Points */}
-              <div>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                  <h3 className="text-lg font-semibold text-gray-900">주요 문제점</h3>
-                  <span className="text-xs text-gray-500 font-normal ml-1">Pain Points</span>
-                </div>
-                {primary_pain_points && primary_pain_points.length > 0 ? (
-                  <div className="space-y-4">
-                    {primary_pain_points.map((painPoint, index) => 
-                      renderInsightItem(painPoint, 'pain', index)
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">분석된 문제점이 없습니다</p>
-                )}
+            )}
+            
+            {interview.interviewee_profile?.[0]?.demographics?.age_group && (
+              <div className="bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700">
+                {interview.interviewee_profile[0].demographics.age_group}
               </div>
-
-              {/* Needs */}
-              <div>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <Target className="w-5 h-5 text-blue-500" />
-                  <h3 className="text-lg font-semibold text-gray-900">주요 니즈</h3>
-                  <span className="text-xs text-gray-500 font-normal ml-1">Needs</span>
-                </div>
-                {primary_needs && primary_needs.length > 0 ? (
-                  <div className="space-y-4">
-                    {primary_needs.map((need, index) => 
-                      renderInsightItem(need, 'need', index)
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">분석된 니즈가 없습니다</p>
-                )}
+            )}
+            
+            {interview.interviewee_profile?.[0]?.demographics?.gender && (
+              <div className="bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700">
+                {interview.interviewee_profile[0].demographics.gender}
               </div>
-            </div>
-
-            {/* 모든 데이터가 없는 경우 */}
-            {(!key_takeaways || key_takeaways.length === 0) && 
-             (!primary_pain_points || primary_pain_points.length === 0) && 
-             (!primary_needs || primary_needs.length === 0) && (
-              <div className="col-span-2 text-center py-24">
-                <p className="text-gray-500 text-base">
-                  아직 분석된 인사이트가 없습니다.
-                </p>
+            )}
+            
+            {interview.interviewee_profile?.[0]?.demographics?.occupation_context && (
+              <div className="bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700">
+                {interview.interviewee_profile[0].demographics.occupation_context}
               </div>
             )}
           </div>
-        </div>
+          
+        </motion.section>
+        
+        {/* 페르소나 정보 섹션 */}
+        {interview.ai_persona_definition && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white px-10 py-6"
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-4">페르소나</h2>
+            
+            <div className="mb-4">
+              <span className="inline-block bg-blue-100 text-blue-900 px-4 py-2 rounded-lg font-medium">
+                {interview.ai_persona_definition.name_ko}
+              </span>
+            </div>
+            
+            {interview.ai_persona_explanation && (
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {interview.ai_persona_explanation}
+              </p>
+            )}
+          </motion.section>
+        )}
+        
+        {/* 핵심 시사점 섹션 */}
+        {key_takeaways && key_takeaways.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white px-10 py-6"
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-4">핵심 시사점</h2>
+            
+            <ul className="space-y-3">
+              {key_takeaways.map((takeaway, index) => (
+                <li key={index} className="flex items-start gap-3">
+                  <span className="block w-1.5 h-1.5 rounded-full bg-gray-400 mt-2 flex-shrink-0" />
+                  <p className="text-base text-gray-700 leading-relaxed">
+                    {takeaway}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </motion.section>
+        )}
+
+        {/* 주요 문제점 섹션 */}
+        {primary_pain_points && primary_pain_points.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white px-10 py-6"
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-6">
+              주요 문제점
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                {primary_pain_points.length}개
+              </span>
+            </h2>
+            
+            <div className="space-y-3">
+              {primary_pain_points.map((painPoint, index) => 
+                renderInsightItem(painPoint, 'pain', index)
+              )}
+            </div>
+          </motion.section>
+        )}
+
+        {/* 주요 니즈 섹션 */}
+        {primary_needs && primary_needs.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white px-10 py-6"
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-6">
+              주요 니즈
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                {primary_needs.length}개
+              </span>
+            </h2>
+            
+            <div className="space-y-3">
+              {primary_needs.map((need, index) => 
+                renderInsightItem(need, 'need', index)
+              )}
+            </div>
+          </motion.section>
+        )}
+
+        {/* 모든 데이터가 없는 경우 */}
+        {(!key_takeaways || key_takeaways.length === 0) && 
+         (!primary_pain_points || primary_pain_points.length === 0) && 
+         (!primary_needs || primary_needs.length === 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white px-10 py-8 text-center"
+          >
+            <h3 className="text-lg font-medium text-gray-900 mb-2">아직 분석된 인사이트가 없습니다</h3>
+            <p className="text-sm text-gray-500">인터뷰 분석이 완료되면 인사이트가 표시됩니다</p>
+          </motion.div>
+        )}
       </div>
+    </div>
   )
 }

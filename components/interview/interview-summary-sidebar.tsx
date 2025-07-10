@@ -35,6 +35,28 @@ export default function InterviewSummarySidebar({ interview }: InterviewSummaryS
       
       <ScrollArea className="flex-1">
         <div className="px-6 pb-6 space-y-6">
+          {/* 인터뷰 메타 정보 */}
+          {(interview.interview_date || interview.session_info?.[0]?.interview_topic) && (
+            <div className="space-y-3 pb-4 border-b border-gray-100">
+              {interview.interview_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-700">
+                    {formatSafeDate(interview.interview_date)}
+                  </span>
+                </div>
+              )}
+              {interview.session_info?.[0]?.interview_topic && (
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-500">주제</p>
+                  <p className="text-sm text-gray-700">
+                    {interview.session_info[0].interview_topic}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 인터뷰 대상자 프로필 */}
           {interview?.interviewee_profile?.[0] && (
             <div className="space-y-4">

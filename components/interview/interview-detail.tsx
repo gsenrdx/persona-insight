@@ -1,34 +1,63 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Interview } from '@/types/interview'
-import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import InterviewScriptViewer from './interview-script-viewer'
 import InterviewInsights from './interview-insights'
 import InterviewAssistantPanel from './interview-assistant-panel'
-import { EditInterviewMetadataModal } from '@/components/modal/edit-interview-metadata-modal'
-import { useAuth } from '@/hooks/use-auth'
 
 interface InterviewDetailProps {
   interview: Interview
-  onBack: () => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
   onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
   hideHeader?: boolean
+  onDownloadMenuChange?: (downloadHandlers: { 
+    handleDownloadOriginal: () => void
+    handleDownloadCleaned: () => void
+  }) => void
+  onBack?: () => void
 }
 
-export default function InterviewDetail({ interview, onBack, onSectionsChange }: InterviewDetailProps) {
-  const [activeTab, setActiveTab] = useState('insights') // 인사이트 탭을 기본값으로
+export default function InterviewDetail({ interview, onSectionsChange, onDownloadMenuChange, onBack }: InterviewDetailProps) {
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
-  const { profile } = useAuth()
   
+  // 태그 필터 상태 (체크박스 형태)
+  const [selectedFilters, setSelectedFilters] = useState<Set<'pain' | 'need'>>(new Set())
+  
+  // 리사이저 관련 상태
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('interview-panel-width')
+        return saved ? parseFloat(saved) : 50
+      } catch {
+        return 50
+      }
+    }
+    return 50
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(0)
+  
+  // 너비 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('interview-panel-width', leftPanelWidth.toString())
+      } catch {
+        // localStorage가 가득 차거나 비활성화된 경우 무시
+      }
+    }
+  }, [leftPanelWidth])
+
   // 컴포넌트 언마운트 시 목차 정리
   useEffect(() => {
     return () => {
@@ -48,9 +77,63 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
       </div>
     )
   }
-  
-  // 수정 권한 확인
-  const canEdit = profile?.id && interview.created_by && (interview.created_by === profile.id || profile?.role === 'super_admin' || profile?.role === 'company_admin')
+
+  // 리사이저 마우스 이벤트 핸들러
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    startXRef.current = e.clientX
+    startWidthRef.current = leftPanelWidth
+  }, [leftPanelWidth])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing || !containerRef.current) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const deltaX = e.clientX - startXRef.current
+    const deltaPercent = (deltaX / containerRect.width) * 100
+    const newWidthPercent = startWidthRef.current + deltaPercent
+    
+    // 최소 460px 제약 적용
+    const minPixelWidth = 460
+    const minWidthPercent = (minPixelWidth / containerRect.width) * 100
+    const maxWidthPercent = 100 - minWidthPercent // 오른쪽 패널도 최소 460px
+    
+    // 컨테이너가 920px(460*2) 미만이면 50%로 고정
+    if (containerRect.width < minPixelWidth * 2) {
+      const newWidth = 50
+      setLeftPanelWidth(newWidth)
+      return
+    }
+    
+    const newWidth = Math.min(Math.max(minWidthPercent, newWidthPercent), maxWidthPercent)
+    
+    setLeftPanelWidth(newWidth)
+  }, [isResizing])
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  // 마우스 이벤트 리스너 등록/해제
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    } else {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp])
 
   // 스크립트 뷰어에서 섹션 정보가 변경될 때
   const handleScriptSectionsChange = (sections: any[] | null, active: string | null, scrollFn: (sectionName: string) => void) => {
@@ -58,165 +141,182 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
     setActiveSection(active)
     setScrollToSection(() => scrollFn)
     
-    // 스크립트 탭이 활성화된 경우에만 상위 컴포넌트로 전달
-    if (onSectionsChange && activeTab === 'script') {
+    // 상위 컴포넌트로 전달
+    if (onSectionsChange) {
       onSectionsChange(sections, active, scrollFn)
     }
   }
   
-  // 탭이 변경될 때 목차 정보 업데이트
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
+  // 태그 필터 변경 핸들러
+  const handleTagFilterChange = (filters: Set<'pain' | 'need'>) => {
+    setSelectedFilters(filters)
+  }
+  
+  // 다운로드 핸들러들 - 의존성 배열 없이 현재 값을 직접 참조
+  const handleDownloadOriginal = () => {
+    if (!interview?.raw_text) {
+      alert('원본 인터뷰 텍스트가 없습니다.')
+      return
+    }
+
+    const content = interview.raw_text
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
     
-    if (onSectionsChange) {
-      if (tab === 'script' && scriptSections) {
-        // 스크립트 탭으로 전환 시 목차 정보 전달
-        onSectionsChange(scriptSections, activeSection, scrollToSection)
-      } else {
-        // 다른 탭으로 전환 시 목차 정보 제거
-        onSectionsChange(null, null, null)
+    const fileName = interview?.title 
+      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
+      : 'interview'
+    link.download = `${fileName}_original.txt`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadCleaned = () => {
+    if (!interview?.cleaned_script) {
+      alert('정리된 스크립트가 없습니다.')
+      return
+    }
+    
+    // 정리된 스크립트 텍스트 생성
+    let content = `${interview?.title || '인터뷰 스크립트'}\n`
+    content += `날짜: ${interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString('ko-KR') : '날짜 없음'}\n`
+    content += '='.repeat(50) + '\n\n'
+    
+    // 태그 필터가 적용된 경우 필터링된 스크립트 사용
+    const scriptsToDownload = selectedFilters.size === 0 ? interview.cleaned_script : interview.cleaned_script.filter(item => {
+      const evidenceIds = new Set<number>()
+      
+      if (selectedFilters.has('pain') && interview?.primary_pain_points) {
+        interview.primary_pain_points.forEach(painPoint => {
+          painPoint.evidence.forEach(id => evidenceIds.add(id))
+        })
+      }
+      
+      if (selectedFilters.has('need') && interview?.primary_needs) {
+        interview.primary_needs.forEach(need => {
+          need.evidence.forEach(id => evidenceIds.add(id))
+        })
+      }
+      
+      return item.id.some(id => evidenceIds.has(id))
+    })
+    
+    scriptsToDownload.forEach(item => {
+      const speaker = item.speaker === 'question' ? 'Q' : 'A'
+      const category = item.category ? ` [${item.category === 'painpoint' ? 'Pain Point' : 'Need'}]` : ''
+      content += `${speaker}:${category} ${item.cleaned_sentence}\n\n`
+    })
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // 파일명 생성 (제목을 사용하고, 특수문자 제거)
+    const fileName = interview?.title 
+      ? interview.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '').trim().replace(/\s+/g, '_')
+      : 'interview_script'
+    link.download = `${fileName}.txt`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+  
+  // 다운로드 핸들러들을 ref로 관리하여 재생성 방지
+  const downloadHandlersRef = useRef({ handleDownloadOriginal, handleDownloadCleaned })
+  downloadHandlersRef.current = { handleDownloadOriginal, handleDownloadCleaned }
+  
+  // 다운로드 핸들러들을 상위 컴포넌트에 전달
+  useEffect(() => {
+    if (onDownloadMenuChange) {
+      onDownloadMenuChange(downloadHandlersRef.current)
+    }
+    // 컴포넌트 언마운트 시 핸들러 제거
+    return () => {
+      if (onDownloadMenuChange) {
+        onDownloadMenuChange(undefined)
       }
     }
-  }
+  }, [onDownloadMenuChange]) // onDownloadMenuChange만 의존성으로
 
-  // 인사이트에서 근거 문장 클릭 시 스크립트 탭으로 이동
-  const handleEvidenceClick = () => {
-    handleTabChange('script')
-    // TODO: 스크립트 뷰어에서 해당 ID로 스크롤하는 기능 추가
-  }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
-      {/* 개선된 헤더 */}
-      <div className="bg-white border-b border-gray-200">
-        {/* 브레드크럼 */}
-        <div className="px-4 sm:px-6 pt-4 pb-2">
-          <button
-            onClick={() => {
-              if (onSectionsChange) {
-                onSectionsChange(null, null, null)
-              }
-              onBack()
-            }}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            인터뷰 관리
-          </button>
+    <div className="flex flex-col h-full bg-white overflow-hidden">
+      
+      {/* 리사이징 중일 때 오버레이 */}
+      {isResizing && (
+        <div className="fixed inset-0 z-50 cursor-col-resize" />
+      )}
+      
+      {/* 스플릿 뷰 콘텐츠 영역 */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row" ref={containerRef}>
+        {/* 좌측/상단: 인사이트 */}
+        <div 
+          className="h-1/2 lg:h-full border-b lg:border-b-0 flex flex-col"
+          style={{ 
+            width: typeof window !== 'undefined' && window.innerWidth >= 1024 
+              ? `${leftPanelWidth}%` 
+              : '100%' 
+          }}
+        >
+          <div className="border-b border-gray-200 bg-white" style={{ height: '57px' }}>
+            <div className="h-full flex items-center px-8">
+              <h2 className="text-base font-semibold text-gray-900">인터뷰 요약</h2>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto">
+            <InterviewInsights 
+              interview={interview} 
+            />
+          </div>
         </div>
         
-        {/* 메인 제목 영역 */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-                  {interview.title || '제목 없음'}
-                </h1>
-                {canEdit && (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all"
-                    title="정보 수정"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              
-              {/* 메타 정보 */}
-              {(interview.interview_date || interview.session_info?.[0]?.interview_topic) && (
-                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                  {interview.interview_date && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-4 h-4 text-gray-400">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <span className="font-medium">
-                        {new Date(interview.interview_date).toLocaleDateString('ko-KR', { 
-                          year: 'numeric', 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
-                      </span>
-                    </div>
-                  )}
-                  {interview.session_info?.[0]?.interview_topic && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-4 h-4 text-gray-400">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                        </svg>
-                      </div>
-                      <span className="font-medium line-clamp-1">
-                        {interview.session_info[0].interview_topic}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+        {/* 리사이저 핸들 - 데스크톱에서만 표시 */}
+        <div 
+          className={cn(
+            "hidden lg:flex relative w-px hover:w-1 transition-all duration-150 cursor-col-resize",
+            "bg-gray-300 hover:bg-gray-400 group",
+            isResizing && "w-1 bg-blue-500"
+          )}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-6 flex items-center justify-center" />
+        </div>
+        
+        {/* 우측/하단: 스크립트 */}
+        <div 
+          className="h-1/2 lg:h-full flex flex-col flex-1"
+          style={{ 
+            width: typeof window !== 'undefined' && window.innerWidth >= 1024 
+              ? `${100 - leftPanelWidth}%` 
+              : '100%' 
+          }}
+        >
+          <div className="border-b border-gray-200 bg-white" style={{ height: '57px' }}>
+            <div className="h-full flex items-center px-8">
+              <h2 className="text-base font-semibold text-gray-900">스크립트</h2>
             </div>
-            
-            {/* 탭 네비게이션 - 우측으로 이동 */}
-            <div className="flex bg-gray-50 rounded-lg p-1">
-              <button
-                onClick={() => handleTabChange('insights')}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap",
-                  activeTab === 'insights' 
-                    ? "text-blue-600 bg-white shadow-sm" 
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                )}
-              >
-                인사이트
-              </button>
-              <button
-                onClick={() => handleTabChange('script')}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap",
-                  activeTab === 'script' 
-                    ? "text-blue-600 bg-white shadow-sm" 
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                )}
-              >
-                스크립트
-              </button>
-            </div>
+          </div>
+          <div className="flex-1 overflow-auto">
+            <InterviewScriptViewer 
+              script={interview.cleaned_script || []} 
+              interview={interview}
+              className=""
+              onSectionsChange={handleScriptSectionsChange}
+              canEdit={false}
+              tagFilter={selectedFilters}
+              onTagFilterChange={handleTagFilterChange}
+            />
           </div>
         </div>
       </div>
-      
-      {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        {activeTab === 'insights' ? (
-          <InterviewInsights 
-            interview={interview} 
-          />
-        ) : (
-          <InterviewScriptViewer 
-            script={interview.cleaned_script || []} 
-            interview={interview}
-            className=""
-            onSectionsChange={handleScriptSectionsChange}
-            canEdit={canEdit}
-          />
-        )}
-      </div>
-      
-      {/* 메타데이터 수정 모달 */}
-      <EditInterviewMetadataModal
-        open={showEditModal}
-        onOpenChange={setShowEditModal}
-        interview={interview}
-        onUpdate={() => {
-          setShowEditModal(false)
-          // 실시간 업데이트로 인해 자동으로 반영됨
-        }}
-      />
       
       {/* Floating button for AI assistant */}
       {typeof window !== 'undefined' && createPortal(
@@ -257,7 +357,7 @@ export default function InterviewDetail({ interview, onBack, onSectionsChange }:
             onClose={() => setFloatingPanelOpen(false)}
             interview={interview}
             script={interview.cleaned_script || []}
-            context={activeTab === 'script' ? 'interview' : 'insights'}
+            context={'interview'}
           />
         </>,
         document.body

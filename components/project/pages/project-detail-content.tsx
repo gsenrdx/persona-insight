@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -33,6 +33,29 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const [insightSections, setInsightSections] = useState<any[] | null>(null)
   const [activeInsight, setActiveInsight] = useState<number | null>(null)
   const [scrollToInsight, setScrollToInsight] = useState<((insightIndex: number) => void) | null>(null)
+  
+  // 선택된 인터뷰 제목
+  const [selectedInterviewTitle, setSelectedInterviewTitle] = useState<string | null>(null)
+  
+  // 수정 버튼 정보
+  const [editButtonInfo, setEditButtonInfo] = useState<{ canEdit: boolean; onClick: (() => void) | null }>({ 
+    canEdit: false, 
+    onClick: null 
+  })
+  
+  // 다운로드 핸들러들
+  const [downloadHandlers, setDownloadHandlers] = useState<{
+    handleDownloadOriginal: () => void
+    handleDownloadCleaned: () => void
+  } | undefined>(undefined)
+  
+  // onDownloadMenuChange 콜백을 memoize하여 무한 루프 방지
+  const handleDownloadMenuChange = useCallback((handlers: {
+    handleDownloadOriginal: () => void
+    handleDownloadCleaned: () => void
+  } | undefined) => {
+    setDownloadHandlers(handlers)
+  }, [])
   
   // 전체 로딩 상태 - 인증 로딩 상태도 포함
   const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
@@ -88,13 +111,29 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     switch (activeView) {
       case 'interviews':
         // Polling 버전 사용 (더 안정적)
-        return <ProjectInterviews key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviews 
+          key="interviews" 
+          project={project} 
+          selectedInterviewId={interviewParam} 
+          onSectionsChange={handleSectionsChange}
+          onInterviewSelect={(title) => setSelectedInterviewTitle(title)}
+          onEditButtonInfo={(canEdit, onClick) => setEditButtonInfo({ canEdit, onClick })}
+          onDownloadMenuChange={handleDownloadMenuChange}
+        />
       case 'insights':
         return <ProjectInsights key="insights" project={project} onInsightsChange={handleInsightsChange} />
       case 'settings':
         return <ProjectSettings key="settings" project={project} onProjectUpdate={() => refetch()} />
       default:
-        return <ProjectInterviews key="interviews" project={project} selectedInterviewId={interviewParam} onSectionsChange={handleSectionsChange} />
+        return <ProjectInterviews 
+          key="interviews" 
+          project={project} 
+          selectedInterviewId={interviewParam} 
+          onSectionsChange={handleSectionsChange}
+          onInterviewSelect={(title) => setSelectedInterviewTitle(title)}
+          onEditButtonInfo={(canEdit, onClick) => setEditButtonInfo({ canEdit, onClick })}
+          onDownloadMenuChange={handleDownloadMenuChange}
+        />
     }
   }
 
@@ -106,6 +145,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName="로딩 중..."
+        downloadHandlers={downloadHandlers}
       >
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-4">
@@ -125,6 +165,7 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         activeView={activeView}
         onViewChange={handleViewChange}
         projectName="로딩 중..."
+        downloadHandlers={downloadHandlers}
       >
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-4">
@@ -138,8 +179,14 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
   if (isError && !isLoading && !project) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="container mx-auto px-4 py-8">
+      <ProjectLayout
+        projectId={projectId}
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        projectName="프로젝트 오류"
+        downloadHandlers={downloadHandlers}
+      >
+        <div className="flex items-center justify-center min-h-[60vh]">
           <div className="max-w-md mx-auto text-center py-16 bg-white rounded-lg shadow-sm border">
             <div className="text-red-100 bg-red-600 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <ArrowLeft className="h-8 w-8" />
@@ -167,9 +214,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
             </div>
           </div>
         </div>
-      </div>
+      </ProjectLayout>
     )
   }
+
+  // 인터뷰 상세 보기 여부 확인
+  const interviewParam = searchParams.get('interview')
+  const isViewingInterviewDetail = activeView === 'interviews' && !!interviewParam
 
   return (
     <>
@@ -185,6 +236,13 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         insightSections={activeView === 'insights' ? insightSections : null}
         activeInsight={activeView === 'insights' ? activeInsight : null}
         onInsightClick={activeView === 'insights' ? scrollToInsight : null}
+        hideSidebar={isViewingInterviewDetail}
+        isInterviewDetail={isViewingInterviewDetail}
+        interviewTitle={selectedInterviewTitle}
+        onBack={() => router.push(`/projects/${projectId}`, { scroll: false })}
+        canEditInterview={editButtonInfo.canEdit}
+        onEditInterview={editButtonInfo.onClick}
+        downloadHandlers={downloadHandlers}
       >
         <AnimatePresence mode="wait">
           {renderContent()}

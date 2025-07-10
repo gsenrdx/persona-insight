@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Plus, RefreshCw, Loader2, Activity, AlertCircle } from "lucide-react"
@@ -42,12 +42,21 @@ interface ProjectInterviewsProps {
   project: Project
   selectedInterviewId?: string | null
   onSectionsChange?: (sections: any[] | null, activeSection: string | null, scrollToSection: ((sectionName: string) => void) | null) => void
+  onInterviewSelect?: (title: string | null) => void
+  onEditButtonInfo?: (canEdit: boolean, onClick: (() => void) | null) => void
+  onDownloadMenuChange?: (downloadHandlers: { 
+    handleDownloadOriginal: () => void
+    handleDownloadCleaned: () => void
+  }) => void
 }
 
 export default function ProjectInterviews({ 
   project, 
   selectedInterviewId, 
-  onSectionsChange 
+  onSectionsChange,
+  onInterviewSelect,
+  onEditButtonInfo,
+  onDownloadMenuChange
 }: ProjectInterviewsProps) {
   const { profile, session } = useAuth()
   const router = useRouter()
@@ -155,6 +164,23 @@ export default function ProjectInterviews({
   
   // 선택된 인터뷰
   const selectedInterview = interviews.find(i => i.id === selectedInterviewId)
+  
+  // 선택된 인터뷰의 제목을 전달
+  useEffect(() => {
+    if (selectedInterview) {
+      onInterviewSelect?.(selectedInterview.title || null)
+    } else if (selectedInterviewId && !selectedInterview) {
+      // 인터뷰를 찾을 수 없는 경우
+      onInterviewSelect?.(null)
+    }
+    
+    // 컴포넌트 언마운트 시 제목 초기화
+    return () => {
+      if (!selectedInterviewId) {
+        onInterviewSelect?.(null)
+      }
+    }
+  }, [selectedInterview, selectedInterviewId, onInterviewSelect])
   
   // 에러 상태 처리
   if (error) {
@@ -316,6 +342,7 @@ export default function ProjectInterviews({
                 router.push(`/projects/${project.id}`, { scroll: false })
               }}
               onSectionsChange={onSectionsChange}
+              onDownloadMenuChange={onDownloadMenuChange}
             />
           </div>
         )}
