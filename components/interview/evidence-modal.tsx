@@ -21,13 +21,13 @@ interface EvidenceModalProps {
 export function EvidenceModal({ isOpen, onClose, title, type, evidences, onNavigateToScript }: EvidenceModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] p-0 border-0 flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[85vh] p-0 flex flex-col">
         <VisuallyHidden>
           <DialogTitle>인터뷰 근거</DialogTitle>
         </VisuallyHidden>
         
         {/* 헤더 - 깔끔한 미니멀 디자인 */}
-        <div className="px-8 py-6 bg-white border-b border-gray-100 flex-shrink-0">
+        <div className="px-8 py-6 bg-white border-b border-gray-100 flex-shrink-0 rounded-t-lg">
           <div className="flex items-center gap-3 mb-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center",
@@ -50,7 +50,7 @@ export function EvidenceModal({ isOpen, onClose, title, type, evidences, onNavig
         </div>
 
         {/* 근거 목록 - 카드 스타일 */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 p-8 min-h-0">
+        <div className="flex-1 overflow-y-auto bg-gray-50 p-8 min-h-0 rounded-b-lg">
           <div className="max-w-3xl mx-auto space-y-4">
             {evidences.map((evidence, idx) => (
               <div 
@@ -93,21 +93,6 @@ export function EvidenceModal({ isOpen, onClose, title, type, evidences, onNavig
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* 하단 정보 바 */}
-        <div className="px-8 py-4 bg-white border-t border-gray-100 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>인터뷰 대화 내용</span>
-            <span className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium",
-              type === 'pain' 
-                ? "bg-red-100 text-red-700"
-                : "bg-emerald-100 text-emerald-700"
-            )}>
-              {evidences.length}개 근거
-            </span>
           </div>
         </div>
       </DialogContent>

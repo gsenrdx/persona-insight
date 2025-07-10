@@ -230,7 +230,7 @@ export function ProjectLayout({
           
           {/* 콘텐츠 */}
           <main className={cn(
-            "flex-1 overflow-hidden flex flex-col min-h-0",
+            "flex-1 overflow-y-auto flex flex-col min-h-0",
             isInterviewDetail ? "p-0" : "p-6 lg:p-8",
             className
           )}>

@@ -1,5 +1,9 @@
 'use client'
 
+import { useState } from 'react'
+import { useInterviews } from '@/hooks/use-interviews'
+import { Button } from '@/components/ui/button'
+
 interface Project {
   id: string
   name: string
@@ -9,24 +13,651 @@ interface Project {
 
 interface ProjectInsightsProps {
   project: Project
+  onInsightsChange?: (sections: any[] | null, activeSection: number | null, scrollToSection: ((sectionIndex: number) => void) | null) => void
 }
 
 export default function ProjectInsights({ project }: ProjectInsightsProps) {
+  // 인터뷰 데이터 가져오기
+  const { interviews, isLoading, totalCount } = useInterviews({
+    projectId: project.id,
+    enabled: true
+  })
+
+  // keytakeaways 수 계산
+  const keytakeawaysCount = interviews.reduce((total, interview) => {
+    if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
+      return total + interview.key_takeaways.length
+    }
+    return total
+  }, 0)
+
+  // 전체 보기 상태
+  const [showAll, setShowAll] = useState(false)
+
+  // keytakeaways 데이터 처리
+  const processedInsights = (() => {
+    const insightMap = new Map<string, {
+      content: string
+      mentionCount: number
+      interviewCount: number
+      interviewIds: Set<string>
+    }>()
+
+    interviews.forEach(interview => {
+      if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
+        interview.key_takeaways.forEach(takeaway => {
+          if (insightMap.has(takeaway)) {
+            const existing = insightMap.get(takeaway)!
+            existing.mentionCount += 1
+            existing.interviewIds.add(interview.id)
+            existing.interviewCount = existing.interviewIds.size
+          } else {
+            insightMap.set(takeaway, {
+              content: takeaway,
+              mentionCount: 1,
+              interviewCount: 1,
+              interviewIds: new Set([interview.id])
+            })
+          }
+        })
+      }
+    })
+
+    return Array.from(insightMap.values()).sort((a, b) => b.mentionCount - a.mentionCount)
+  })()
+
+  // 표시할 인사이트 수 결정
+  const displayedInsights = showAll ? processedInsights : processedInsights.slice(0, 6)
+
+  // 섹션별 페인포인트와 니즈 매핑 데이터 처리
+  const sectionBasedData = (() => {
+    const sectionMap = new Map<string, {
+      sectionName: string
+      koreanName: string
+      painPoints: string[]
+      needs: string[]
+      interviewIds: Set<string>
+      totalItems: number
+    }>()
+
+    // 각 인터뷰별로 처리
+    interviews.forEach(interview => {
+      const scriptSections = interview.script_sections || []
+      
+      // 페인포인트 처리
+      interview.primary_pain_points?.forEach(painPoint => {
+        const section = findSectionForEvidence(painPoint.evidence, scriptSections)
+        if (section) {
+          const koreanName = translateSectionName(section.sector_name)
+          const key = section.sector_name
+          
+          if (sectionMap.has(key)) {
+            const existing = sectionMap.get(key)!
+            existing.painPoints.push(painPoint.description)
+            existing.interviewIds.add(interview.id)
+            existing.totalItems += 1
+          } else {
+            sectionMap.set(key, {
+              sectionName: section.sector_name,
+              koreanName,
+              painPoints: [painPoint.description],
+              needs: [],
+              interviewIds: new Set([interview.id]),
+              totalItems: 1
+            })
+          }
+        }
+      })
+
+      // 니즈 처리
+      interview.primary_needs?.forEach(need => {
+        const section = findSectionForEvidence(need.evidence, scriptSections)
+        if (section) {
+          const koreanName = translateSectionName(section.sector_name)
+          const key = section.sector_name
+          
+          if (sectionMap.has(key)) {
+            const existing = sectionMap.get(key)!
+            existing.needs.push(need.description)
+            existing.interviewIds.add(interview.id)
+            existing.totalItems += 1
+          } else {
+            sectionMap.set(key, {
+              sectionName: section.sector_name,
+              koreanName,
+              painPoints: [],
+              needs: [need.description],
+              interviewIds: new Set([interview.id]),
+              totalItems: 1
+            })
+          }
+        }
+      })
+    })
+
+    const totalInterviews = interviews.length
+    return Array.from(sectionMap.entries())
+      .map(([_, data]) => ({
+        sectionName: data.sectionName,
+        koreanName: data.koreanName,
+        painPoints: data.painPoints,
+        needs: data.needs,
+        totalItems: data.totalItems,
+        percentage: totalInterviews > 0 ? Math.round((data.interviewIds.size / totalInterviews) * 100) : 0,
+        interviewCount: data.interviewIds.size
+      }))
+      .sort((a, b) => b.percentage - a.percentage)
+  })()
+
+  // evidence id가 어떤 섹션에 속하는지 찾는 함수
+  function findSectionForEvidence(evidence: number[], scriptSections: any[]): any | null {
+    if (!evidence || evidence.length === 0 || !scriptSections) return null
+    
+    for (const section of scriptSections) {
+      for (const evidenceId of evidence) {
+        if (evidenceId >= section.start_line && evidenceId <= section.end_line) {
+          return section
+        }
+      }
+    }
+    return null
+  }
+
+  // 섹션명을 한글로 번역하는 함수
+  function translateSectionName(sectionName: string): string {
+    const translations: { [key: string]: string } = {
+      'introduction': '도입부',
+      'background': '배경 설명',
+      'current_state': '현재 상황',
+      'challenges': '도전과제',
+      'pain_points': '어려움',
+      'needs': '필요사항',
+      'solutions': '해결방안',
+      'expectations': '기대사항',
+      'conclusion': '마무리',
+      'demographics': '인구통계',
+      'experience': '경험',
+      'workflow': '업무 프로세스',
+      'tools': '도구 사용',
+      'collaboration': '협업',
+      'feedback': '피드백',
+      'future': '미래 전망'
+    }
+    
+    return translations[sectionName.toLowerCase()] || sectionName
+  }
+
+  // 선택된 섹션 상태
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  
+  // 선택된 인사이트 항목 상태 (인용구 보기용)
+  const [selectedInsight, setSelectedInsight] = useState<{
+    type: 'painPoint' | 'need'
+    content: string
+    evidence: number[]
+    sectionName: string
+  } | null>(null)
+
+  // evidence ID로 실제 스크립트 문장 찾기
+  function getQuotesFromEvidence(evidence: number[], interviewId: string): string[] {
+    const interview = interviews.find(i => i.id === interviewId)
+    if (!interview?.cleaned_script) return []
+    
+    return evidence
+      .map(evidenceId => {
+        const scriptItem = interview.cleaned_script?.find(item => 
+          Array.isArray(item.id) ? item.id.includes(evidenceId) : item.id === evidenceId
+        )
+        return scriptItem?.cleaned_sentence || null
+      })
+      .filter(Boolean) as string[]
+  }
+
+  // 선택된 인사이트의 모든 인용구 수집
+  const selectedInsightQuotes = selectedInsight ? (() => {
+    const quotes: { interviewId: string, quotes: string[] }[] = []
+    
+    interviews.forEach(interview => {
+      const relevantItems = selectedInsight.type === 'painPoint' 
+        ? interview.primary_pain_points?.filter(pp => pp.description === selectedInsight.content) || []
+        : interview.primary_needs?.filter(need => need.description === selectedInsight.content) || []
+      
+      relevantItems.forEach(item => {
+        const interviewQuotes = getQuotesFromEvidence(item.evidence, interview.id)
+        if (interviewQuotes.length > 0) {
+          quotes.push({
+            interviewId: interview.id,
+            quotes: interviewQuotes
+          })
+        }
+      })
+    })
+    
+    return quotes
+  })() : []
   return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center max-w-md mx-auto px-6">
-        <img 
-          src="/assets/pin/pin-insight.png" 
-          alt="Pin Character" 
-          className="w-32 h-32 mx-auto mb-8 object-contain"
-        />
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">준비중입니다</h2>
-        <p className="text-gray-600 text-lg leading-relaxed mb-6">
-          상세한 인사이트 분석 기능을 준비 중입니다.
-        </p>
-        <p className="text-gray-500 text-sm">
-          곧 더 나은 서비스로 찾아뵙겠습니다!
-        </p>
+    <div className="p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* 헤더 */}
+        <div className="mb-6">
+          <div className="relative bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-2xl p-6 overflow-hidden">
+            {/* 메인 콘텐츠 */}
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                {/* Pin 캐릭터 */}
+                <div className="w-24 h-24 flex-shrink-0">
+                  <img 
+                    src="/assets/pin/pin-insight.png" 
+                    alt="Pin character with insights"
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
+                </div>
+                
+                {/* 텍스트 콘텐츠 */}
+                <div>
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {!isLoading && totalCount > 0 && keytakeawaysCount > 0 ? (
+                        <>
+                          <span className="text-3xl text-purple-600">{totalCount}개</span>의 인터뷰에서 <span className="text-3xl text-purple-600">{keytakeawaysCount}개</span>의 인사이트를 얻었어요!
+                        </>
+                      ) : !isLoading && totalCount === 0 ? (
+                        '아직 분석할 인터뷰가 없어요'
+                      ) : !isLoading && keytakeawaysCount === 0 ? (
+                        '인터뷰 분석을 기다리고 있어요'
+                      ) : (
+                        '인사이트 분석 중'
+                      )}
+                    </h2>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600">
+                    {!isLoading && totalCount > 0 && keytakeawaysCount > 0 ? (
+                      '고객의 소중한 이야기에서 의미있는 패턴과 통찰을 발견했어요'
+                    ) : !isLoading && totalCount === 0 ? (
+                      '새로운 인터뷰를 추가하고 분석 결과를 확인해보세요'
+                    ) : !isLoading && keytakeawaysCount === 0 ? (
+                      '인터뷰 분석이 완료되면 인사이트를 확인할 수 있어요'
+                    ) : (
+                      '데이터를 불러오고 있습니다...'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 장식용 배경 요소 */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-200/25 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200/25 rounded-full blur-2xl" />
+          </div>
+        </div>
+        
+        {/* 프로젝트 전체 요약 */}
+        <div className="mb-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-2 h-2 bg-purple-500 rounded-full mt-3"></div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">프로젝트 전체 요약</h3>
+                <div className="text-gray-700 leading-relaxed">
+                  <p>
+                    이 연구는 52g의 조직적 측면에서도 중요한 통찰력을 발견했는데, 의사소통 부족과 역할 변화와 같은 어려움은 내부 지원 강화의 필요성을 강조합니다. 또한, 참가자들은 GS25를 현대적이고 효율적이라고 평가하는 동시에 브랜드의 개성을 더욱 차별화할 수 있는 잠재력이 있다고 주장했으며, 거의 모든 참가자가 새로운 도전을 적극적으로 받아들이고자 하는 의지를 표명했습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 전체 인사이트 섹션 */}
+        <div className="mt-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-900">전체 인사이트</h3>
+            {processedInsights.length > 6 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowAll(!showAll)}
+                className="text-sm"
+              >
+                {showAll ? '접기' : `전체 보기 (${processedInsights.length}개)`}
+              </Button>
+            )}
+          </div>
+
+          {/* 인사이트 카드 그리드 */}
+          {processedInsights.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedInsights.map((insight, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow h-32 flex flex-col"
+                >
+                  <div className="flex-1 mb-3">
+                    <p className="text-gray-800 text-sm leading-relaxed line-clamp-3">
+                      {insight.content}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 flex-wrap mt-auto">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                      {insight.mentionCount}번 언급
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      {insight.interviewCount}개 인터뷰
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <p>아직 분석된 인사이트가 없습니다.</p>
+              <p className="text-sm mt-1">인터뷰가 분석되면 여기에 인사이트가 표시됩니다.</p>
+            </div>
+          )}
+        </div>
+
+        {/* 섹션별 페인포인트 & 니즈 매핑 */}
+        {sectionBasedData.length > 0 && (
+          <div className="mt-12 space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">토픽 별 인사이트</h3>
+            
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="grid grid-cols-2 h-96">
+                {/* 좌측: 수평 막대 그래프 */}
+                <div className="p-4 overflow-y-auto">
+                  <div className="space-y-4">
+                    {sectionBasedData.map((item) => (
+                      <div
+                        key={item.sectionName}
+                        className={`group cursor-pointer transition-all duration-200 p-3 rounded-lg ${
+                          selectedSection === item.sectionName 
+                            ? 'bg-purple-50 border border-purple-200' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => {
+                          setSelectedSection(item.sectionName)
+                          setSelectedInsight(null) // 디테일 페이지에서 나가기
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {item.koreanName}
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <span className="font-semibold">{item.percentage}%</span>
+                            <span className="text-gray-400">({item.totalItems}개)</span>
+                          </div>
+                        </div>
+                        
+                        {/* 수평 막대 */}
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              selectedSection === item.sectionName
+                                ? 'bg-purple-600'
+                                : 'bg-purple-400 group-hover:bg-purple-500'
+                            }`}
+                            style={{
+                              width: `${item.percentage}%`,
+                              minWidth: '8px'
+                            }}
+                          />
+                        </div>
+                        
+                        {/* 페인포인트/니즈 개수 표시 */}
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          {item.painPoints.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
+                              페인포인트 {item.painPoints.length}
+                            </span>
+                          )}
+                          {item.needs.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                              니즈 {item.needs.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {sectionBasedData.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="text-sm">섹션별 데이터를 찾을 수 없습니다.</p>
+                      <p className="text-xs mt-1">인터뷰 스크립트가 섹션화되면 여기에 표시됩니다.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 우측: 상세 내용 영역 */}
+                <div className="border-l border-gray-100 bg-gray-50/50 p-5 overflow-y-auto">
+                  {selectedInsight ? (
+                    /* 인사이트 상세 페이지 */
+                    <div className="h-full">
+                      {/* 헤더 */}
+                      <div className="flex items-center gap-3 mb-5">
+                        <button
+                          onClick={() => setSelectedInsight(null)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className={`w-2 h-2 rounded-full ${selectedInsight.type === 'painPoint' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                            <span className="text-xs text-gray-500">
+                              {selectedInsight.type === 'painPoint' ? '페인포인트' : '니즈'}
+                            </span>
+                          </div>
+                          <h4 className="text-base font-semibold text-gray-900 leading-snug">
+                            {selectedInsight.content}
+                          </h4>
+                        </div>
+                      </div>
+                      
+                      {/* 인용구 컨텐츠 */}
+                      <div>
+                        {selectedInsightQuotes.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="text-xs font-medium text-gray-600 mb-3">
+                              인용구 {selectedInsightQuotes.reduce((acc, item) => acc + item.quotes.length, 0)}개
+                            </div>
+                            {selectedInsightQuotes.map((item, interviewIdx) => {
+                              const interview = interviews.find(i => i.id === item.interviewId)
+                              return (
+                                <div key={interviewIdx} className="space-y-2">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs text-gray-600 font-medium">
+                                      {interview?.title || `인터뷰 #${item.interviewId.slice(-4)}`}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        window.open(`/projects/${project.id}?interview=${item.interviewId}`, '_blank')
+                                      }}
+                                      className="text-xs text-blue-500 hover:text-blue-600 hover:underline transition-colors flex items-center gap-1"
+                                    >
+                                      바로가기
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  {item.quotes.map((quote, quoteIdx) => (
+                                    <div key={quoteIdx} className="bg-gray-50 p-3 rounded-lg">
+                                      <p className="text-sm text-gray-700 leading-relaxed">
+                                        "{quote}"
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="text-gray-300 mb-2">
+                              <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              인용구를 찾을 수 없습니다
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : selectedSection ? (
+                    /* 섹션 상세 페이지 */
+                    <div className="h-full">
+                      {/* 헤더 */}
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 leading-tight">
+                            {sectionBasedData.find(item => item.sectionName === selectedSection)?.koreanName}
+                          </h4>
+                          <div className="mt-2 text-xs text-gray-500">
+                            {(() => {
+                              const sectionData = sectionBasedData.find(item => item.sectionName === selectedSection)
+                              return sectionData ? `${sectionData.interviewCount}명 참여 • ${sectionData.totalItems}개 이슈` : ''
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSection(null)}
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* 컨텐츠 */}
+                      <div className="space-y-5">
+                        {(() => {
+                          const sectionData = sectionBasedData.find(
+                            item => item.sectionName === selectedSection
+                          )
+                          if (!sectionData) return null
+                          
+                          return (
+                            <>
+                              {/* 페인포인트 */}
+                              {sectionData.painPoints.length > 0 && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <h5 className="text-sm font-medium text-gray-900">
+                                      페인포인트
+                                    </h5>
+                                    <span className="text-xs text-gray-500 bg-red-50 px-2 py-0.5 rounded-full">
+                                      {sectionData.painPoints.length}개
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {sectionData.painPoints.map((painPoint, idx) => (
+                                      <div 
+                                        key={idx} 
+                                        className="p-2.5 rounded-lg text-xs text-gray-700 leading-relaxed cursor-pointer hover:bg-red-50 transition-colors group"
+                                        onClick={() => setSelectedInsight({
+                                          type: 'painPoint',
+                                          content: painPoint,
+                                          evidence: [],
+                                          sectionName: selectedSection!
+                                        })}
+                                      >
+                                        <div className="flex items-start justify-between">
+                                          <span className="flex-1">{painPoint}</span>
+                                          <svg className="w-3 h-3 text-gray-300 group-hover:text-gray-400 ml-2 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* 니즈 */}
+                              {sectionData.needs.length > 0 && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <h5 className="text-sm font-medium text-gray-900">
+                                      니즈
+                                    </h5>
+                                    <span className="text-xs text-gray-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                                      {sectionData.needs.length}개
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {sectionData.needs.map((need, idx) => (
+                                      <div 
+                                        key={idx} 
+                                        className="p-2.5 rounded-lg text-xs text-gray-700 leading-relaxed cursor-pointer hover:bg-blue-50 transition-colors group"
+                                        onClick={() => setSelectedInsight({
+                                          type: 'need',
+                                          content: need,
+                                          evidence: [],
+                                          sectionName: selectedSection!
+                                        })}
+                                      >
+                                        <div className="flex items-start justify-between">
+                                          <span className="flex-1">{need}</span>
+                                          <svg className="w-3 h-3 text-gray-300 group-hover:text-gray-400 ml-2 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* 데이터가 없는 경우 */}
+                              {sectionData.painPoints.length === 0 && sectionData.needs.length === 0 && (
+                                <div className="text-center py-8">
+                                  <div className="text-gray-400 mb-2">
+                                    <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                  </div>
+                                  <p className="text-sm text-gray-500">이 섹션에는 아직 분석된 이슈가 없습니다</p>
+                                </div>
+                              )}
+                            </>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    /* 초기 상태 */
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">섹션을 선택하세요</h4>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          좌측에서 섹션을 클릭하면<br/>
+                          페인포인트와 니즈를 확인할 수 있습니다
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
