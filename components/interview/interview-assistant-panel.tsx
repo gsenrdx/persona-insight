@@ -307,15 +307,25 @@ export default function InterviewAssistantPanel({
   // script_sections가 없어도 패널은 표시되도록 함
 
   return (
-    <div className={cn(
-      "fixed right-6 bottom-6 z-[100]",
-      "bg-white rounded-xl shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_6px_24px_rgba(0,0,0,0.08)]",
-      "w-[380px] h-[600px] flex flex-col",
-      "transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1) origin-bottom-right",
-      isOpen 
-        ? "opacity-100 scale-100 translate-y-0" 
-        : "opacity-0 scale-90 translate-y-4 pointer-events-none"
-    )}>
+    <>
+      {/* 배경 오버레이 - 빈 공간 클릭 시 닫기 */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-[99]" 
+          onClick={onClose}
+        />
+      )}
+      
+      {/* 패널 본체 */}
+      <div className={cn(
+        "fixed right-6 bottom-6 z-[100]",
+        "bg-white rounded-xl shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_6px_24px_rgba(0,0,0,0.08)]",
+        "w-[380px] h-[600px] flex flex-col",
+        "transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1) origin-bottom-right",
+        isOpen 
+          ? "opacity-100 scale-100 translate-y-0" 
+          : "opacity-0 scale-90 translate-y-4 pointer-events-none"
+      )}>
       {currentView === 'main' ? (
         <>
           {/* 메인 헤더 */}
@@ -559,5 +569,6 @@ export default function InterviewAssistantPanel({
         </>
       )}
     </div>
+    </>
   )
 }

@@ -17,14 +17,11 @@ interface InterviewDetailProps {
   onDownloadMenuChange?: (downloadHandlers: { 
     handleDownloadOriginal: () => void
     handleDownloadCleaned: () => void
-  }) => void
+  } | undefined) => void
   onBack?: () => void
 }
 
-export default function InterviewDetail({ interview, onSectionsChange, onDownloadMenuChange, onBack }: InterviewDetailProps) {
-  const [scriptSections, setScriptSections] = useState<any[] | null>(null)
-  const [activeSection, setActiveSection] = useState<string | null>(null)
-  const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
+export default function InterviewDetail({ interview, onSectionsChange, onDownloadMenuChange }: InterviewDetailProps) {
   const [floatingPanelOpen, setFloatingPanelOpen] = useState(false)
   
   // 태그 필터 상태 (체크박스 형태)
@@ -137,10 +134,6 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
 
   // 스크립트 뷰어에서 섹션 정보가 변경될 때
   const handleScriptSectionsChange = (sections: any[] | null, active: string | null, scrollFn: (sectionName: string) => void) => {
-    setScriptSections(sections)
-    setActiveSection(active)
-    setScrollToSection(() => scrollFn)
-    
     // 상위 컴포넌트로 전달
     if (onSectionsChange) {
       onSectionsChange(sections, active, scrollFn)
