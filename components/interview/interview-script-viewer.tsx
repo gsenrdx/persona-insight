@@ -20,9 +20,10 @@ interface InterviewScriptViewerProps {
   canEdit?: boolean
   tagFilter?: Set<'pain' | 'need'>
   onTagFilterChange?: (filters: Set<'pain' | 'need'>) => void
+  highlightedScriptId?: number[] | null
 }
 
-export default function InterviewScriptViewer({ script, interview, className, onSectionsChange, canEdit = false, tagFilter = new Set(), onTagFilterChange }: InterviewScriptViewerProps) {
+export default function InterviewScriptViewer({ script, interview, className, onSectionsChange, canEdit = false, tagFilter = new Set(), onTagFilterChange, highlightedScriptId }: InterviewScriptViewerProps) {
   const { user, profile, session } = useAuth()
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -42,26 +43,21 @@ export default function InterviewScriptViewer({ script, interview, className, on
       return scripts
     }
     
-    // 선택된 필터에 따라 evidence ids 수집
-    const evidenceIds = new Set<number>()
-    
-    if (tagFilter.has('pain') && interview?.primary_pain_points) {
-      interview.primary_pain_points.forEach(painPoint => {
-        painPoint.evidence.forEach(id => evidenceIds.add(id))
-      })
-    }
-    
-    if (tagFilter.has('need') && interview?.primary_needs) {
-      interview.primary_needs.forEach(need => {
-        need.evidence.forEach(id => evidenceIds.add(id))
-      })
-    }
-    
-    // evidence에 포함된 스크립트 아이템만 필터링
-    return scripts.filter(item => 
-      item.id.some(id => evidenceIds.has(id))
-    )
-  }, [scripts, tagFilter, interview])
+    // 카테고리 기반으로 필터링
+    return scripts.filter(item => {
+      if (!item.category) return false
+      
+      if (tagFilter.has('pain') && item.category === 'painpoint') {
+        return true
+      }
+      
+      if (tagFilter.has('need') && item.category === 'needs') {
+        return true
+      }
+      
+      return false
+    })
+  }, [scripts, tagFilter])
   
   // scrollToSection 함수를 먼저 정의
   const scrollToSection = useCallback((sectionName: string) => {
@@ -341,7 +337,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
         {/* 스크립트 영역 */}
         <div className="h-full flex flex-col">
           {/* 검색 및 태그 필터 영역 */}
-          <div className="px-8 py-3 bg-white border-b border-gray-100">
+          <div className="px-8 py-3">
             <div className="flex items-center justify-between gap-4">
               {/* 좌측: 태그 필터 버튼 */}
               <div className="flex items-center gap-3">
@@ -432,7 +428,7 @@ export default function InterviewScriptViewer({ script, interview, className, on
           </div>
 
           {/* 스크립트 내용 */}
-          <div className="flex-1 overflow-y-auto relative bg-white" ref={scriptContainerRef}>
+          <div className="flex-1 overflow-y-auto relative" ref={scriptContainerRef}>
             <div className="px-8 py-4">
               {filteredScript.length === 0 ? (
                 <div className="text-center py-20">
@@ -487,8 +483,12 @@ export default function InterviewScriptViewer({ script, interview, className, on
                       
                       const showSpeaker = !isConsecutiveSameSpeaker;
                       
+                      // 하이라이트 확인
+                      const isHighlighted = highlightedScriptId && 
+                        JSON.stringify(highlightedScriptId) === JSON.stringify(item.id)
+                      
                       return (
-                        <div key={uniqueKey}>
+                        <div key={uniqueKey} id={`script-item-${scriptId}`}>
                           {/* 마크다운 스타일 섹션 헤더 */}
                           {isNewSection && currentSection && (
                             <div 
@@ -525,7 +525,9 @@ export default function InterviewScriptViewer({ script, interview, className, on
                             onCategoryChange={handleCategoryChange}
                             className={cn(
                               // 비주요 섹션은 미묘하게 흐리게
-                              currentSection && !currentSection.is_main_content && "opacity-80"
+                              currentSection && !currentSection.is_main_content && "opacity-80",
+                              // 하이라이트 스타일
+                              isHighlighted && "ring-2 ring-blue-400 ring-opacity-50 bg-blue-50 rounded-lg transition-all duration-300"
                             )}
                           />
                         </div>

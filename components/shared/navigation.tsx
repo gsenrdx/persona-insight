@@ -11,11 +11,11 @@ const navigationItems = [
     href: "/",
     description: "고객과 실시간 대화"
   },
-  {
-    name: "인사이트", 
-    href: "/insights",
-    description: "연간 데이터 분석"
-  },
+  // {
+  //   name: "인사이트", 
+  //   href: "/insights",
+  //   description: "연간 데이터 분석"
+  // },
   {
     name: "프로젝트",
     href: "/projects",
