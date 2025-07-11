@@ -14,7 +14,7 @@ type InputType = 'audio' | 'stt' | 'text';
 
 const inputTypeOptions = [
   { value: 'audio' as InputType, label: '음성 파일', icon: Mic, disabled: true, badge: '준비중' },
-  { value: 'stt' as InputType, label: 'STT 변환본', icon: FileAudio, disabled: false },
+  { value: 'stt' as InputType, label: '문서 파일', icon: FileAudio, disabled: false },
   { value: 'text' as InputType, label: '텍스트 입력', icon: Type, disabled: false },
 ];
 
@@ -320,7 +320,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {option.value === 'audio' && '음성 파일을 직접 업로드'}
-                          {option.value === 'stt' && 'STT 변환된 텍스트 파일'}
+                          {option.value === 'stt' && '인터뷰 STT 파일 업로드'}
                           {option.value === 'text' && '텍스트를 직접 입력'}
                         </p>
                       </div>
