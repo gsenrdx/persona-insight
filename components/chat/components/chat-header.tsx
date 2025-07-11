@@ -29,7 +29,7 @@ export function ChatHeader({ message, personaData }: ChatHeaderProps) {
             unoptimized={displayPersona.image.includes('supabase.co')}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+          <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 text-gray-700">
             {displayPersona.name.substring(0, 2)}
           </div>
         )}

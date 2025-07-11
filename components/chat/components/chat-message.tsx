@@ -55,7 +55,7 @@ export function ChatMessage({
             group relative px-4 py-2.5 text-sm break-words
             ${message.role === "user" 
               ? "bg-blue-600 text-white rounded-2xl rounded-br-sm" 
-              : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm"
+              : "bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm"
             }
             max-w-[75%]
           `}
@@ -102,7 +102,7 @@ export function ChatMessage({
             <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button 
                 onClick={() => onCopyMessage(message.id, message.content)}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
               >
                 <Copy className="h-3 w-3" />
                 <span>{isCopied === message.id ? "복사됨" : "복사"}</span>
@@ -110,7 +110,7 @@ export function ChatMessage({
               
               <button 
                 onClick={() => onReplyMessage(message)}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
               >
                 <MessageSquareMore className="h-3 w-3" />
                 <span>답글</span>

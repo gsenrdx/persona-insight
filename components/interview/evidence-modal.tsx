@@ -45,7 +45,7 @@ export function EvidenceModal({ isOpen, onClose, title, type, evidences, onNavig
             "text-base font-medium pl-13",
             type === 'pain' ? "text-gray-700" : "text-gray-700"
           )}>
-            "{title}"
+            &ldquo;{title}&rdquo;
           </p>
         </div>
 

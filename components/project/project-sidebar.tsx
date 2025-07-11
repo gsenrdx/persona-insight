@@ -39,7 +39,7 @@ const navigationItems = [
   }
 ]
 
-export function ProjectSidebar({ activeView, onViewChange, projectName, className, scriptSections, activeSection, onSectionClick, insightSections, activeInsight, onInsightClick }: ProjectSidebarProps) {
+export function ProjectSidebar({ activeView, onViewChange, className, scriptSections, activeSection, onSectionClick, insightSections, activeInsight, onInsightClick }: ProjectSidebarProps) {
   const router = useRouter()
   const navigationContainerRef = useRef<HTMLDivElement>(null)
   const activeButtonRef = useRef<HTMLButtonElement>(null)

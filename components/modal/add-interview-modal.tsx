@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { AddInterviewModalProps } from "@/types/components";
 import { toast } from "sonner";
-import { X, Upload, FileText, Plus, Loader2, Type, Calendar, FileIcon, ChevronDown, Mic, FileAudio, Search, Sparkles } from "lucide-react";
+import { X, Upload, Plus, Loader2, Type, Calendar, Mic, FileAudio, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_FILE_EXTENSIONS, MAX_FILE_SIZE_MB, getFileTypeDescription } from "@/lib/constants/file-upload";
@@ -26,7 +26,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
   const [showDropdown, setShowDropdown] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [textTitle, setTextTitle] = useState('');
-  const [textDate, setTextDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [textDate, setTextDate] = useState<string>(new Date().toISOString().split('T')[0] || '');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -204,7 +204,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
       setInterviews([]);
       setTextInput('');
       setTextTitle('');
-      setTextDate(new Date().toISOString().split('T')[0]);
+      setTextDate(new Date().toISOString().split('T')[0] || '');
       onOpenChange?.(false);
     } catch (error) {
       toast.error('처리 중 오류가 발생했습니다');
@@ -219,7 +219,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
     setInterviews([]);
     setTextInput('');
     setTextTitle('');
-    setTextDate(new Date().toISOString().split('T')[0]);
+    setTextDate(new Date().toISOString().split('T')[0] || '');
     setInputType('stt');
     setShowDropdown(false);
     setIsDragging(false);
@@ -510,7 +510,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                 </h3>
                 
                 <div className="ml-8 flex flex-wrap gap-3">
-                  {interviews.map((item, index) => (
+                  {interviews.map((item) => (
                     <div key={item.id} className="group relative inline-flex flex-col p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all">
                       {/* 헤더 영역 */}
                       <div className="flex items-start gap-2 mb-2">

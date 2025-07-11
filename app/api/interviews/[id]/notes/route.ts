@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUserProfile } from '@/lib/utils/auth-cache'
-import type { Database } from '@/types/database'
+import type { Database } from '@/types/supabase'
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabase)
+    await getAuthenticatedUserProfile(authorization, supabase)
 
     // 메모와 댓글 함께 조회
     const { data: notes, error } = await supabase
@@ -48,8 +48,8 @@ export async function GET(
     const notesWithSortedReplies = notes?.map(note => ({
       ...note,
       replies: note.replies
-        ?.filter(reply => !reply.is_deleted)
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        ?.filter((reply: any) => !reply.is_deleted)
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     }))
 
     return NextResponse.json({ data: notesWithSortedReplies })

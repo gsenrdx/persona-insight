@@ -53,8 +53,8 @@ export function ChatInput({
             transition={{ duration: 0.2 }}
             className="max-w-3xl mx-auto mb-3"
           >
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 pr-8 flex items-center relative">
-              <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+            <div className="bg-gray-50 rounded-lg p-2 pr-8 flex items-center relative">
+              <div className="text-xs text-gray-600 truncate">
                 답변: {replyingTo.content.substring(0, 80)}
                 {replyingTo.content.length > 80 ? '...' : ''}
               </div>
@@ -87,9 +87,9 @@ export function ChatInput({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15 }}
-                  className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-1 flex items-center gap-2"
+                  className="bg-blue-50 rounded-lg px-3 py-1 flex items-center gap-2"
                 >
-                  <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                  <span className="text-xs text-blue-700 font-medium">
                     @{persona.name}
                   </span>
                   <button
@@ -114,7 +114,7 @@ export function ChatInput({
             placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
             disabled={loading}
             rows={1}
-            className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 resize-none"
+            className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 resize-none"
             onKeyDown={onKeyDown}
             style={{
               minHeight: '40px',

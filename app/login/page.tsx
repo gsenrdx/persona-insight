@@ -1,6 +1,5 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { ModeToggle } from "@/components/shared"
 import LoginPageContent from "@/components/auth/login-page-content"
 import "./login.css"
 

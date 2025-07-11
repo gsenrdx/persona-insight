@@ -131,21 +131,21 @@ export function PersonaMentionDropdown({
 
   return (
     <div className={`absolute bottom-full left-0 right-0 mb-2 z-50 ${open ? 'block' : 'hidden'}`}>
-      <div className="w-full p-0 border border-zinc-200 dark:border-zinc-700 shadow-xl rounded-xl bg-white dark:bg-zinc-900 backdrop-blur-sm">
+      <div className="w-full p-0 border border-zinc-200 shadow-xl rounded-xl bg-white backdrop-blur-sm">
         <Command className="rounded-xl border-0">
           <CommandList className="max-h-[240px] overflow-hidden">
             <CommandGroup className="p-2">
-              <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 px-2 py-1.5 mb-1">
+              <div className="text-xs font-medium text-zinc-500 px-2 py-1.5 mb-1">
                 페르소나 멘션
               </div>
               {filteredPersonas.length === 0 ? (
-                <div className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                <div className="py-8 text-center text-sm text-zinc-500">
                   검색 결과가 없습니다.
                 </div>
               ) : (
                 <div 
                   ref={scrollContainerRef}
-                  className="space-y-1 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent"
+                  className="space-y-1 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 scrollbar-track-transparent"
                 >
                   {filteredPersonas.map((persona, index) => (
                     <div
@@ -157,8 +157,8 @@ export function PersonaMentionDropdown({
                       className={`
                         flex items-center gap-3 px-3 py-3 cursor-pointer rounded-lg transition-all duration-150
                         ${index === selectedIndex 
-                          ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 shadow-sm ring-1 ring-blue-200 dark:ring-blue-800/50' 
-                          : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                          ? 'bg-blue-50 text-blue-900 shadow-sm ring-1 ring-blue-200' 
+                          : 'hover:bg-zinc-50'
                         }
                       `}
                     >
@@ -168,22 +168,22 @@ export function PersonaMentionDropdown({
                           alt={persona.persona_title || persona.name}
                           className="object-cover"
                         />
-                        <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-medium">
+                        <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 text-zinc-600 text-xs font-medium">
                           {(persona.persona_title || persona.name).substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm truncate text-zinc-900 dark:text-zinc-100">
+                          <span className="font-medium text-sm truncate text-zinc-900">
                             {persona.persona_title || persona.name}
                           </span>
                           <Badge 
                             variant="secondary" 
                             className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
                               index === selectedIndex
-                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-zinc-100 text-zinc-600'
                             }`}
                           >
                             @{(persona.persona_title || persona.name).toLowerCase().replace(/\s+/g, '')}
@@ -191,7 +191,7 @@ export function PersonaMentionDropdown({
                         </div>
                         
                         {persona.persona_summary && (
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1 leading-relaxed">
+                          <p className="text-xs text-zinc-500 line-clamp-1 leading-relaxed">
                             {persona.persona_summary}
                           </p>
                         )}
