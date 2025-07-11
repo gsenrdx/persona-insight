@@ -43,15 +43,14 @@ export default function RootLayout({
               {children}
             </AuthProvider>
             <Toaster 
-              position="top-right" 
+              position="bottom-center" 
               richColors 
               visibleToasts={1}
               duration={3000}
               expand={false}
               toastOptions={{
                 style: {
-                  marginTop: '20px',
-                  marginRight: '0px',
+                  marginBottom: '24px',
                 },
                 className: 'toast-slide-in',
               }} 

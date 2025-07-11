@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
-import { Database } from "@/types/database"
+import { Database } from "@/types/supabase"
 
 export const runtime = 'nodejs'
 
@@ -29,9 +29,6 @@ export async function POST(req: NextRequest) {
       },
       global: {
         fetch: fetch
-      },
-      realtime: {
-        disabled: true
       }
     }
   )
@@ -53,7 +50,7 @@ export async function POST(req: NextRequest) {
     // 인터뷰 정보 조회
     const { data: interview, error: fetchError } = await supabase
       .from('interviews')
-      .select('id, project_id, raw_text, status, metadata')
+      .select('id, project_id, raw_text, status, metadata, company_id')
       .eq('id', interviewId)
       .eq('company_id', companyId)
       .single()
@@ -68,20 +65,21 @@ export async function POST(req: NextRequest) {
     }
 
     // 상태를 processing으로 변경
-    const attemptCount = (interview.metadata?.processing_attempt || 0) + 1
+    const metadata = typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}
+    const attemptCount = ((metadata as any).processing_attempt || 0) + 1
     
     const { error: updateError } = await supabase
       .from('interviews')
       .update({
-        status: 'processing',
+        status: 'processing' as any,
         updated_at: new Date().toISOString(),
         metadata: {
-          ...interview.metadata,
+          ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
           processing_started_at: new Date().toISOString(),
           processing_attempt: attemptCount,
           retry_at: new Date().toISOString(),
           retry_by: userId
-        }
+        } as any
       })
       .eq('id', interviewId)
 
@@ -112,15 +110,15 @@ export async function POST(req: NextRequest) {
           await supabase
             .from('interviews')
             .update({
-              status: 'failed',
+              status: 'failed' as any,
               updated_at: new Date().toISOString(),
               metadata: {
-                ...interview.metadata,
+                ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
                 error: errorData.error || 'Retry failed',
                 message: errorData.message || response.statusText,
                 failed_at: new Date().toISOString(),
                 processing_attempt: attemptCount
-              }
+              } as any
             })
             .eq('id', interviewId)
         }
@@ -128,15 +126,15 @@ export async function POST(req: NextRequest) {
         await supabase
           .from('interviews')
           .update({
-            status: 'failed',
+            status: 'failed' as any,
             updated_at: new Date().toISOString(),
             metadata: {
-              ...interview.metadata,
+              ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
               error: error.name || 'RetryError',
               message: error.message || 'Retry failed',
               failed_at: new Date().toISOString(),
               processing_attempt: attemptCount
-            }
+            } as any
           })
           .eq('id', interviewId)
       }

@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useInterviews } from '@/hooks/use-interviews'
+import { useProjectSummary } from '@/hooks/use-project-summary'
 import { Button } from '@/components/ui/button'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 interface Project {
   id: string
@@ -23,13 +25,28 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     enabled: true
   })
 
-  // keytakeaways 수 계산
-  const keytakeawaysCount = interviews.reduce((total, interview) => {
-    if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
-      return total + interview.key_takeaways.length
-    }
-    return total
-  }, 0)
+  // 프로젝트 요약 데이터 가져오기
+  const { 
+    summary, 
+    isLoading: summaryLoading, 
+    hasNewInterviews, 
+    newInterviewsCount, 
+    generateSummary, 
+    isGenerating 
+  } = useProjectSummary(project.id)
+
+  // keytakeaways 수 계산 (중복 제거된 전체 인사이트 카드 수)
+  const keytakeawaysCount = (() => {
+    const uniqueInsights = new Set<string>()
+    interviews.forEach(interview => {
+      if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
+        interview.key_takeaways.forEach(takeaway => {
+          uniqueInsights.add(takeaway)
+        })
+      }
+    })
+    return uniqueInsights.size
+  })()
 
   // 전체 보기 상태
   const [showAll, setShowAll] = useState(false)
@@ -197,6 +214,9 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     evidence: number[]
     sectionName: string
   } | null>(null)
+  
+  // 선택된 페르소나 상태 (파이차트 클릭용)
+  const [selectedPersona, setSelectedPersona] = useState<string | null>(null)
 
   // evidence ID로 실제 스크립트 문장 찾기
   function getQuotesFromEvidence(evidence: number[], interviewId: string): string[] {
@@ -235,12 +255,58 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     
     return quotes
   })() : []
+
+  // AI 페르소나 매칭 데이터 처리
+  const personaDistributionData = (() => {
+    const personaCount = new Map<string, number>()
+    
+    interviews.forEach(interview => {
+      // 확정된 페르소나가 있으면 우선 사용, 없으면 AI 매칭 결과 사용
+      const personaDefinition = interview.confirmed_persona_definition || interview.ai_persona_definition
+      
+      if (personaDefinition?.name_ko) {
+        const personaName = personaDefinition.name_ko
+        const currentCount = personaCount.get(personaName) || 0
+        personaCount.set(personaName, currentCount + 1)
+      }
+    })
+    
+    // 차트 데이터 형식으로 변환하고 색상 할당
+    const colorPalette = [
+      '#3b82f6', // blue
+      '#10b981', // emerald
+      '#f59e0b', // amber
+      '#ef4444', // red
+      '#8b5cf6', // purple
+      '#14b8a6', // teal
+      '#ec4899', // pink
+      '#6366f1', // indigo
+      '#84cc16', // lime
+      '#f97316', // orange
+    ]
+    
+    const chartData = Array.from(personaCount.entries()).map(([persona, count], index) => ({
+      name: persona,
+      value: count,
+      percentage: interviews.length > 0 ? Math.round((count / interviews.length) * 100) : 0,
+      color: colorPalette[index % colorPalette.length]
+    }))
+    
+    return chartData.sort((a, b) => b.value - a.value)
+  })()
+
+  // 선택된 페르소나에 해당하는 인터뷰 필터링
+  const filteredInterviewsByPersona = selectedPersona ? (() => {
+    return interviews.filter(interview => {
+      const personaDefinition = interview.confirmed_persona_definition || interview.ai_persona_definition
+      return personaDefinition?.name_ko === selectedPersona
+    })
+  })() : []
   return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
         {/* 헤더 */}
         <div className="mb-6">
-          <div className="relative bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-2xl p-6 overflow-hidden">
+          <div className="relative bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-2xl p-6 overflow-hidden">
             {/* 메인 콘텐츠 */}
             <div className="relative z-10 flex items-center justify-between">
               <div className="flex items-center gap-8">
@@ -259,7 +325,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                     <h2 className="text-2xl font-bold text-gray-900">
                       {!isLoading && totalCount > 0 && keytakeawaysCount > 0 ? (
                         <>
-                          <span className="text-3xl text-purple-600">{totalCount}개</span>의 인터뷰에서 <span className="text-3xl text-purple-600">{keytakeawaysCount}개</span>의 인사이트를 얻었어요!
+                          <span className="text-3xl text-blue-600">{totalCount}개</span>의 인터뷰에서 <span className="text-3xl text-blue-600">{keytakeawaysCount}개</span>의 인사이트를 얻었어요!
                         </>
                       ) : !isLoading && totalCount === 0 ? (
                         '아직 분석할 인터뷰가 없어요'
@@ -284,10 +350,45 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                   </p>
                 </div>
               </div>
+              
+              {/* 요약 생성/업데이트 버튼 */}
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  {hasNewInterviews && (
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
+                      새 인터뷰 {newInterviewsCount}개
+                    </span>
+                  )}
+                  {summary ? (
+                    <Button
+                      onClick={() => generateSummary()}
+                      disabled={isGenerating || !hasNewInterviews}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {isGenerating ? '분석 중...' : hasNewInterviews ? '재분석' : '업데이트'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => generateSummary()}
+                      disabled={isGenerating || totalCount === 0}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {isGenerating ? '생성 중...' : '요약 생성'}
+                    </Button>
+                  )}
+                </div>
+                {summary && (
+                  <div className="text-xs text-gray-500">
+                    Pin이 {summary.interview_count_at_creation}개 인터뷰를 모두 확인했어요!
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* 장식용 배경 요소 */}
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-200/25 rounded-full blur-3xl" />
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-200/25 rounded-full blur-3xl" />
             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200/25 rounded-full blur-2xl" />
           </div>
         </div>
@@ -296,13 +397,24 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
         <div className="mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-2 h-2 bg-purple-500 rounded-full mt-3"></div>
+              <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-3"></div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">프로젝트 전체 요약</h3>
                 <div className="text-gray-700 leading-relaxed">
-                  <p>
-                    이 연구는 52g의 조직적 측면에서도 중요한 통찰력을 발견했는데, 의사소통 부족과 역할 변화와 같은 어려움은 내부 지원 강화의 필요성을 강조합니다. 또한, 참가자들은 GS25를 현대적이고 효율적이라고 평가하는 동시에 브랜드의 개성을 더욱 차별화할 수 있는 잠재력이 있다고 주장했으며, 거의 모든 참가자가 새로운 도전을 적극적으로 받아들이고자 하는 의지를 표명했습니다.
-                  </p>
+                  {summaryLoading ? (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                      <span>요약을 불러오는 중...</span>
+                    </div>
+                  ) : summary ? (
+                    <p>{summary.summary_text}</p>
+                  ) : totalCount === 0 ? (
+                    <p className="text-gray-500">분석할 인터뷰가 없습니다. 인터뷰를 추가해주세요.</p>
+                  ) : (
+                    <p className="text-gray-500">
+                      프로젝트 요약을 생성하려면 "요약 생성" 버튼을 클릭하세요.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -339,11 +451,11 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                   </div>
                   
                   <div className="flex items-center gap-2 flex-wrap mt-auto">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      {insight.mentionCount}번 언급
-                    </span>
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                       {insight.interviewCount}개 인터뷰
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                      {insight.mentionCount}번 언급
                     </span>
                   </div>
                 </div>
@@ -372,7 +484,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                         key={item.sectionName}
                         className={`group cursor-pointer transition-all duration-200 p-3 rounded-lg ${
                           selectedSection === item.sectionName 
-                            ? 'bg-purple-50 border border-purple-200' 
+                            ? 'bg-blue-50 border border-blue-200' 
                             : 'hover:bg-gray-50'
                         }`}
                         onClick={() => {
@@ -395,8 +507,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
                               selectedSection === item.sectionName
-                                ? 'bg-purple-600'
-                                : 'bg-purple-400 group-hover:bg-purple-500'
+                                ? 'bg-blue-600'
+                                : 'bg-blue-400 group-hover:bg-blue-500'
                             }`}
                             style={{
                               width: `${item.percentage}%`,
@@ -640,8 +752,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                     /* 초기 상태 */
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                         </div>
@@ -658,7 +770,183 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
             </div>
           </div>
         )}
-      </div>
+
+        {/* AI 페르소나 분류 분포 */}
+        {personaDistributionData.length > 0 && (
+          <div className="mt-12 space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">페르소나 분류 분포</h3>
+            
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* 파이 차트 */}
+                <div className="flex flex-col items-center justify-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={personaDistributionData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ percentage }) => `${percentage}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        onClick={(data: any) => {
+                          setSelectedPersona(data.name)
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {personaDistributionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value, name) => [`${value}명`, name]}
+                        contentStyle={{ 
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          padding: '0.5rem'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  
+                  {/* 범례 */}
+                  <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                    {personaDistributionData.map((persona) => (
+                      <div 
+                        key={persona.name} 
+                        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setSelectedPersona(persona.name)}
+                      >
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: persona.color }}
+                        />
+                        <span className="text-sm text-gray-700">{persona.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 통계 정보 또는 선택된 페르소나의 인터뷰 리스트 */}
+                <div className="space-y-4 h-[400px] overflow-hidden flex flex-col">
+                  {selectedPersona ? (
+                    /* 선택된 페르소나의 인터뷰 리스트 */
+                    <div className="flex flex-col h-full">
+                      {/* 헤더 */}
+                      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900">{selectedPersona}</h4>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {filteredInterviewsByPersona.length}개의 인터뷰
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedPersona(null)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* 인터뷰 리스트 */}
+                      <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                        {filteredInterviewsByPersona.length > 0 ? (
+                          filteredInterviewsByPersona.map((interview) => (
+                            <div
+                              key={interview.id}
+                              className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                              onClick={() => {
+                                window.open(`/projects/${project.id}?interview=${interview.id}`, '_blank')
+                              }}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-gray-900 text-sm mb-1">
+                                    {interview.title || `인터뷰 #${interview.id.slice(-4)}`}
+                                  </h5>
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <span>{new Date(interview.created_at).toLocaleDateString('ko-KR')}</span>
+                                    {interview.interviewee_profile?.[0]?.demographics?.age_group && (
+                                      <span>{interview.interviewee_profile[0].demographics.age_group}</span>
+                                    )}
+                                    {interview.interviewee_profile?.[0]?.demographics?.gender && (
+                                      <span>{interview.interviewee_profile[0].demographics.gender}</span>
+                                    )}
+                                  </div>
+                                  {interview.key_takeaways && interview.key_takeaways.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-xs text-gray-600 line-clamp-2">
+                                        {interview.key_takeaways[0]}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                <svg className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <p className="text-sm text-gray-500">
+                              해당 페르소나의 인터뷰가 없습니다.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* 기본 통계 정보 */
+                    <div className="flex flex-col h-full">
+                      <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                        <h4 className="text-sm font-medium text-gray-900 mb-4">상세 분포</h4>
+                        {personaDistributionData.map((persona) => (
+                          <div 
+                            key={persona.name} 
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                            onClick={() => setSelectedPersona(persona.name)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: persona.color }}
+                              />
+                              <div>
+                                <p className="font-medium text-gray-900">{persona.name}</p>
+                                <p className="text-xs text-gray-500">{persona.value}명의 인터뷰</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-gray-900">{persona.percentage}%</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 요약 정보 */}
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg flex-shrink-0">
+                        <p className="text-sm text-blue-900">
+                          <span className="font-semibold">가장 많은 페르소나:</span> {personaDistributionData[0]?.name} ({personaDistributionData[0]?.percentage}%)
+                        </p>
+                        {personaDistributionData.length > 1 && (
+                          <p className="text-sm text-blue-700 mt-1">
+                            총 {personaDistributionData.length}개의 페르소나 유형이 발견되었습니다.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

@@ -38,12 +38,10 @@ interface ProjectLayoutProps {
 
 export function ProjectLayout({ 
   children, 
-  projectId,
   projectName,
   activeView,
   onViewChange,
   className,
-  headerTitle,
   scriptSections,
   activeSection,
   onSectionClick,
@@ -54,9 +52,7 @@ export function ProjectLayout({
   isInterviewDetail = false,
   interviewTitle = null,
   onBack,
-  downloadHandlers,
-  canEditInterview,
-  onEditInterview
+  downloadHandlers
 }: ProjectLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)

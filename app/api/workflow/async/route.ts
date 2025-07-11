@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
-import { Database } from "@/types/database"
+import { Database } from "@/types/supabase"
 import { extractTextFromFileOnServer } from "@/lib/utils/server-file-parser"
 
 export const runtime = 'nodejs'
@@ -74,9 +74,6 @@ export async function POST(req: NextRequest) {
       },
       global: {
         fetch: fetch
-      },
-      realtime: {
-        disabled: true
       }
     }
   )
@@ -112,9 +109,9 @@ export async function POST(req: NextRequest) {
           processing_started_at: new Date().toISOString(),
           file_name: fileName,
           file_last_modified: lastModified ? new Date(lastModified).toISOString() : undefined
-        }
+        } as any
       }])
-      .select('id, status')
+      .select('id, status, metadata')
 
     if (insertError) {
       return new Response(JSON.stringify({
@@ -127,6 +124,16 @@ export async function POST(req: NextRequest) {
     }
 
     const interviewId = insertedData?.[0]?.id
+    
+    if (!interviewId) {
+      return new Response(JSON.stringify({
+        error: '인터뷰 ID 생성 실패',
+        message: '인터뷰가 정상적으로 생성되지 않았습니다.'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
 
     // 2. 백그라운드 처리 시작 (비동기)
     setTimeout(async () => {
@@ -154,11 +161,11 @@ export async function POST(req: NextRequest) {
               status: 'failed',
               updated_at: new Date().toISOString(),
               metadata: {
-                ...insertedData?.[0]?.metadata,
+                ...(typeof insertedData?.[0]?.metadata === 'object' && insertedData[0].metadata !== null ? insertedData[0].metadata : {}),
                 error: errorData.error || 'Background processing failed',
                 message: errorData.message || response.statusText,
                 failed_at: new Date().toISOString()
-              }
+              } as any
             })
             .eq('id', interviewId)
         }
@@ -170,11 +177,11 @@ export async function POST(req: NextRequest) {
             status: 'failed',
             updated_at: new Date().toISOString(),
             metadata: {
-              ...insertedData?.[0]?.metadata,
+              ...(typeof insertedData?.[0]?.metadata === 'object' && insertedData[0].metadata !== null ? insertedData[0].metadata : {}),
               error: error.name || 'NetworkError',
               message: error.message || 'Background processing failed',
               failed_at: new Date().toISOString()
-            }
+            } as any
           })
           .eq('id', interviewId)
       }

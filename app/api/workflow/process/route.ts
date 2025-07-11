@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Database } from "@/types/database"
+import { Database } from "@/types/supabase"
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5분 타임아웃
@@ -30,9 +30,6 @@ export async function POST(req: NextRequest) {
       },
       global: {
         fetch: fetch
-      },
-      realtime: {
-        disabled: true
       }
     }
   )
@@ -91,6 +88,35 @@ export async function POST(req: NextRequest) {
     const interviewObjective = project?.purpose || ''
     const targetAudience = project?.target_audience || ''
     
+    // 기존 섹션 목록 조회
+    let existingSectionNames: string[] = []
+    if (company?.id) {
+      const { data: sections } = await supabase
+        .from('script_sections')
+        .select('section_name')
+        .eq('company_id', company.id)
+      
+      if (sections && Array.isArray(sections)) {
+        existingSectionNames = sections
+          .map(s => s.section_name)
+          .filter(Boolean) as string[]
+      }
+    }
+    
+    // 기존 key_takeaways 목록 조회
+    let existingKeyTakeaways: string[] = []
+    if (company?.id) {
+      const { data: takeaways } = await supabase
+        .from('key_takeaways')
+        .select('takeaway_text')
+        .eq('company_id', company.id)
+      
+      if (takeaways && Array.isArray(takeaways)) {
+        existingKeyTakeaways = takeaways
+          .map(t => t.takeaway_text)
+          .filter(Boolean) as string[]
+      }
+    }
 
     // 2. MISO API 호출 (이미 processing 상태로 생성됨)
     const controller = new AbortController()
@@ -111,7 +137,9 @@ export async function POST(req: NextRequest) {
             company_name: companyName,
             company_info: companyInfo,
             interview_objective: interviewObjective,
-            target_audience: targetAudience
+            target_audience: targetAudience,
+            interview_sections: existingSectionNames.join(', '),
+            key_takeaways: existingKeyTakeaways.join(', ')
           },
           mode: 'blocking',
           user: userName
@@ -183,6 +211,98 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // 5. 스크립트 섹션 저장 (고유 섹션명만)
+    if (outputs.script_sections && Array.isArray(outputs.script_sections)) {
+      const companyId = company?.id
+      
+      if (companyId) {
+        // 현재 회사의 모든 섹션 조회
+        const { data: existingSections } = await supabase
+          .from('script_sections')
+          .select('section_name')
+          .eq('company_id', companyId)
+        
+        const existingSectionNames = new Set<string>()
+        if (existingSections && Array.isArray(existingSections)) {
+          existingSections.forEach(s => {
+            if (s.section_name) {
+              existingSectionNames.add(s.section_name)
+            }
+          })
+        }
+        
+        // 새로운 섹션만 필터링
+        const newSections = outputs.script_sections
+          .filter((section: any) => 
+            section.sector_name && 
+            !existingSectionNames.has(section.sector_name)
+          )
+          .map((section: any) => ({
+            section_name: section.sector_name,
+            company_id: companyId,
+            project_id: projectId
+          }))
+        
+        // 새로운 섹션이 있으면 삽입
+        if (newSections.length > 0) {
+          const { error: insertError } = await supabase
+            .from('script_sections')
+            .insert(newSections)
+          
+          if (insertError) {
+            // 섹션 저장 실패는 전체 프로세스 실패로 처리하지 않음
+            // 에러는 무시하고 계속 진행
+          }
+        }
+      }
+    }
+
+    // 6. 핵심 요약(key_takeaways) 저장 (고유 값만)
+    if (outputs.key_takeaways && Array.isArray(outputs.key_takeaways)) {
+      const companyId = company?.id
+      
+      if (companyId) {
+        // 현재 회사의 모든 key_takeaways 조회
+        const { data: existingTakeaways } = await supabase
+          .from('key_takeaways')
+          .select('takeaway_text')
+          .eq('company_id', companyId)
+        
+        const existingTakeawayTexts = new Set<string>()
+        if (existingTakeaways && Array.isArray(existingTakeaways)) {
+          existingTakeaways.forEach(t => {
+            if (t.takeaway_text) {
+              existingTakeawayTexts.add(t.takeaway_text)
+            }
+          })
+        }
+        
+        // 새로운 takeaways만 필터링
+        const newTakeaways = outputs.key_takeaways
+          .filter((takeaway: string) => 
+            takeaway && 
+            !existingTakeawayTexts.has(takeaway)
+          )
+          .map((takeaway: string) => ({
+            takeaway_text: takeaway,
+            company_id: companyId,
+            project_id: projectId
+          }))
+        
+        // 새로운 takeaways가 있으면 삽입
+        if (newTakeaways.length > 0) {
+          const { error: insertError } = await supabase
+            .from('key_takeaways')
+            .insert(newTakeaways)
+          
+          if (insertError) {
+            // takeaways 저장 실패는 전체 프로세스 실패로 처리하지 않음
+            // 에러는 무시하고 계속 진행
+          }
+        }
+      }
+    }
+
     // 처리 완료 - 폴링으로 자동 감지됨
 
     return new Response(JSON.stringify({
@@ -207,7 +327,7 @@ export async function POST(req: NextRequest) {
       .update({
         status: 'failed',
         updated_at: new Date().toISOString(),
-        metadata: errorInfo
+        metadata: errorInfo as any
       })
       .eq('id', interviewId)
 

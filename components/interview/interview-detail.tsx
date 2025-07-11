@@ -476,7 +476,29 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
 
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden relative">
+      {/* 분석 중일 때 오버레이 */}
+      {interview.status === 'processing' && (
+        <div className="absolute inset-0 z-50 bg-white/95 flex flex-col items-center justify-center">
+          <img 
+            src="/assets/pin/pin-processing.png" 
+            alt="Pin 분석 중"
+            className="w-48 h-48 mb-6"
+          />
+          <p className="text-xl font-semibold text-gray-700 mb-2">
+            Pin이 인터뷰를 분석하고 있어요!
+          </p>
+          <p className="text-sm text-gray-500">
+            잠시만 기다려주세요...
+          </p>
+          <div className="flex gap-1 mt-4">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
+      )}
+      
       {/* 리사이징 중일 때 오버레이 */}
       {isResizing && (
         <div className="fixed inset-0 z-50 cursor-col-resize" />
