@@ -92,16 +92,8 @@ class ApiClient {
 
       const data = await response.json()
       
-      // 표준 ApiResponse 형식으로 반환
-      if (data.success !== undefined || data.error !== undefined) {
-        return data
-      }
-      
-      // 레거시 응답 포맷 지원
-      return {
-        data,
-        success: true
-      }
+      // ApiResponse 형식으로 반환
+      return data
     } catch (error) {
       if (error instanceof ApiError) {
         throw error
@@ -219,23 +211,11 @@ class ApiClient {
 export const apiClient = new ApiClient()
 
 /**
- * 타입 헬퍼: API 응답에서 데이터 추출 (레거시 지원)
+ * API 응답에서 데이터 추출
  */
 export function extractApiData<T>(response: ApiResponse<T>): T {
   if (!response.success && response.error) {
     throw new ApiError(response.error, 400)
-  }
-  return response.data
-}
-
-/**
- * 표준 API 응답에서 데이터 추출
- */
-export function extractStandardApiData<T>(response: import('@/types/api').StandardApiResponse<T>): T {
-  if (!response.success) {
-    const errorMessage = response.error?.message || '알 수 없는 오류가 발생했습니다'
-    const errorCode = response.error?.code || 500
-    throw new ApiError(errorMessage, typeof errorCode === 'number' ? errorCode : 500)
   }
   if (!response.data) {
     throw new ApiError('응답 데이터가 없습니다', 500)

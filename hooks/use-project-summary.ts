@@ -38,7 +38,7 @@ export function useProjectSummary(projectId: string) {
         .maybeSingle()
 
       if (error) {
-        console.error('프로젝트 요약 조회 실패:', error)
+        // 프로젝트 요약 조회 실패 (로깅 제거)
         return null
       }
 
@@ -85,7 +85,7 @@ export function useProjectSummary(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['project-summary', projectId] })
     },
     onError: (error) => {
-      console.error('요약 생성 실패:', error)
+      // 요약 생성 실패 (로깅 제거)
     },
     onSettled: () => {
       setIsGenerating(false)

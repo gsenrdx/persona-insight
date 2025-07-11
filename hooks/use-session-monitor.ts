@@ -26,7 +26,7 @@ export function useSessionMonitor() {
           window.location.href = '/login?expired=true'
         }
       } catch (err) {
-        console.error('세션 체크 중 오류:', err)
+        // 세션 체크 중 오류 처리 (로깅 제거)
       }
     }
     
@@ -93,7 +93,7 @@ export function useNetworkRecovery() {
           window.location.href = '/login?expired=true'
         }
       } catch (err) {
-        console.error('네트워크 복구 중 오류:', err)
+        // 네트워크 복구 중 오류 처리 (로깅 제거)
       }
     }
     

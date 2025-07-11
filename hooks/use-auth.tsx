@@ -140,8 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (err) {
-          // 에러 발생 시 안전하게 처리
-          console.error('토큰 갱신 중 오류:', err)
+          // 에러 발생 시 안전하게 처리 (로깅 제거)
         }
       }
     }
@@ -234,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             
             // 토큰 갱신 실패 시 강제 로그아웃
-            if (event === 'TOKEN_REFRESH_FAILED' || event === 'USER_UPDATED' && !session) {
+            if (event === 'TOKEN_REFRESH_FAILED' || (event === 'USER_UPDATED' && !session)) {
               setUser(null)
               setSession(null)
               setProfile(null)
@@ -255,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   // 프로젝트 데이터 프리페칭
                   if (profileData.company_id && session) {
                     const fetchProjectsForPrefetch = async () => {
-                      const response = await projectService.getProjects(
+                      const response = await projectsApi.getProjects(
                         session.access_token,
                         { companyId: profileData.company_id, userId: profileData.id }
                       )
