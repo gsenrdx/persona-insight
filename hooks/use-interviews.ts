@@ -62,8 +62,8 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
     refetchOnWindowFocus: true,
     // 재연결 시 새로고침 (네트워크 복구 시)
     refetchOnReconnect: true,
-    // 2분간 캐시 유지 (적절한 밸런스)
-    staleTime: 2 * 60 * 1000,
+    // 3분간 캐시 유지 (폴링이 있으므로 짧게)
+    staleTime: 3 * 60 * 1000,
     // 캐시 수명 5분
     gcTime: 5 * 60 * 1000,
     // 에러 시 3번 재시도

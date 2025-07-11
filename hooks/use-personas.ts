@@ -40,7 +40,7 @@ export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: 
       return result
     },
     enabled: options?.enabled !== undefined ? options.enabled : (!!user && (!!query.companyId || !!query.projectId)),
-    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지 (중복 호출 방지)
+    staleTime: 7 * 60 * 1000, // 7분간 fresh 상태 유지 (중복 호출 방지)
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
     refetchOnMount: false, // 마운트 시 자동 재요청 비활성화
   })
@@ -62,7 +62,7 @@ export function usePersona(personaId: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!personaId,
-    staleTime: 3 * 60 * 1000,
+    staleTime: 8 * 60 * 1000, // 8분 (캐시 충돌 방지)
   })
 }
 
@@ -83,7 +83,7 @@ export function usePersonaKeywords(projectId?: string) {
       return extractApiData(response)
     },
     enabled: !!user && !!projectId,
-    staleTime: 5 * 60 * 1000, // 키워드는 좀 더 오래 캐시
+    staleTime: 10 * 60 * 1000, // 키워드는 좀 더 오래 캐시
   })
 }
 
@@ -131,7 +131,7 @@ export function usePersonaChatHistory(personaId: string, conversationId?: string
       return extractApiData(response)
     },
     enabled: !!user && !!personaId,
-    staleTime: 1 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // 2분 (채팅 기록)
   })
 }
 

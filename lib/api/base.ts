@@ -55,6 +55,18 @@ class ApiClient {
           case 400:
             throw new BadRequestError(errorMessage, context)
           case 401:
+            // 401 에러 시 강제 로그아웃 및 리다이렉트
+            if (typeof window !== 'undefined') {
+              // localStorage에서 Supabase 토큰 제거
+              const storageKeys = Object.keys(window.localStorage).filter(key => 
+                key.startsWith('sb-') && (key.includes('-auth-token') || key.includes('auth-token-'))
+              )
+              storageKeys.forEach(key => window.localStorage.removeItem(key))
+              
+              // 로그인 페이지로 리다이렉트 (현재 경로 보존)
+              const currentPath = window.location.pathname
+              window.location.href = `/login?expired=true&redirect=${encodeURIComponent(currentPath)}`
+            }
             throw new UnauthenticatedError(errorMessage, context)
           case 403:
             throw new ForbiddenError(errorMessage, context)

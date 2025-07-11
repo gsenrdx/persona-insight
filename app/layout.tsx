@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils/index'
 import { ThemeProvider, MobileNotSupported } from '@/components/shared'
 import { AuthProvider } from '@/hooks/use-auth'
 import { QueryProvider } from '@/components/providers/query-provider'
+import { SessionMonitor } from '@/components/auth/session-monitor'
 import { Toaster } from 'sonner'
 
 const fontSans = FontSans({ 
@@ -39,6 +40,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
+              <SessionMonitor />
               <MobileNotSupported />
               {children}
             </AuthProvider>

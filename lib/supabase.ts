@@ -12,18 +12,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: {
       getItem: (key: string) => {
         if (typeof window !== 'undefined') {
-          return window.sessionStorage.getItem(key)
+          return window.localStorage.getItem(key)
         }
         return null
       },
       setItem: (key: string, value: string) => {
         if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(key, value)
+          window.localStorage.setItem(key, value)
         }
       },
       removeItem: (key: string) => {
         if (typeof window !== 'undefined') {
-          window.sessionStorage.removeItem(key)
+          window.localStorage.removeItem(key)
         }
       }
     }

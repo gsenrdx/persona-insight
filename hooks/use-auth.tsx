@@ -109,6 +109,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
 
+  // Visibility API를 활용한 토큰 갱신
+  useEffect(() => {
+    if (!session) return
+
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && session) {
+        // 탭이 다시 보이게 되었을 때
+        try {
+          const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+          
+          if (!currentSession || error) {
+            // 세션이 만료되었으면 로그아웃
+            await signOut()
+          } else if (currentSession.expires_at) {
+            // 토큰 만료 시간 확인
+            const expiresAt = new Date(currentSession.expires_at * 1000)
+            const now = new Date()
+            const timeUntilExpiry = expiresAt.getTime() - now.getTime()
+            
+            // 5분 이내에 만료 예정이면 즉시 갱신
+            if (timeUntilExpiry < 5 * 60 * 1000) {
+              const { data, error } = await supabase.auth.refreshSession()
+              if (error) {
+                // 갱신 실패 시 로그아웃
+                await signOut()
+              } else if (data.session) {
+                setSession(data.session)
+              }
+            }
+          }
+        } catch (err) {
+          // 에러 발생 시 안전하게 처리
+          console.error('토큰 갱신 중 오류:', err)
+        }
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // 탭이 활성화된 상태면 즉시 확인
+    if (!document.hidden) {
+      handleVisibilityChange()
+    }
+    
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [session, signOut])
+
   useEffect(() => {
     let mounted = true
     let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription']
@@ -149,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 queryClient.prefetchQuery({
                   queryKey: queryKeys.projects.byCompanyAndUser(profileData.company_id, profileData.id),
                   queryFn: fetchProjectsForPrefetch,
-                  staleTime: 5 * 60 * 1000, // 5분
+                  staleTime: 10 * 60 * 1000, // 10분
                 })
               }
             }
@@ -179,6 +226,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setError(null)
               return
             }
+            
+            // 토큰 갱신 성공
+            if (event === 'TOKEN_REFRESHED' && session) {
+              setSession(session)
+              return
+            }
+            
+            // 토큰 갱신 실패 시 강제 로그아웃
+            if (event === 'TOKEN_REFRESH_FAILED' || event === 'USER_UPDATED' && !session) {
+              setUser(null)
+              setSession(null)
+              setProfile(null)
+              setError('세션이 만료되었습니다. 다시 로그인해주세요.')
+              window.location.href = '/login?expired=true'
+              return
+            }
 
             try {
               if (session?.user) {
@@ -202,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     queryClient.prefetchQuery({
                       queryKey: queryKeys.projects.byCompanyAndUser(profileData.company_id, profileData.id),
                       queryFn: fetchProjectsForPrefetch,
-                      staleTime: 5 * 60 * 1000, // 5분
+                      staleTime: 10 * 60 * 1000, // 10분
                     })
                   }
                 }
