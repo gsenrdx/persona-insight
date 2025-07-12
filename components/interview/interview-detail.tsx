@@ -247,38 +247,7 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
   
-  // 너비 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('interview-panel-width', leftPanelWidth.toString())
-      } catch {
-        // localStorage가 가득 차거나 비활성화된 경우 무시
-      }
-    }
-  }, [leftPanelWidth])
-
-  // 컴포넌트 언마운트 시 목차 정리
-  useEffect(() => {
-    return () => {
-      if (onSectionsChange) {
-        onSectionsChange(null, null, null)
-      }
-    }
-  }, [onSectionsChange])
-
-  // 인터뷰가 없으면 로딩 표시
-  if (!interview) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 리사이저 마우스 이벤트 핸들러
+  // 리사이저 마우스 이벤트 핸들러 - 조건문 밖으로 이동
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizing(true)
@@ -314,6 +283,26 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
   const handleMouseUp = useCallback(() => {
     setIsResizing(false)
   }, [])
+  
+  // 너비 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('interview-panel-width', leftPanelWidth.toString())
+      } catch {
+        // localStorage가 가득 차거나 비활성화된 경우 무시
+      }
+    }
+  }, [leftPanelWidth])
+
+  // 컴포넌트 언마운트 시 목차 정리
+  useEffect(() => {
+    return () => {
+      if (onSectionsChange) {
+        onSectionsChange(null, null, null)
+      }
+    }
+  }, [onSectionsChange])
 
   // 마우스 이벤트 리스너 등록/해제
   useEffect(() => {
@@ -474,6 +463,16 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
     }
   }, [onDownloadMenuChange]) // onDownloadMenuChange만 의존성으로
 
+  // 인터뷰가 없으면 로딩 표시
+  if (!interview) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">인터뷰를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
@@ -566,7 +565,7 @@ export default function InterviewDetail({ interview, onSectionsChange, onDownloa
                 interview={interview}
                 className=""
                 onSectionsChange={handleScriptSectionsChange}
-                canEdit={false}
+                canEdit={true}
                 tagFilter={selectedFilters}
                 onTagFilterChange={handleTagFilterChange}
                 highlightedScriptId={highlightedScriptId}

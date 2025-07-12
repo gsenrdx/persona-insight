@@ -41,7 +41,7 @@ export default function UserMenu() {
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
-            className="h-9 px-3 text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+            className="h-9 px-3 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             <span>{profile?.name || '사용자'}</span>
             <ChevronDown className="ml-1 h-4 w-4" />
@@ -75,7 +75,7 @@ export default function UserMenu() {
           <DropdownMenuItem
             onClick={handleSignOut}
             disabled={loading}
-            className="text-red-600 focus:text-red-600 dark:text-red-400"
+            className="text-red-600 focus:text-red-600"
           >
             <LogOut className="mr-2 h-4 w-4" />
             <span>로그아웃</span>

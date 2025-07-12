@@ -88,12 +88,12 @@ export function ChatMessages({
                     unoptimized={(activePersona.image || activePersona.avatar).includes('supabase.co')}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                  <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 text-gray-700">
                     {(activePersona.persona_title || activePersona.name).substring(0, 2)}
                   </div>
                 )}
               </div>
-              <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-sm">
+              <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm">
                 <div className="flex space-x-1">
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100" />

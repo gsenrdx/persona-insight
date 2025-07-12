@@ -8,7 +8,6 @@ import { ArrowRight, MessageCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils/index"
-import { useTheme } from "next-themes"
 import { PersonaCardProps } from "@/types/components"
 
 // 디자인 씽킹 및 고객 경험 명언들
@@ -46,8 +45,6 @@ export default function PersonaCard({
   const [isLoading, setIsLoading] = useState(false)
   const [prefetchStarted, setPrefetchStarted] = useState(false)
   const [currentQuote, setCurrentQuote] = useState("")
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
   
   // 페이지 프리페치 함수
   const prefetchChatPage = () => {
@@ -107,9 +104,7 @@ export default function PersonaCard({
         >
           <div className={cn(
             "relative h-full cursor-pointer overflow-hidden rounded-xl border shadow-sm transition-all duration-300",
-            isDark 
-              ? "bg-zinc-900 border-zinc-800" 
-              : "bg-white border-slate-200"
+            "bg-white border-slate-200"
           )}>
             {/* 페르소나 카드 - 애플 스타일 */}
             <div className="relative p-4 h-full flex flex-col z-10">
@@ -117,16 +112,14 @@ export default function PersonaCard({
               <div className="mb-3 flex items-center justify-between">
                 <h3 className={cn(
                   "text-base font-semibold leading-tight flex-1",
-                  isDark ? "text-white" : "text-zinc-900"
+                  "text-zinc-900"
                 )}>
                   {name}
                 </h3>
                 {persona_type && (
                   <div className={cn(
                     "ml-2 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0",
-                    isDark 
-                      ? "bg-blue-600 text-white" 
-                      : "bg-blue-600 text-white"
+                    "bg-blue-600 text-white"
                   )}>
                     {persona_type}
                   </div>
@@ -138,9 +131,7 @@ export default function PersonaCard({
                 <div className="mb-4">
                   <p className={cn(
                     "text-xs leading-relaxed",
-                    isDark 
-                      ? "text-zinc-400" 
-                      : "text-zinc-600"
+                    "text-zinc-600"
                   )}>
                     {summary}
                   </p>
@@ -161,30 +152,26 @@ export default function PersonaCard({
                 animate={isHovered ? { x: 3 } : { x: 0 }}
                 className={cn(
                   "self-stretch flex items-center justify-between pt-3",
-                  isDark
-                    ? "border-t border-zinc-800" 
-                    : "border-t border-zinc-100"
+                  "border-t border-zinc-100"
                 )}
               >
                 <span className={cn(
                   "flex items-center text-xs font-medium", 
-                  isDark ? "text-white" : "text-zinc-900"
+                  "text-zinc-900"
                 )}>
                   <MessageCircle className={cn(
                     "h-3 w-3 mr-1",
-                    isDark ? "text-zinc-400" : "text-zinc-500"
+                    "text-zinc-500"
                   )} />
                   <span className="ml-1">대화하기</span>
                 </span>
                 <div className={cn(
                   "p-1 rounded-full",
-                  isDark
-                    ? "bg-zinc-800" 
-                    : "bg-zinc-100"
+                  "bg-zinc-100"
                 )}>
                   <ArrowRight className={cn(
                     "h-3 w-3",
-                    isDark ? "text-zinc-400" : "text-zinc-500"
+                    "text-zinc-500"
                   )} />
                 </div>
               </motion.div>
@@ -193,9 +180,7 @@ export default function PersonaCard({
             {/* 페르소나 이미지 배경 그라데이션 */}
             <div className={cn(
               "absolute bottom-0 right-0 w-32 h-32 rounded-full -mr-10 -mb-10 z-0 overflow-hidden",
-              isDark
-                ? "bg-gradient-to-br from-indigo-600/20 to-indigo-900/10" 
-                : "bg-gradient-to-br from-indigo-100 to-indigo-300/40"
+              "bg-gradient-to-br from-indigo-100 to-indigo-300/40"
             )} />
             
             {/* 페르소나 이미지 - 크기 통일 (250x250) */}
@@ -217,9 +202,7 @@ export default function PersonaCard({
                   height={250}
                   className={cn(
                     "w-full h-full object-cover object-center",
-                    isDark
-                      ? "drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]" 
-                      : "drop-shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
+                    "drop-shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
                   )}
                   sizes="(max-width: 768px) 128px, 128px"
                 />
@@ -244,9 +227,7 @@ export default function PersonaCard({
               <motion.div
                 className={cn(
                   "relative max-w-[340px] w-full mx-4 rounded-2xl overflow-hidden",
-                  isDark 
-                    ? "bg-zinc-900/95 shadow-xl" 
-                    : "bg-white/95 shadow-lg"
+                  "bg-white/95 shadow-lg"
                 )}
                 layoutId={`persona-card-${id}`}
                 onClick={(e) => e.stopPropagation()}
@@ -257,7 +238,7 @@ export default function PersonaCard({
                     <div className="relative">
                       <div className={cn(
                         "w-24 h-24 rounded-full overflow-hidden",
-                        isDark ? "bg-zinc-800" : "bg-zinc-100"
+                        "bg-zinc-100"
                       )}>
                         <Image
                           src={image || `/placeholder.svg?height=250&width=250&text=${encodeURIComponent(name)}`}
@@ -272,14 +253,14 @@ export default function PersonaCard({
                     <div className="text-center space-y-2 max-w-[260px]">
                       <h2 className={cn(
                         "text-lg font-medium",
-                        isDark ? "text-white" : "text-zinc-900"
+                        "text-zinc-900"
                       )}>
                         {name}
                       </h2>
                       
                       <p className={cn(
                         "text-sm break-words",
-                        isDark ? "text-zinc-400" : "text-zinc-500"
+                        "text-zinc-500"
                       )}>
                         페르소나를 초대하는 중입니다
                       </p>
@@ -290,7 +271,7 @@ export default function PersonaCard({
                   <div className="mt-6">
                     <div className={cn(
                       "h-1 w-full rounded-full overflow-hidden",
-                      isDark ? "bg-zinc-800" : "bg-zinc-100"
+                      "bg-zinc-100"
                     )}>
                       <motion.div
                         className="h-full bg-primary/80"
@@ -309,7 +290,7 @@ export default function PersonaCard({
                     <div className="mt-6 px-2">
                       <p className={cn(
                         "text-xs leading-relaxed text-center italic",
-                        isDark ? "text-zinc-300" : "text-zinc-700"
+                        "text-zinc-700"
                       )}>
                         &quot;{currentQuote}&quot;
                       </p>

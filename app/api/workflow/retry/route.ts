@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       .from('interviews')
       .select('id, project_id, raw_text, status, metadata, company_id')
       .eq('id', interviewId)
-      .eq('company_id', companyId)
+      .eq('company_id', companyId as string)
       .single()
 
     if (fetchError || !interview) {
@@ -60,13 +60,13 @@ export async function POST(req: NextRequest) {
     }
 
     // failed 상태가 아니면 재시도 불가
-    if (interview.status !== 'failed') {
+    if ('status' in interview && interview.status !== 'failed') {
       return new Response('실패한 인터뷰만 재시도할 수 있습니다.', { status: 400 })
     }
 
     // 상태를 processing으로 변경
-    const metadata = typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}
-    const attemptCount = ((metadata as any).processing_attempt || 0) + 1
+    const metadata = 'metadata' in interview && typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}
+    const attemptCount = ((metadata as any)?.processing_attempt || 0) + 1
     
     const { error: updateError } = await supabase
       .from('interviews')
@@ -74,13 +74,13 @@ export async function POST(req: NextRequest) {
         status: 'processing' as any,
         updated_at: new Date().toISOString(),
         metadata: {
-          ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
+          ...(typeof metadata === 'object' ? metadata : {}),
           processing_started_at: new Date().toISOString(),
           processing_attempt: attemptCount,
           retry_at: new Date().toISOString(),
           retry_by: userId
         } as any
-      })
+      } as any)
       .eq('id', interviewId)
 
     if (updateError) {
@@ -98,9 +98,9 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             interviewId,
-            maskedContent: interview.raw_text,
+            maskedContent: 'raw_text' in interview ? interview.raw_text : '',
             userName,
-            projectId: interview.project_id
+            projectId: 'project_id' in interview ? interview.project_id : ''
           })
         })
 
@@ -113,13 +113,13 @@ export async function POST(req: NextRequest) {
               status: 'failed' as any,
               updated_at: new Date().toISOString(),
               metadata: {
-                ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
+                ...(typeof metadata === 'object' ? metadata : {}),
                 error: errorData.error || 'Retry failed',
                 message: errorData.message || response.statusText,
                 failed_at: new Date().toISOString(),
                 processing_attempt: attemptCount
               } as any
-            })
+            } as any)
             .eq('id', interviewId)
         }
       } catch (error: any) {
@@ -129,13 +129,13 @@ export async function POST(req: NextRequest) {
             status: 'failed' as any,
             updated_at: new Date().toISOString(),
             metadata: {
-              ...(typeof interview.metadata === 'object' && interview.metadata !== null ? interview.metadata : {}),
+              ...(typeof metadata === 'object' ? metadata : {}),
               error: error.name || 'RetryError',
               message: error.message || 'Retry failed',
               failed_at: new Date().toISOString(),
               processing_attempt: attemptCount
             } as any
-          })
+          } as any)
           .eq('id', interviewId)
       }
     }, 1000)

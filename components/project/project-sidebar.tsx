@@ -21,25 +21,25 @@ interface ProjectSidebarProps {
 const navigationItems = [
   {
     id: 'interviews',
-    label: '인터뷰',
+    label: '인터뷰 관리',
     icon: FileText,
-    description: '인터뷰 목록 및 분석'
+    description: '개별 인터뷰 관리'
   },
   {
     id: 'insights',
     label: '인사이트',
     icon: BarChart3,
-    description: '프로젝트 인사이트'
+    description: '인터뷰 종합 리포트'
   },
   {
     id: 'settings',
-    label: '설정',
+    label: '프로젝트 설정',
     icon: Settings,
-    description: '프로젝트 설정'
+    description: '리서치 목표 및 멤버'
   }
 ]
 
-export function ProjectSidebar({ activeView, onViewChange, projectName, className, scriptSections, activeSection, onSectionClick, insightSections, activeInsight, onInsightClick }: ProjectSidebarProps) {
+export function ProjectSidebar({ activeView, onViewChange, className, scriptSections, activeSection, onSectionClick, insightSections, activeInsight, onInsightClick }: ProjectSidebarProps) {
   const router = useRouter()
   const navigationContainerRef = useRef<HTMLDivElement>(null)
   const activeButtonRef = useRef<HTMLButtonElement>(null)

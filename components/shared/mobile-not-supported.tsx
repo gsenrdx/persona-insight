@@ -58,7 +58,7 @@ export default function MobileNotSupported() {
   if (isAuthConfirmPage) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-black flex flex-col items-center justify-center p-8">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-8">
       {/* 중앙 콘텐츠 */}
       <div className="text-center space-y-8">
         {/* 로고 */}
@@ -68,17 +68,17 @@ export default function MobileNotSupported() {
             alt="Persona Insight Logo" 
             className="w-16 h-16 mx-auto"
           />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-lg font-semibold text-gray-900">
             Persona Insight
           </h1>
         </div>
 
         {/* 메시지 */}
         <div className="space-y-2">
-          <h2 className="text-xl font-medium text-gray-900 dark:text-white">
+          <h2 className="text-xl font-medium text-gray-900">
             모바일 준비중
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-gray-500">
             PC에서 이용해주세요
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function MobileNotSupported() {
         {/* 명언 */}
         {currentQuote && (
           <div className="max-w-xs mx-auto">
-            <p className="text-sm text-gray-400 dark:text-gray-500 italic leading-relaxed">
+            <p className="text-sm text-gray-400 italic leading-relaxed">
               &quot;{currentQuote}&quot;
             </p>
           </div>

@@ -105,37 +105,6 @@ body {
     border-color: hsl(var(--border)) !important;
   }
   
-  /* 다크 모드 토스트 */
-  .dark [data-type="success"].toast-slide-in {
-    background: rgba(6, 78, 59, 0.95) !important;
-    color: #86efac !important;
-    border-color: #065f46 !important;
-  }
-  
-  .dark [data-type="error"].toast-slide-in {
-    background: rgba(127, 29, 29, 0.95) !important;
-    color: #fca5a5 !important;
-    border-color: #991b1b !important;
-  }
-  
-  .dark [data-type="info"].toast-slide-in {
-    background: rgba(30, 58, 138, 0.95) !important;
-    color: #93c5fd !important;
-    border-color: #1e40af !important;
-  }
-  
-  .dark [data-type="warning"].toast-slide-in {
-    background: rgba(146, 64, 14, 0.95) !important;
-    color: #fbbf24 !important;
-    border-color: #92400e !important;
-  }
-  
-  .dark [data-type="default"].toast-slide-in {
-    background: rgba(24, 24, 27, 0.95) !important;
-    color: hsl(var(--foreground)) !important;
-    border-color: hsl(var(--border)) !important;
-  }
-  
   /* 토스트 닫기 버튼 - 애플 스타일 */
   .toast-slide-in [data-close-button] {
     opacity: 0.6 !important;
@@ -196,19 +165,6 @@ body {
     scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
   }
   
-  /* 다크 모드 스크롤바 */
-  .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
-  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-  
-  .dark .custom-scrollbar:hover {
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-  }
-  
   /* 전역 스크롤바 스타일 */
   ::-webkit-scrollbar {
     width: 4px;
@@ -241,19 +197,6 @@ body {
   
   html:hover {
     scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
-  }
-  
-  /* 다크 모드 전역 스크롤바 */
-  .dark :hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-  
-  .dark html:hover {
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
   }
   
   /* 감각적인 floating 애니메이션 */
@@ -593,15 +536,6 @@ body {
   .glow-effect:hover::after {
     opacity: 1;
   }
-  
-  .dark .glow-effect::after {
-    box-shadow: 0 0 20px 3px hsl(var(--primary) / 0.3);
-  }
-  
-  .dark .hover-lift:hover {
-    box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.15),
-                0 8px 10px -6px hsl(var(--primary) / 0.2);
-  }
 }
 
 .bg-grid-pattern {
@@ -609,12 +543,6 @@ body {
   background-image: 
     linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-}
-
-.dark .bg-grid-pattern {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
 @layer base {
@@ -651,40 +579,6 @@ body {
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }

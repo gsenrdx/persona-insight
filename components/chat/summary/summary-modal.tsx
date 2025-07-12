@@ -62,16 +62,16 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col bg-white dark:bg-zinc-900">
+      <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col bg-white">
         {/* 헤더 */}
-        <DialogHeader className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+        <DialogHeader className="p-4 border-b border-zinc-200 flex-shrink-0">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-500" />
-            <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+            <DialogTitle className="text-lg font-bold text-zinc-900">
               {summaryData.title}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-sm text-zinc-600 dark:text-zinc-400 pl-7">
+          <DialogDescription className="text-sm text-zinc-600 pl-7">
             {summaryData.summary}
           </DialogDescription>
         </DialogHeader>
@@ -79,11 +79,11 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
         {/* 대화 요약 컨텐츠 */}
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-6 text-sm text-zinc-800 dark:text-zinc-200">
+            <div className="p-6 text-sm text-zinc-800">
               {/* 루트 노드 */}
               <Node delay={delay}>
-                <div className="flex items-center gap-3 p-3 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-zinc-300 dark:border-zinc-600">
+                <div className="flex items-center gap-3 p-3 bg-zinc-100 rounded-lg">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-zinc-300">
                     {personaImage ? (
                       <img
                         src={personaImage}
@@ -100,7 +100,7 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
                   </div>
                   <div>
                     <h2 className="font-bold text-base">{summaryData.root_node.text}</h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{summaryData.root_node.subtitle}</p>
+                    <p className="text-xs text-zinc-500">{summaryData.root_node.subtitle}</p>
                   </div>
                 </div>
               </Node>
@@ -113,7 +113,7 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
                     <Node key={topic.id} delay={delay}>
                       <div className="flex">
                         <div className="w-5 flex-shrink-0 mr-3 mt-1.5 flex flex-col items-center">
-                          <CornerDownRight className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+                          <CornerDownRight className="w-4 h-4 text-zinc-400" />
                           <div className="w-px h-full" style={{ backgroundColor: `${topic.color}40`}}></div>
                         </div>
 
@@ -132,14 +132,14 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
                                 <Node key={subtopic.title} delay={delay}>
                                   <div className="flex">
                                     <div className="w-5 flex-shrink-0 mr-3 mt-1.5 flex flex-col items-center">
-                                      <CornerDownRight className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
-                                      <div className="w-px h-full bg-zinc-200 dark:bg-zinc-700"></div>
+                                      <CornerDownRight className="w-4 h-4 text-zinc-400" />
+                                      <div className="w-px h-full bg-zinc-200"></div>
                                     </div>
                                     <div className="flex-1">
                                       {/* 세부 주제 헤더 */}
                                       <div className="flex items-center gap-2">
-                                        <MessageSquare className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-                                        <h4 className="font-medium text-zinc-800 dark:text-zinc-200">{subtopic.title}</h4>
+                                        <MessageSquare className="w-3.5 h-3.5 text-zinc-500" />
+                                        <h4 className="font-medium text-zinc-800">{subtopic.title}</h4>
                                       </div>
 
                                       {/* 내용 아이템들 */}
@@ -148,9 +148,9 @@ export function SummaryModal({ isOpen, onClose, summaryData, personaImage }: Sum
                                           delay += 0.02;
                                           return (
                                             <Node key={item.content} delay={delay}>
-                                              <div className="text-xs p-3 bg-white dark:bg-zinc-800/50 rounded-md border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors">
-                                                <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.content}</p>
-                                                <div className="mt-1.5 flex items-start gap-1.5 text-zinc-500 dark:text-zinc-400 italic">
+                                              <div className="text-xs p-3 bg-white rounded-md border border-zinc-200 hover:border-zinc-300 transition-colors">
+                                                <p className="font-medium text-zinc-900">{item.content}</p>
+                                                <div className="mt-1.5 flex items-start gap-1.5 text-zinc-500 italic">
                                                   <Quote className="w-3 h-3 flex-shrink-0 mt-0.5" />
                                                   <span>&quot;{item.quote}&quot;</span>
                                                 </div>

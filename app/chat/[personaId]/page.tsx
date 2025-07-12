@@ -115,12 +115,12 @@ export default function ChatPage({ params }: ChatPageProps) {
       <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] rounded-full bg-secondary/5 blur-3xl -z-20" />
       
       {/* 모바일 헤더 - 메뉴 토글 버튼 포함 */}
-      <div className="md:hidden flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm">
+      <div className="md:hidden flex items-center justify-between p-3 border-b border-zinc-200 bg-white shadow-sm">
         <Link href="/" className="inline-flex">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="gap-1.5 text-zinc-800 dark:text-zinc-200 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="gap-1.5 text-zinc-800 font-medium hover:bg-zinc-100 transition-colors"
           >
             <Home className="h-4 w-4" />
             <span className="text-sm">메인</span>
@@ -143,17 +143,17 @@ export default function ChatPage({ params }: ChatPageProps) {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
           fixed md:relative md:w-80 lg:w-96 z-30 md:z-auto
           h-[calc(100dvh-57px)] md:h-full w-[85%] max-w-xs
-          bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm flex flex-col shadow-lg md:shadow-none
-          border-r border-zinc-200/50 dark:border-zinc-800/50 
+          bg-white/95 backdrop-blur-sm flex flex-col shadow-lg md:shadow-none
+          border-r border-zinc-200/50 
           overflow-hidden transition-all duration-300 ease-in-out
         `}>
           {/* 상단 헤더 - 최소화된 네비게이션 */}
-          <div className="hidden md:flex shrink-0 items-center justify-between p-4 border-b border-zinc-100/80 dark:border-zinc-800/80 h-14">
+          <div className="hidden md:flex shrink-0 items-center justify-between p-4 border-b border-zinc-100/80 h-14">
             <Link href="/" className="inline-flex">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all duration-200 rounded-lg"
+                className="gap-1.5 text-zinc-700 font-medium hover:bg-zinc-100 transition-all duration-200 rounded-lg"
               >
                 <Home className="h-4 w-4" />
                 <span className="text-sm">홈</span>
@@ -162,14 +162,14 @@ export default function ChatPage({ params }: ChatPageProps) {
           </div>
           
           {/* 페르소나 프로필 섹션 - 원래 디자인 + 여백 개선 */}
-          <div className="shrink-0 h-36 sm:h-40 md:h-44 relative border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+          <div className="shrink-0 h-36 sm:h-40 md:h-44 relative border-b border-zinc-100 bg-zinc-50/50">
             <div className="relative h-full flex justify-between items-center p-4 sm:p-5 md:p-6">
               <div className="flex-1 pr-3 sm:pr-4 md:pr-5 z-10">
-                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1.5">
+                <h2 className="text-sm sm:text-base md:text-lg font-bold text-zinc-900 mb-1.5">
                   {persona.persona_title || persona.name}
                 </h2>
                 {persona.summary && (
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  <p className="text-xs text-zinc-600 leading-relaxed">
                     {persona.summary.split('.')[0] + '.'}
                   </p>
                 )}
@@ -189,16 +189,16 @@ export default function ChatPage({ params }: ChatPageProps) {
           </div>
 
           {/* 스크롤 가능한 정보 영역 - 개선된 디자인 */}
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 scrollbar-track-transparent">
             <div className="px-5 py-4 space-y-5">
               {/* 성격 및 말투 - 모던 카드 스타일 */}
               {(persona.persona_style || persona.persona_character) && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
                     <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
                     성격 & 특징
                   </h3>
-                  <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/30 dark:to-indigo-950/20 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
+                  <div className="text-sm leading-relaxed text-zinc-600 p-4 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 rounded-xl border border-blue-100/50">
                     {persona.persona_style || persona.persona_character}
                   </div>
                 </div>
@@ -207,11 +207,11 @@ export default function ChatPage({ params }: ChatPageProps) {
               {/* 페인 포인트 - 개선된 스타일 */}
               {(persona.painpoints || persona.painPoint) && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
                     <div className="w-1 h-4 bg-rose-500 rounded-full"></div>
                     고민 & 어려움
                   </h3>
-                  <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-rose-50/50 to-pink-50/30 dark:from-rose-950/30 dark:to-pink-950/20 rounded-xl border border-rose-100/50 dark:border-rose-900/30">
+                  <div className="text-sm leading-relaxed text-zinc-600 p-4 bg-gradient-to-br from-rose-50/50 to-pink-50/30 rounded-xl border border-rose-100/50">
                     {persona.painpoints || persona.painPoint}
                   </div>
                 </div>
@@ -220,18 +220,18 @@ export default function ChatPage({ params }: ChatPageProps) {
               {/* 인사이트와 니즈 - 통합된 섹션 */}
               {(persona.insight || persona.needs || persona.hiddenNeeds) && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
                     <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
                     니즈 & 인사이트
                   </h3>
                   <div className="space-y-3">
                     {persona.insight && (
-                      <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/30 dark:to-teal-950/20 rounded-xl border border-emerald-100/50 dark:border-emerald-900/30">
+                      <div className="text-sm leading-relaxed text-zinc-600 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 rounded-xl border border-emerald-100/50">
                         {persona.insight}
                       </div>
                     )}
                     {(persona.needs || persona.hiddenNeeds) && (
-                      <div className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/30 dark:to-teal-950/20 rounded-xl border border-emerald-100/50 dark:border-emerald-900/30">
+                      <div className="text-sm leading-relaxed text-zinc-600 p-4 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 rounded-xl border border-emerald-100/50">
                         {persona.needs || persona.hiddenNeeds}
                       </div>
                     )}
@@ -242,7 +242,7 @@ export default function ChatPage({ params }: ChatPageProps) {
               {/* 키워드 섹션 - 개선된 태그 디자인 */}
               {(persona.keywords || []).length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
                     <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
                     키워드
                   </h3>
@@ -250,7 +250,7 @@ export default function ChatPage({ params }: ChatPageProps) {
                     {(persona.keywords || []).map((keyword, index) => (
                       <Badge 
                         key={index} 
-                        className="text-xs font-medium bg-gradient-to-r from-zinc-100 to-zinc-50 hover:from-zinc-200 hover:to-zinc-100 text-zinc-700 dark:from-zinc-800 dark:to-zinc-700 dark:hover:from-zinc-700 dark:hover:to-zinc-600 dark:text-zinc-200 rounded-lg px-3 py-1.5 border border-zinc-200/50 dark:border-zinc-700/50 transition-all duration-200"
+                        className="text-xs font-medium bg-gradient-to-r from-zinc-100 to-zinc-50 hover:from-zinc-200 hover:to-zinc-100 text-zinc-700 rounded-lg px-3 py-1.5 border border-zinc-200/50 transition-all duration-200"
                       >
                         {keyword}
                       </Badge>
@@ -262,7 +262,7 @@ export default function ChatPage({ params }: ChatPageProps) {
           </div>
 
           {/* 페르소나 선택 - 개선된 디자인 */}
-          <div className="shrink-0 border-t border-zinc-100/80 dark:border-zinc-800/80 bg-gradient-to-t from-zinc-50/80 to-transparent dark:from-zinc-900/80 dark:to-transparent p-4">
+          <div className="shrink-0 border-t border-zinc-100/80 bg-gradient-to-t from-zinc-50/80 to-transparent p-4">
             <PersonaSwitcher 
               currentPersona={persona} 
               allPersonas={allPersonas} 

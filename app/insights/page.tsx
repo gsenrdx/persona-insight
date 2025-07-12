@@ -240,7 +240,7 @@ export default function InsightsPage() {
   // 프로필이나 회사 정보가 없을 때
   if (!profile?.company_id) {
     return (
-      <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30 dark:from-blue-950/5 dark:to-blue-900/10">
+      <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30">
         <div className="container mx-auto px-4 py-8 relative z-10">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -294,7 +294,7 @@ export default function InsightsPage() {
   // 로딩 중일 때 표시
   if (loading) {
     return (
-      <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30 dark:from-blue-950/5 dark:to-blue-900/10">
+      <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30">
         <div className="container mx-auto px-4 py-8 relative z-10">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -311,8 +311,8 @@ export default function InsightsPage() {
     <div className="relative min-h-screen bg-gradient-to-b from-blue-50/80 to-blue-100/30 dark:from-blue-950/5 dark:to-blue-900/10">
       {/* 배경 장식 요소 */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
-      <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-blue-100/40 dark:bg-blue-500/5 blur-3xl" />
-      <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-blue-100/40 dark:bg-blue-500/5 blur-3xl" />
+      <div className="absolute top-20 -left-96 w-[800px] h-[800px] rounded-full bg-blue-100/40 blur-3xl" />
+      <div className="absolute top-1/2 -right-96 w-[600px] h-[600px] rounded-full bg-blue-100/40 blur-3xl" />
       
       {/* 헤더 */}
       <header className="container mx-auto px-4 py-8 relative z-10">
@@ -332,7 +332,7 @@ export default function InsightsPage() {
       
       <main className="container mx-auto px-4 pt-0 pb-20 relative z-10">
         {/* 연도별 선택과 인터뷰 고객 수를 묶어서 표시 */}
-        <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
+        <Card className="mb-5 shadow-sm border-gray-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -354,7 +354,7 @@ export default function InsightsPage() {
             <div className="mb-5 flex flex-wrap gap-4 items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="min-w-[180px] justify-between border-gray-200 dark:border-gray-800">
+                  <Button variant="outline" className="min-w-[180px] justify-between border-gray-200">
                     <span>
                       {selectedYears.length === 1 
                         ? `${selectedYears[0]}년` 
@@ -382,7 +382,7 @@ export default function InsightsPage() {
               {/* 선택된 연도 태그 */}
               <div className="flex gap-2 flex-wrap">
                 {selectedYears.map(year => (
-                  <Badge key={year} variant="outline" className="px-3 py-1 text-sm bg-primary/5 border-gray-200 dark:border-gray-800">
+                  <Badge key={year} variant="outline" className="px-3 py-1 text-sm bg-primary/5 border-gray-200">
                     {year}년: <span className="font-bold ml-1">{insightData[year]?.intervieweeCount || 0}명</span>
                   </Badge>
                 ))}
@@ -393,7 +393,7 @@ export default function InsightsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 완료된 인터뷰 수 */}
               <div className="flex items-center justify-center">
-                <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
+                <Card className="shadow-sm border-gray-200 h-full w-full">
                   <CardContent className="flex flex-col items-center justify-center py-8">
                     <p className="text-4xl font-bold mb-3">
                       {selectedYears.reduce((total, year) => total + (insightData[year]?.intervieweeCount || 0), 0)}
@@ -407,7 +407,7 @@ export default function InsightsPage() {
               
               {/* 인사이트 수 */}
               <div className="flex items-center justify-center">
-                <Card className="shadow-sm border-gray-200 dark:border-gray-800 h-full w-full">
+                <Card className="shadow-sm border-gray-200 h-full w-full">
                   <CardContent className="flex flex-col items-center justify-center py-8">
                     <p className="text-4xl font-bold mb-3">
                       {selectedYears.reduce((total, year) => {
@@ -447,7 +447,7 @@ export default function InsightsPage() {
           <>
             <div className="grid grid-cols-1 gap-6 mb-5">
               {/* 종합 인사이트 요약 카드 - 직관적인 디자인 */}
-              <Card className="shadow-sm border-gray-200 dark:border-gray-800" ref={insightHeaderRef}>
+              <Card className="shadow-sm border-gray-200" ref={insightHeaderRef}>
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold">
                     {selectedYears.length === 1 
@@ -480,7 +480,7 @@ export default function InsightsPage() {
                         className={`relative border border-gray-200 dark:border-gray-800 rounded-lg transition-all ${
                           currentInsight === idx 
                             ? 'border-primary bg-primary/5 shadow-sm' 
-                            : 'border-gray-200 dark:border-gray-800 hover:border-primary/50 hover:bg-muted/30'
+                            : 'border-gray-200 hover:border-primary/50 hover:bg-muted/30'
                         }`}
                         onClick={() => setCurrentInsight(idx)}
                       >
@@ -519,7 +519,7 @@ export default function InsightsPage() {
             
             {/* 고정 네비게이션 */}
             {isHeaderFixed && (
-              <div className="fixed top-0 left-0 right-0 bg-background z-50 shadow-md border-b border-gray-200 dark:border-gray-800 py-3 transform transition-transform">
+              <div className="fixed top-0 left-0 right-0 bg-background z-50 shadow-md border-b border-gray-200 py-3 transform transition-transform">
                 <div className="w-full px-4">
                   <div className="flex justify-center items-center">
                     <div className="flex gap-2 overflow-auto pb-1 w-full justify-center">
@@ -558,7 +558,7 @@ export default function InsightsPage() {
               }
               
               return (
-              <Card className="mb-5 shadow-sm border-gray-200 dark:border-gray-800">
+              <Card className="mb-5 shadow-sm border-gray-200">
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold">
                     {safeSelectedInsight.title}
@@ -573,7 +573,7 @@ export default function InsightsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 md:items-start">
                   {/* 인사이트 상세 요약 */}
                   <div>
-                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
+                    <Card className="shadow-sm border-gray-200">
                       <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowDetailAnalysis(!showDetailAnalysis)}>
                         <CardTitle className="text-lg font-medium">상세 분석</CardTitle>
                         <ChevronDown className={`h-4 w-4 transition-transform ${showDetailAnalysis ? '' : 'transform rotate-180'}`} />
@@ -618,7 +618,7 @@ export default function InsightsPage() {
                   
                   {/* 키워드 원형 그래프 */}
                   <div>
-                    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
+                    <Card className="shadow-sm border-gray-200">
                       <CardHeader className="cursor-pointer flex flex-row items-center justify-between" onClick={() => setShowRelatedKeywords(!showRelatedKeywords)}>
                         <CardTitle className="text-lg font-medium">관련 키워드</CardTitle>
                         <ChevronDown className={`h-4 w-4 transition-transform ${showRelatedKeywords ? '' : 'transform rotate-180'}`} />
@@ -676,7 +676,7 @@ export default function InsightsPage() {
                 </div>
                 
                 {/* 구분선 */}
-                <div className="border-t border-gray-200 dark:border-gray-800 my-6"></div>
+                <div className="border-t border-gray-200 my-6"></div>
                 
                 {/* 고객 이야기 섹션 */}
                 <div>
@@ -689,7 +689,7 @@ export default function InsightsPage() {
                     <div className="flex flex-wrap gap-3 items-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
+                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200">
                             <span className="text-sm">고객 유형</span>
                             <ChevronDown className="h-4 w-4 ml-2" />
                           </Button>
@@ -717,7 +717,7 @@ export default function InsightsPage() {
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200 dark:border-gray-800">
+                          <Button variant="outline" className="h-9 px-3 justify-between border-gray-200">
                             <span className="text-sm">정렬 기준</span>
                             <ChevronDown className="h-4 w-4 ml-2" />
                           </Button>
@@ -750,7 +750,7 @@ export default function InsightsPage() {
                       }
                       
                       return (
-                        <Card key={i} className="shadow-sm border-gray-200 dark:border-gray-800">
+                        <Card key={i} className="shadow-sm border-gray-200">
                           <CardContent className="p-4 flex flex-col" style={{ minHeight: '200px' }}>
                             <div className="flex-grow">
                               <p className="text-base">&quot;{safeQuote.text}&quot;</p>
@@ -766,7 +766,7 @@ export default function InsightsPage() {
                                 <Button 
                                   size="sm" 
                                   variant="outline" 
-                                  className="gap-1 text-sm font-medium bg-white dark:bg-zinc-950"
+                                  className="gap-1 text-sm font-medium bg-white"
                                   onClick={() => handleViewInterview(safeQuote.persona)}
                                 >
                                   <FileText className="h-3 w-3" />
