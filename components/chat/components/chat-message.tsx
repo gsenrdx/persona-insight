@@ -38,28 +38,28 @@ export function ChatMessage({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-3`}
+      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}
     >
-      <div 
-        className={`
-          flex max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"} 
-          items-end gap-3
-        `}
-      >
+      <div className={`flex ${message.role === "user" ? "flex-row-reverse" : "flex-row"} gap-3 max-w-[80%]`}>
         {message.role === "assistant" && (
           <ChatHeader message={message} personaData={personaData} />
         )}
         
-        <div
-          className={`
-            group relative px-4 py-2.5 text-sm break-words
-            ${message.role === "user" 
-              ? "bg-blue-600 text-white rounded-2xl rounded-br-sm" 
-              : "bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm"
-            }
-            max-w-[75%]
-          `}
-        >
+        <div className="flex flex-col gap-1">
+          <div
+            className={`
+              group relative px-4 py-2.5 text-sm rounded-2xl
+              ${message.role === "user" 
+                ? "bg-blue-600 text-white rounded-br-sm ml-auto" 
+                : "bg-gray-100 text-gray-800 rounded-bl-sm mr-auto"
+              }
+            `}
+            style={{
+              width: 'fit-content',
+              maxWidth: '100%',
+              wordBreak: 'break-word'
+            }}
+          >
           {/* 페르소나 이름 표시 제거 - 더 깔끔한 UI를 위해 */}
           
           {/* 꼬리질문 배지 - 더 간단하게 */}
@@ -93,13 +93,15 @@ export function ChatMessage({
           
           <MessageContent 
             content={message.content}
-            className="whitespace-pre-wrap leading-relaxed"
+            className=""
           />
           {/* 시간 표시 제거 - 더 깔끔한 UI를 위해 */}
           
-          {/* 메시지 액션 버튼 - 인라인으로 변경 */}
+          </div>
+          
+          {/* 메시지 액션 버튼 */}
           {message.role === "assistant" && (
-            <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
               <button 
                 onClick={() => onCopyMessage(message.id, message.content)}
                 className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"

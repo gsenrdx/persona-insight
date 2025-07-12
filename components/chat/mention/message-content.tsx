@@ -13,6 +13,11 @@ export function MessageContent({ content, className = "" }: MessageContentProps)
     return parseMentions(content)
   }, [content])
 
+  // 멘션이 없는 단순 텍스트는 직접 렌더링
+  if (!content.includes('@[')) {
+    return <div className={className}>{content}</div>
+  }
+
   const renderMention = (mention: ParsedMention, index: number) => {
     if (mention.type === 'text') {
       // Handle line breaks and formatting in text content
@@ -38,7 +43,7 @@ export function MessageContent({ content, className = "" }: MessageContentProps)
               )
             }
             // Regular text
-            return line ? <p key={lineIndex} className="mb-1">{line}</p> : <br key={lineIndex} />
+            return line ? <span key={lineIndex} className="inline">{line}</span> : <br key={lineIndex} />
           })}
         </span>
       )
