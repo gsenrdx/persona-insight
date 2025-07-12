@@ -35,11 +35,12 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     isGenerating 
   } = useProjectSummary(project.id)
 
-  // keytakeaways 수 계산 (중복 제거된 전체 인사이트 카드 수)
+  // keytakeaways 수 계산 (중복 제거된 전체 인사이트 카드 수, 삭제된 인터뷰 제외)
   const keytakeawaysCount = (() => {
     const uniqueInsights = new Set<string>()
     interviews.forEach(interview => {
-      if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
+      // 삭제된 인터뷰 제외
+      if (!interview.deleted_at && interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
         interview.key_takeaways.forEach(takeaway => {
           uniqueInsights.add(takeaway)
         })
@@ -61,7 +62,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     }>()
 
     interviews.forEach(interview => {
-      if (interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
+      // 삭제된 인터뷰 제외
+      if (!interview.deleted_at && interview.key_takeaways && Array.isArray(interview.key_takeaways)) {
         interview.key_takeaways.forEach(takeaway => {
           if (insightMap.has(takeaway)) {
             const existing = insightMap.get(takeaway)!
@@ -97,8 +99,11 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       totalItems: number
     }>()
 
-    // 각 인터뷰별로 처리
+    // 각 인터뷰별로 처리 (삭제된 인터뷰 제외)
     interviews.forEach(interview => {
+      // 삭제된 인터뷰 제외
+      if (interview.deleted_at) return
+      
       const scriptSections = interview.script_sections || []
       
       // 페인포인트 처리
@@ -152,7 +157,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       })
     })
 
-    const totalInterviews = interviews.length
+    const totalInterviews = interviews.filter(interview => !interview.deleted_at).length
     return Array.from(sectionMap.entries())
       .map(([_, data]) => ({
         sectionName: data.sectionName,
@@ -302,6 +307,23 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
       return personaDefinition?.name_ko === selectedPersona
     })
   })() : []
+  // 인터뷰 데이터가 로딩 중일 때 전체 로딩 화면 표시
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="text-center">
+          <img 
+            src="/assets/pin/pin-processing.png" 
+            alt="Processing" 
+            className="w-32 h-32 object-contain mx-auto mb-4"
+          />
+          <p className="text-gray-600 font-medium">인사이트를 분석하고 있어요</p>
+          <p className="text-sm text-gray-500 mt-1">잠시만 기다려주세요...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto">
         {/* 헤더 */}
@@ -412,7 +434,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                     <p className="text-gray-500">분석할 인터뷰가 없습니다. 인터뷰를 추가해주세요.</p>
                   ) : (
                     <p className="text-gray-500">
-                      프로젝트 요약을 생성하려면 "요약 생성" 버튼을 클릭하세요.
+                      프로젝트 요약을 생성하려면 &ldquo;요약 생성&rdquo; 버튼을 클릭하세요.
                     </p>
                   )}
                 </div>
@@ -602,7 +624,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                                   {item.quotes.map((quote, quoteIdx) => (
                                     <div key={quoteIdx} className="bg-gray-50 p-3 rounded-lg">
                                       <p className="text-sm text-gray-700 leading-relaxed">
-                                        "{quote}"
+                                        &ldquo;{quote}&rdquo;
                                       </p>
                                     </div>
                                   ))}

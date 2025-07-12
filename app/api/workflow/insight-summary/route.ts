@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 2. 프로젝트의 모든 완료된 인터뷰 조회
+    // 2. 프로젝트의 모든 완료된 인터뷰 조회 (삭제된 인터뷰 제외)
     const { data: interviews, error: interviewsError } = await supabase
       .from('interviews')
       .select(`
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
       `)
       .eq('project_id', projectId)
       .eq('status', 'completed')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
     if (interviewsError) {

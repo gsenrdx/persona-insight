@@ -47,9 +47,9 @@ export function useProjectSummary(projectId: string) {
     enabled: !!user && !!projectId
   })
 
-  // useInterviews의 데이터를 사용해서 완료된 인터뷰 수 계산
+  // useInterviews의 데이터를 사용해서 완료된 인터뷰 수 계산 (삭제된 인터뷰 제외)
   const currentInterviewCount = interviews.filter(interview => 
-    interview.status === 'completed'
+    interview.status === 'completed' && !interview.deleted_at
   ).length
 
   // 요약 생성/재생성 함수

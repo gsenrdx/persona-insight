@@ -36,8 +36,13 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    // 쿼리 파라미터 확인
+    const { searchParams } = new URL(request.url)
+    const includeDeleted = searchParams.get('includeDeleted') === 'true'
+    const deletedOnly = searchParams.get('deletedOnly') === 'true'
+    
     // 인터뷰 목록 조회
-    const { data: interviews, error } = await supabase
+    let query = supabase
       .from('interviews')
       .select(`
         *,
@@ -47,7 +52,15 @@ export async function GET(
         interview_notes(count)
       `)
       .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
+    
+    // 필터링 조건 적용
+    if (deletedOnly) {
+      query = query.not('deleted_at', 'is', null)
+    } else if (!includeDeleted) {
+      query = query.is('deleted_at', null)
+    }
+    
+    const { data: interviews, error } = await query.order('created_at', { ascending: false })
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

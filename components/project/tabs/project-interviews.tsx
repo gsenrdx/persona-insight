@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Plus, RefreshCw, Loader2, Activity, AlertCircle } from "lucide-react"
+import { Plus, RefreshCw, Loader2, Activity, AlertCircle, History } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useInterviews } from '@/hooks/use-interviews'
 import { useProjectMembers } from '@/hooks/use-projects'
@@ -23,6 +23,11 @@ const AddInterviewModal = dynamic(() => import('@/components/modal').then(mod =>
 })
 
 const PersonaAssignmentModal = dynamic(() => import('@/components/modal/persona-assignment-modal').then(mod => ({ default: mod.PersonaAssignmentModal })), {
+  ssr: false,
+  loading: () => null
+})
+
+const HistoryModal = dynamic(() => import('@/components/project/trash-modal').then(mod => ({ default: mod.default })), {
   ssr: false,
   loading: () => null
 })
@@ -91,6 +96,8 @@ export default function ProjectInterviews({
     currentPersonaDefinitionId?: string | null
     recommendedPersona?: string
   }>({ open: false, interviewId: '' })
+  
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   
   // 수동 새로고침
   const handleManualRefresh = useCallback(() => {
@@ -252,6 +259,16 @@ export default function ProjectInterviews({
                 <Button
                   variant="ghost"
                   size="default"
+                  onClick={() => setShowHistoryModal(true)}
+                  className="h-10 w-10 p-0 rounded-xl hover:bg-white/70 transition-all duration-200 border border-white/40 backdrop-blur-sm"
+                  title="기록"
+                >
+                  <History className="w-5 h-5 text-gray-600" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="default"
                   onClick={handleManualRefresh}
                   disabled={isLoading || isFetching}
                   className="h-10 w-10 p-0 rounded-xl hover:bg-white/70 transition-all duration-200 border border-white/40 backdrop-blur-sm"
@@ -363,6 +380,13 @@ export default function ProjectInterviews({
         interviewId={personaAssignmentModal.interviewId}
         currentPersonaDefinitionId={personaAssignmentModal.currentPersonaDefinitionId}
         recommendedPersona={personaAssignmentModal.recommendedPersona}
+      />
+      
+      <HistoryModal
+        open={showHistoryModal}
+        onOpenChange={setShowHistoryModal}
+        projectId={project.id}
+        onRestore={refetch}
       />
     </div>
   )

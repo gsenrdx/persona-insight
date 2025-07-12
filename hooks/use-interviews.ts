@@ -119,88 +119,12 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
 
       return response.json()
     },
-    onMutate: async ({ title }) => {
-      // 진행 중인 쿼리 취소
-      await queryClient.cancelQueries({ queryKey: ['interviews', projectId] })
-      
-      // 현재 데이터 백업
-      const previousInterviews = queryClient.getQueryData<Interview[]>(['interviews', projectId])
-      
-      // 낙관적 업데이트: 임시 인터뷰 즉시 추가
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      const tempInterview: Interview = {
-        id: tempId,
-        title,
-        workflow_status: 'processing',
-        status: 'processing',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project_id: projectId,
-        company_id: profile?.company_id || '',
-        created_by: profile?.id || '',
-        interview_date: new Date().toISOString().split('T')[0],
-        raw_text: '',
-        cleaned_script: [],
-        key_takeaways: [],
-        primary_pain_points: [],
-        primary_needs: [],
-        hmw_questions: [],
-        total_topics: 0,
-        ai_persona_match: null,
-        summary_ko: null,
-        metadata: { is_temp: true },
-        script_sections: [],
-        confirmed_persona_definition_id: null,
-        file_url: null
-      }
-      
-      // 목록 최상단에 추가
-      queryClient.setQueryData<Interview[]>(
-        ['interviews', projectId],
-        (old = []) => [tempInterview, ...old]
-      )
-      
-      return { previousInterviews, tempInterview }
-    },
-    onSuccess: (data, variables, context) => {
-      if (!data.interview || !context?.tempInterview) return
-      
-      // 서버 응답으로 임시 데이터 교체
-      queryClient.setQueryData<Interview[]>(
-        ['interviews', projectId],
-        (old = []) => {
-          const withoutTemp = old.filter(i => i.id !== context.tempInterview.id)
-          
-          // 서버에서 반환된 실제 데이터 사용
-          const realInterview: Interview = {
-            ...context.tempInterview,
-            ...data.interview,
-            id: data.interview.id,
-            workflow_status: 'processing',
-            status: 'processing',
-            metadata: {} // 임시 플래그 제거
-          }
-          
-          return [realInterview, ...withoutTemp]
-        }
-      )
-      
+    onSuccess: (data) => {
+      // 생성 성공 시 목록 새로고침
+      queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
       toast.success('인터뷰 분석을 시작합니다')
-      
-      // 3초 후 서버 동기화 (백그라운드 처리 확인)
-      setTimeout(() => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['interviews', projectId],
-          exact: true 
-        })
-      }, 3000)
     },
-    onError: (error, variables, context) => {
-      // 에러 시 이전 상태로 완전 복원
-      if (context?.previousInterviews) {
-        queryClient.setQueryData(['interviews', projectId], context.previousInterviews)
-      }
-      
+    onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : '인터뷰 생성에 실패했습니다'
       toast.error(errorMessage)
     }
@@ -220,28 +144,13 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       if (!response.ok) throw new Error('Failed to update interview')
       return response.json()
     },
-    onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ['interviews', projectId] })
-      
-      const previousInterviews = queryClient.getQueryData<Interview[]>(['interviews', projectId])
-      
-      queryClient.setQueryData<Interview[]>(
-        ['interviews', projectId],
-        (old = []) => old.map(interview => 
-          interview.id === id ? { ...interview, ...updates } : interview
-        )
-      )
-      
-      return { previousInterviews }
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousInterviews) {
-        queryClient.setQueryData(['interviews', projectId], context.previousInterviews)
-      }
-      toast.error('인터뷰 업데이트에 실패했습니다')
-    },
     onSuccess: () => {
+      // 업데이트 성공 시 목록 새로고침
+      queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
       toast.success('인터뷰가 업데이트되었습니다')
+    },
+    onError: () => {
+      toast.error('인터뷰 업데이트에 실패했습니다')
     }
   })
 
@@ -257,26 +166,14 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       if (!response.ok) throw new Error('Failed to delete interview')
       return id
     },
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['interviews', projectId] })
-      
-      const previousInterviews = queryClient.getQueryData<Interview[]>(['interviews', projectId])
-      
-      queryClient.setQueryData<Interview[]>(
-        ['interviews', projectId],
-        (old = []) => old.filter(interview => interview.id !== id)
-      )
-      
-      return { previousInterviews }
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousInterviews) {
-        queryClient.setQueryData(['interviews', projectId], context.previousInterviews)
-      }
-      toast.error('인터뷰 삭제에 실패했습니다')
-    },
     onSuccess: () => {
+      // 삭제 성공 시 두 목록 모두 새로고침
+      queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['deleted-interviews', projectId] })
       toast.success('인터뷰가 삭제되었습니다')
+    },
+    onError: () => {
+      toast.error('인터뷰 삭제에 실패했습니다')
     }
   })
 
@@ -321,5 +218,89 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
     hasProcessing: processingCount > 0,
     hasFailed: failedCount > 0,
     isEmpty: interviews.length === 0 && !isLoading
+  }
+}
+
+/**
+ * 삭제된 인터뷰 목록 조회 훅
+ */
+export function useDeletedInterviews(projectId: string) {
+  const { session } = useAuth()
+  
+  const { data: interviews = [], isLoading, error, refetch } = useQuery<Interview[]>({
+    queryKey: ['deleted-interviews', projectId],
+    queryFn: async () => {
+      if (!session?.access_token) throw new Error('인증이 필요합니다')
+      
+      const response = await fetch(`/api/projects/${projectId}/interviews?deletedOnly=true`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('삭제된 인터뷰 목록 조회 실패')
+      }
+      
+      const result = await response.json()
+      return result.data || []
+    },
+    enabled: !!session?.access_token && !!projectId,
+    staleTime: 30 * 1000, // 30초
+  })
+  
+  return {
+    interviews,
+    isLoading,
+    error,
+    refetch
+  }
+}
+
+/**
+ * 인터뷰 복원 훅
+ */
+export function useRestoreInterview(projectId?: string) {
+  const { session } = useAuth()
+  const queryClient = useQueryClient()
+  
+  const mutation = useMutation({
+    mutationFn: async (interviewId: string) => {
+      if (!session?.access_token) throw new Error('인증이 필요합니다')
+      
+      const response = await fetch(`/api/interviews/${interviewId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '인터뷰 복원 실패')
+      }
+      
+      return response.json()
+    },
+    onSuccess: () => {
+      // 복원 성공 시 두 목록 모두 새로고침
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['deleted-interviews', projectId] })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['interviews'] })
+        queryClient.invalidateQueries({ queryKey: ['deleted-interviews'] })
+      }
+    },
+    onError: () => {
+      // 에러 처리 단순화
+    }
+  })
+  
+  return {
+    restoreInterview: mutation.mutate,
+    restoreInterviewAsync: mutation.mutateAsync,
+    isRestoring: mutation.isPending,
+    error: mutation.error
   }
 }

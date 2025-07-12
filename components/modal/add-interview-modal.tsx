@@ -249,10 +249,10 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
         <DialogTitle className="sr-only">인터뷰 추가</DialogTitle>
         
         {/* 상단 헤더 영역 - 프로젝트 생성 모달과 동일한 스타일 */}
-        <div className="relative bg-gradient-to-br from-indigo-50 to-purple-50 px-8 pt-8 pb-6">
+        <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 px-8 pt-8 pb-6">
           <DialogHeader className="relative z-10">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Search className="w-6 h-6 text-indigo-600" />
+              <Search className="w-6 h-6 text-blue-600" />
               인터뷰 추가
             </h2>
             <DialogDescription className="text-base text-gray-600 mt-2">
@@ -276,8 +276,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {/* 입력 방식 선택 섹션 */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span className="text-xs font-bold text-indigo-600">1</span>
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-xs font-bold text-blue-600">1</span>
                 </div>
                 입력 방식 선택
               </h3>
@@ -298,14 +298,14 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                       className={cn(
                         "relative flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all cursor-pointer",
                         isSelected
-                          ? "border-indigo-400 bg-indigo-50 text-gray-900"
-                          : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/30",
+                          ? "border-blue-400 bg-blue-50 text-gray-900"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50/30",
                         option.disabled && "opacity-50 cursor-not-allowed hover:bg-white hover:border-gray-200"
                       )}
                     >
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                        isSelected ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-600"
+                        isSelected ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600"
                       )}>
                         <Icon className="w-4 h-4" />
                       </div>
@@ -343,8 +343,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {inputType === 'stt' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-xs font-bold text-indigo-600">2</span>
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-blue-600">2</span>
                   </div>
                   파일 업로드
                 </h3>
@@ -359,8 +359,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                   className={cn(
                     "relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all",
                     isDragging 
-                      ? "border-indigo-400 bg-indigo-50" 
-                      : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/20"
+                      ? "border-blue-400 bg-blue-50" 
+                      : "border-gray-300 hover:border-blue-300 hover:bg-blue-50/20"
                   )}
                 >
                   {isDragging ? (
@@ -370,8 +370,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                     </>
                   ) : (
                     <>
-                      <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <FileAudio className="w-8 h-8 text-indigo-600" />
+                      <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                        <FileAudio className="w-8 h-8 text-blue-600" />
                       </div>
                       <p className="text-base font-medium text-gray-900 mb-1">
                         클릭하거나 파일을 드래그하세요
@@ -382,10 +382,10 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                     </>
                   )}
                 </div>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-indigo-700">STT(Speech-to-Text) 변환본은 음성을 텍스트로 변환한 문서입니다</p>
+                    <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-blue-700">STT(Speech-to-Text) 변환본은 음성을 텍스트로 변환한 문서입니다</p>
                   </div>
                 </div>
                 </div>
@@ -396,8 +396,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {inputType === 'text' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-xs font-bold text-indigo-600">2</span>
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-blue-600">2</span>
                   </div>
                   텍스트 입력
                 </h3>
@@ -443,7 +443,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                   <Button
                     onClick={handleAddText}
                     disabled={!textInput.trim()}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     인터뷰 추가
@@ -456,8 +456,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {inputType === 'audio' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-xs font-bold text-indigo-600">2</span>
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-blue-600">2</span>
                   </div>
                   음성 파일 업로드
                 </h3>
@@ -499,8 +499,8 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {interviews.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-xs font-bold text-indigo-600">3</span>
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-xs font-bold text-blue-600">3</span>
                   </div>
                   추가된 인터뷰 검토
                   <span className="text-sm font-normal text-gray-500">({interviews.length}개)</span>
@@ -516,10 +516,10 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                       <div className="flex items-start gap-2 mb-2">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                          item.type === 'file' ? "bg-indigo-100" : "bg-gray-100"
+                          item.type === 'file' ? "bg-blue-100" : "bg-gray-100"
                         )}>
                           {item.type === 'file' ? (
-                            <FileAudio className="w-4 h-4 text-indigo-600" />
+                            <FileAudio className="w-4 h-4 text-blue-600" />
                           ) : (
                             <Type className="w-4 h-4 text-gray-600" />
                           )}
@@ -535,7 +535,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                             className={cn(
                               "w-full text-sm font-medium bg-transparent border-0 border-b p-0 pb-1 focus:outline-none transition-colors",
                               item.title.trim() 
-                                ? "border-gray-300 hover:border-indigo-300 focus:border-indigo-500" 
+                                ? "border-gray-300 hover:border-blue-300 focus:border-blue-500" 
                                 : "border-red-300 text-red-500 placeholder-red-400 hover:border-red-400"
                             )}
                           />
@@ -583,7 +583,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {interviews.length === 0 ? (
               '인터뷰 데이터를 추가해주세요'
             ) : (
-              <><span className="text-indigo-600 font-medium">{interviews.length}개</span>의 인터뷰가 준비되었습니다</>
+              <><span className="text-blue-600 font-medium">{interviews.length}개</span>의 인터뷰가 준비되었습니다</>
             )}
           </p>
           <div className="flex gap-3">
@@ -598,7 +598,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             <Button
               onClick={handleSubmit}
               disabled={interviews.length === 0 || isSubmitting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               {isSubmitting ? (
                 <>

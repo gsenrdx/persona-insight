@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       companies: {
@@ -45,6 +50,8 @@ export type Database = {
           content: string
           created_at: string | null
           created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_deleted: boolean | null
           note_id: string
@@ -55,6 +62,8 @@ export type Database = {
           content: string
           created_at?: string | null
           created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_deleted?: boolean | null
           note_id: string
@@ -65,12 +74,21 @@ export type Database = {
           content?: string
           created_at?: string | null
           created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_deleted?: boolean | null
           note_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_interview_note_replies_deleted_by"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interview_note_replies_company_id_fkey"
             columns: ["company_id"]
@@ -100,6 +118,8 @@ export type Database = {
           content: string
           created_at: string | null
           created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           interview_id: string
           is_deleted: boolean | null
@@ -111,6 +131,8 @@ export type Database = {
           content: string
           created_at?: string | null
           created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           interview_id: string
           is_deleted?: boolean | null
@@ -122,6 +144,8 @@ export type Database = {
           content?: string
           created_at?: string | null
           created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           interview_id?: string
           is_deleted?: boolean | null
@@ -129,6 +153,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_interview_notes_deleted_by"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interview_notes_company_id_fkey"
             columns: ["company_id"]
@@ -157,6 +188,8 @@ export type Database = {
           company_id: string
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           file_path: string | null
           id: string
           interview_detail: Json | null
@@ -179,6 +212,8 @@ export type Database = {
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_path?: string | null
           id?: string
           interview_detail?: Json | null
@@ -201,6 +236,8 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_path?: string | null
           id?: string
           interview_detail?: Json | null
@@ -220,6 +257,13 @@ export type Database = {
           y_axis?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_interviewees_deleted_by"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interviewees_company_id_fkey"
             columns: ["company_id"]
@@ -249,8 +293,11 @@ export type Database = {
           ai_persona_match: string | null
           cleaned_script: Json | null
           company_id: string
+          confirmed_persona_definition_id: string | null
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           hmw_questions: Json | null
           id: string
           interview_date: string | null
@@ -275,8 +322,11 @@ export type Database = {
           ai_persona_match?: string | null
           cleaned_script?: Json | null
           company_id: string
+          confirmed_persona_definition_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           hmw_questions?: Json | null
           id?: string
           interview_date?: string | null
@@ -301,8 +351,11 @@ export type Database = {
           ai_persona_match?: string | null
           cleaned_script?: Json | null
           company_id?: string
+          confirmed_persona_definition_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           hmw_questions?: Json | null
           id?: string
           interview_date?: string | null
@@ -324,6 +377,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_interviews_deleted_by"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "interviews_ai_persona_match_fkey"
             columns: ["ai_persona_match"]
             isOneToOne: false
@@ -335,6 +395,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_confirmed_persona_definition_id_fkey"
+            columns: ["confirmed_persona_definition_id"]
+            isOneToOne: false
+            referencedRelation: "persona_definitions"
             referencedColumns: ["id"]
           },
           {
@@ -353,6 +420,48 @@ export type Database = {
           },
           {
             foreignKeyName: "interviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      key_takeaways: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          project_id: string | null
+          takeaway_text: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          takeaway_text: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          takeaway_text?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "key_takeaways_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "key_takeaways_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -558,6 +667,8 @@ export type Database = {
           company_id: string
           created_at: string | null
           criteria_configuration_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           insight: string
           insight_quote: string
@@ -583,6 +694,8 @@ export type Database = {
           company_id: string
           created_at?: string | null
           criteria_configuration_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           insight: string
           insight_quote: string
@@ -608,6 +721,8 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           criteria_configuration_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           insight?: string
           insight_quote?: string
@@ -629,6 +744,13 @@ export type Database = {
           y_min?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_personas_deleted_by"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personas_company_id_fkey"
             columns: ["company_id"]
@@ -741,6 +863,73 @@ export type Database = {
           },
         ]
       }
+      project_summaries: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          excluded_interview_ids: string[] | null
+          id: string
+          interview_count_at_creation: number
+          interview_ids_at_creation: string[] | null
+          last_interview_id: string | null
+          project_id: string
+          summary_text: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          excluded_interview_ids?: string[] | null
+          id?: string
+          interview_count_at_creation?: number
+          interview_ids_at_creation?: string[] | null
+          last_interview_id?: string | null
+          project_id: string
+          summary_text: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          excluded_interview_ids?: string[] | null
+          id?: string
+          interview_count_at_creation?: number
+          interview_ids_at_creation?: string[] | null
+          last_interview_id?: string | null
+          project_id?: string
+          summary_text?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_summaries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_summaries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_summaries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           company_id: string
@@ -809,140 +998,44 @@ export type Database = {
           },
         ]
       }
-      survey_sheets: {
+      script_sections: {
         Row: {
+          company_id: string
           created_at: string | null
-          created_by: string
-          description: string | null
-          google_sheet_id: string
-          google_sheet_url: string
           id: string
-          name: string
-          project_id: string
-          sheet_id: string | null
-          sheet_range: string
+          project_id: string | null
+          section_name: string
           updated_at: string | null
         }
         Insert: {
+          company_id: string
           created_at?: string | null
-          created_by: string
-          description?: string | null
-          google_sheet_id: string
-          google_sheet_url: string
           id?: string
-          name: string
-          project_id: string
-          sheet_id?: string | null
-          sheet_range?: string
+          project_id?: string | null
+          section_name: string
           updated_at?: string | null
         }
         Update: {
+          company_id?: string
           created_at?: string | null
-          created_by?: string
-          description?: string | null
-          google_sheet_id?: string
-          google_sheet_url?: string
           id?: string
-          name?: string
-          project_id?: string
-          sheet_id?: string | null
-          sheet_range?: string
+          project_id?: string | null
+          section_name?: string
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "survey_sheets_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "script_sections_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "survey_sheets_project_id_fkey"
+            foreignKeyName: "script_sections_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workflows: {
-        Row: {
-          advanced_settings: Json | null
-          average_execution_time: unknown | null
-          conditions: Json
-          created_at: string | null
-          created_by: string
-          description: string | null
-          execution_count: number | null
-          id: string
-          is_active: boolean | null
-          last_run_at: string | null
-          last_run_error: string | null
-          last_run_result_count: number | null
-          logic: string
-          name: string
-          new_column_name: string | null
-          output_column: string | null
-          prompt: string
-          survey_sheet_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          advanced_settings?: Json | null
-          average_execution_time?: unknown | null
-          conditions?: Json
-          created_at?: string | null
-          created_by: string
-          description?: string | null
-          execution_count?: number | null
-          id?: string
-          is_active?: boolean | null
-          last_run_at?: string | null
-          last_run_error?: string | null
-          last_run_result_count?: number | null
-          logic?: string
-          name: string
-          new_column_name?: string | null
-          output_column?: string | null
-          prompt: string
-          survey_sheet_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          advanced_settings?: Json | null
-          average_execution_time?: unknown | null
-          conditions?: Json
-          created_at?: string | null
-          created_by?: string
-          description?: string | null
-          execution_count?: number | null
-          id?: string
-          is_active?: boolean | null
-          last_run_at?: string | null
-          last_run_error?: string | null
-          last_run_result_count?: number | null
-          logic?: string
-          name?: string
-          new_column_name?: string | null
-          output_column?: string | null
-          prompt?: string
-          survey_sheet_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workflows_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "workflows_survey_sheet_id_fkey"
-            columns: ["survey_sheet_id"]
-            isOneToOne: false
-            referencedRelation: "survey_sheets"
             referencedColumns: ["id"]
           },
         ]
@@ -960,6 +1053,18 @@ export type Database = {
           user_role: string
           project_role: string
         }[]
+      }
+      create_interview_version: {
+        Args: {
+          p_interview_id: string
+          p_change_reason?: string
+          p_is_major?: boolean
+        }
+        Returns: string
+      }
+      get_changed_fields: {
+        Args: { old_data: Json; new_data: Json }
+        Returns: string[]
       }
       get_company_members_for_project: {
         Args: { p_project_id: string }
@@ -983,6 +1088,18 @@ export type Database = {
       get_my_company_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_new_interview_count: {
+        Args: { p_project_id: string }
+        Returns: {
+          new_count: number
+          new_interview_ids: string[]
+          current_completed_count: number
+        }[]
+      }
+      get_next_version_number: {
+        Args: { p_interview_id: string }
+        Returns: number
       }
       get_project_members_with_profiles: {
         Args: { p_project_id: string }
@@ -1039,6 +1156,38 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      pgmq_archive: {
+        Args: { queue_name: string; msg_id: number }
+        Returns: boolean
+      }
+      pgmq_delete: {
+        Args: { queue_name: string; msg_id: number }
+        Returns: boolean
+      }
+      pgmq_metrics: {
+        Args: { p_queue_name: string }
+        Returns: {
+          queue_name: string
+          queue_length: number
+          newest_msg_age_sec: number
+          oldest_msg_age_sec: number
+          total_messages: number
+        }[]
+      }
+      pgmq_read: {
+        Args: { queue_name: string; vt: number; qty?: number }
+        Returns: {
+          msg_id: number
+          read_ct: number
+          enqueued_at: string
+          vt_at: string
+          message: Json
+        }[]
+      }
+      pgmq_send: {
+        Args: { queue_name: string; msg: Json; delay_seconds?: number }
+        Returns: number
+      }
       search_interview_with_permissions: {
         Args: {
           p_company_id: string
@@ -1062,21 +1211,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1094,14 +1247,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1117,14 +1272,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1140,14 +1297,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1155,14 +1314,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

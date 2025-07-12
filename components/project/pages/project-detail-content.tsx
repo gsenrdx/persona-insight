@@ -24,7 +24,12 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { data: project, isLoading: projectLoading, error, isError, refetch, isInitialLoading } = useProject(projectId)
   const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
   
-  const [activeView, setActiveView] = useState('interviews')
+  const [activeView, setActiveView] = useState(() => {
+    const tabParam = searchParams.get('tab')
+    return tabParam && ['interviews', 'insights', 'settings'].includes(tabParam) 
+      ? tabParam 
+      : 'interviews'
+  })
   const [scriptSections, setScriptSections] = useState<any[] | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [scrollToSection, setScrollToSection] = useState<((sectionName: string) => void) | null>(null)
@@ -62,18 +67,43 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {
+    const tabParam = searchParams.get('tab')
     const interviewParam = searchParams.get('interview')
+    
+    // interview 파라미터가 있으면 interviews 탭으로
     if (interviewParam) {
       setActiveView('interviews')
+      // tab 파라미터가 있으면 제거 (interviews가 기본값)
+      if (tabParam) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('tab')
+        router.replace(url.pathname + url.search, { scroll: false })
+      }
+    } 
+    // tab 파라미터가 있고 유효한 값이면 해당 탭으로
+    else if (tabParam && ['interviews', 'insights', 'settings'].includes(tabParam)) {
+      setActiveView(tabParam)
     }
-  }, [searchParams])
+    // tab 파라미터가 없으면 기본값 interviews (URL 업데이트 불필요)
+    else if (!tabParam) {
+      setActiveView('interviews')
+    }
+  }, [searchParams, router])
 
 
   const handleViewChange = (view: string) => {
     setActiveView(view)
-    // URL 업데이트 (interview 쿼리 파라미터 제거)
+    // URL 업데이트 
     const url = new URL(window.location.href)
-    url.searchParams.delete('interview')
+    
+    // interviews가 기본값이므로 URL을 깔끔하게 유지
+    if (view === 'interviews') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', view)
+    }
+    
+    url.searchParams.delete('interview') // 인터뷰 상세 보기 파라미터 제거
     router.replace(url.pathname + url.search, { scroll: false })
   }
 
@@ -239,7 +269,17 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
         hideSidebar={isViewingInterviewDetail}
         isInterviewDetail={isViewingInterviewDetail}
         interviewTitle={selectedInterviewTitle}
-        onBack={() => router.push(`/projects/${projectId}`, { scroll: false })}
+        onBack={() => {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('interview')
+          // interviews가 기본값이므로 다른 탭일 때만 파라미터 설정
+          if (activeView === 'interviews') {
+            url.searchParams.delete('tab')
+          } else {
+            url.searchParams.set('tab', activeView)
+          }
+          router.push(url.pathname + url.search, { scroll: false })
+        }}
         canEditInterview={editButtonInfo.canEdit}
         onEditInterview={editButtonInfo.onClick}
         downloadHandlers={downloadHandlers}

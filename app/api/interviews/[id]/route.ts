@@ -23,8 +23,12 @@ export async function GET(
     }
 
     const { companyId } = await getAuthenticatedUserProfile(authorization, supabase)
+    
+    // 쿼리 파라미터 확인 (삭제된 항목 포함 여부)
+    const { searchParams } = new URL(request.url)
+    const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('interviews')
       .select(`
         *,
@@ -35,7 +39,13 @@ export async function GET(
       `)
       .eq('id', id)
       .eq('company_id', companyId)
-      .single()
+    
+    // 삭제된 항목 제외 (기본값)
+    if (!includeDeleted) {
+      query = query.is('deleted_at', null)
+    }
+    
+    const { data, error } = await query.single()
 
     if (error || !data) {
       return NextResponse.json(
@@ -96,7 +106,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/interviews/[id] - 인터뷰 삭제
+// DELETE /api/interviews/[id] - 인터뷰 삭제 (Soft Delete)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -109,19 +119,68 @@ export async function DELETE(
       return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 })
     }
 
-    const { companyId } = await getAuthenticatedUserProfile(authorization, supabase)
+    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabase)
+    
+    // 쿼리 파라미터 확인 (영구 삭제 여부)
+    const { searchParams } = new URL(request.url)
+    const permanent = searchParams.get('permanent') === 'true'
+    
+    if (permanent) {
+      // 영구 삭제는 관리자만 가능
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      
+      if (!profile || (profile.role !== 'company_admin' && profile.role !== 'super_admin')) {
+        return NextResponse.json(
+          { error: '영구 삭제 권한이 없습니다', success: false },
+          { status: 403 }
+        )
+      }
+      
+      // 실제 삭제 수행
+      const { error } = await supabase
+        .from('interviews')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', companyId)
+      
+      if (error) {
+        return NextResponse.json(
+          { error: '인터뷰 영구 삭제 중 오류가 발생했습니다', success: false },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Soft delete - deleted_at과 deleted_by 필드 업데이트
+      const { data: updateResult, error } = await supabase
+        .from('interviews')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: userId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .is('deleted_at', null) // 이미 삭제된 항목은 다시 삭제할 수 없음
+        .select()
 
-    const { error } = await supabase
-      .from('interviews')
-      .delete()
-      .eq('id', id)
-      .eq('company_id', companyId)
+      if (error) {
+        console.error('Soft delete error:', error)
+        return NextResponse.json(
+          { error: `인터뷰 삭제 중 오류가 발생했습니다: ${error.message}`, success: false },
+          { status: 500 }
+        )
+      }
 
-    if (error) {
-      return NextResponse.json(
-        { error: '인터뷰 삭제 중 오류가 발생했습니다', success: false },
-        { status: 500 }
-      )
+      if (!updateResult || updateResult.length === 0) {
+        return NextResponse.json(
+          { error: '인터뷰를 찾을 수 없거나 이미 삭제되었습니다', success: false },
+          { status: 404 }
+        )
+      }
     }
 
     return NextResponse.json({ success: true })
