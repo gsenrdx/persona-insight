@@ -92,6 +92,22 @@ export function useProjectSummary(projectId: string) {
     }
   })
 
+  // 요약 생성 후 삭제된 인터뷰가 있는지 확인
+  const hasDeletedInterviewsAfterSummary = summary ? interviews.some(interview => {
+    if (!interview.deleted_at) return false
+    const deletedAt = new Date(interview.deleted_at).getTime()
+    const summaryCreatedAt = new Date(summary.created_at).getTime()
+    return deletedAt > summaryCreatedAt
+  }) : false
+
+  // 요약이 최신 상태인지 확인
+  const isOutdated = summary ? (
+    // 인터뷰 수가 변경된 경우 (추가 또는 삭제)
+    currentInterviewCount !== summary.interview_count_at_creation ||
+    // 요약 생성 후 인터뷰가 삭제된 경우
+    hasDeletedInterviewsAfterSummary
+  ) : false
+
   // 새로운 인터뷰 추가 여부 확인
   const hasNewInterviews = summary 
     ? currentInterviewCount > summary.interview_count_at_creation
@@ -108,6 +124,7 @@ export function useProjectSummary(projectId: string) {
     currentInterviewCount,
     hasNewInterviews,
     newInterviewsCount,
+    isOutdated,
     generateSummary: generateSummary.mutate,
     isGenerating: isGenerating || generateSummary.isPending
   }

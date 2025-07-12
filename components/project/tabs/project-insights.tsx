@@ -30,7 +30,8 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     summary, 
     isLoading: summaryLoading, 
     hasNewInterviews, 
-    newInterviewsCount, 
+    newInterviewsCount,
+    isOutdated, 
     generateSummary, 
     isGenerating 
   } = useProjectSummary(project.id)
@@ -325,7 +326,7 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
         {/* 헤더 */}
         <div className="mb-6">
           <div className="relative bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-2xl p-6 overflow-hidden">
@@ -381,27 +382,18 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                       새 인터뷰 {newInterviewsCount}개
                     </span>
                   )}
-                  {summary ? (
-                    <Button
-                      onClick={() => generateSummary()}
-                      disabled={isGenerating || !hasNewInterviews}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {isGenerating ? '분석 중...' : hasNewInterviews ? '재분석' : '업데이트'}
-                    </Button>
-                  ) : (
+                  {(summary && isOutdated) || !summary ? (
                     <Button
                       onClick={() => generateSummary()}
                       disabled={isGenerating || totalCount === 0}
                       variant="outline"
                       size="sm"
                     >
-                      {isGenerating ? '생성 중...' : '요약 생성'}
+                      {isGenerating ? '생성 중...' : isOutdated ? '업데이트' : '요약 생성'}
                     </Button>
-                  )}
+                  ) : null}
                 </div>
-                {summary && (
+                {summary && !isOutdated && (
                   <div className="text-xs text-gray-500">
                     Pin이 {summary.interview_count_at_creation}개 인터뷰를 모두 확인했어요!
                   </div>
@@ -428,13 +420,18 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
                       <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                       <span>요약을 불러오는 중...</span>
                     </div>
+                  ) : summary && isOutdated ? (
+                    <p className="text-gray-500">
+                      인터뷰가 변경되어 현재 요약이 최신 상태가 아닙니다. 
+                      상단의 업데이트 버튼을 눌러 최신 정보를 반영해주세요.
+                    </p>
                   ) : summary ? (
                     <p>{summary.summary_text}</p>
                   ) : totalCount === 0 ? (
                     <p className="text-gray-500">분석할 인터뷰가 없습니다. 인터뷰를 추가해주세요.</p>
                   ) : (
                     <p className="text-gray-500">
-                      프로젝트 요약을 생성하려면 &ldquo;요약 생성&rdquo; 버튼을 클릭하세요.
+                      프로젝트 요약을 생성하려면 상단의 &ldquo;요약 생성&rdquo; 버튼을 클릭하세요.
                     </p>
                   )}
                 </div>

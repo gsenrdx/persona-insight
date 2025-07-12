@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils/index"
-import { motion } from "framer-motion"
 
 const navigationItems = [
   {
@@ -46,16 +45,7 @@ export function Navigation() {
           >
             {item.name}
             {isActive && (
-              <motion.div 
-                layoutId="activeNavItem"
-                className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full"
-                initial={false}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30
-                }}
-              />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" />
             )}
           </Link>
         )
