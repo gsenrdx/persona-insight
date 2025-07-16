@@ -66,7 +66,9 @@ export default function PersonaCardGrid() {
         return (b.interview_count || 0) - (a.interview_count || 0)
       }
       // 2순위: persona_type 오름차순 (P1, P2, P3...)
-      return a.persona_type.localeCompare(b.persona_type)
+      const aType = a.persona_type || ''
+      const bType = b.persona_type || ''
+      return aType.localeCompare(bType)
     })
   }, [rawPersonas])
 
