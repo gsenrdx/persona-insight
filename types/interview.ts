@@ -62,14 +62,14 @@ export interface ScriptSection {
   is_main_content: boolean;
 }
 
-// AI 페르소나 정의 (관계 데이터)
-export interface AIPersonaDefinition {
-  id: string;
-  name_ko: string;
-  name_en: string;
-  description?: string;
-  tags: string[];
-}
+// 레거시 타입 - 더 이상 사용하지 않음
+// export interface AIPersonaDefinition {
+//   id: string;
+//   name_ko: string;
+//   name_en: string;
+//   description?: string;
+//   tags: string[];
+// }
 
 // 인터뷰 노트 타입
 export interface InterviewNote {
@@ -108,11 +108,8 @@ export interface Interview {
   primary_needs: InsightItem[] | null;
   hmw_questions: HMWQuestion[] | null;
   script_sections: ScriptSection[] | null;
-  // AI 페르소나 매칭 결과
-  ai_persona_match?: string | null; // persona_definitions 테이블 참조 (외래키)
-  ai_persona_explanation?: string | null;
-  // 사용자 확정 페르소나
-  confirmed_persona_definition_id?: string | null; // persona_definitions 테이블 참조 (외래키)
+  // 페르소나 매칭 - 새로운 구조
+  persona_combination_id?: string | null; // persona_combinations 테이블 참조 (외래키)
   // 관계 데이터
   created_by_profile?: {
     id: string;
@@ -124,8 +121,20 @@ export interface Interview {
     persona_type: string;
     persona_title: string | null;
   };
-  ai_persona_definition?: AIPersonaDefinition; // AI 페르소나 정의 관계 데이터
-  confirmed_persona_definition?: AIPersonaDefinition; // 확정된 페르소나 정의 관계 데이터
+  persona_combination?: {
+    id: string;
+    persona_code: string;
+    type_ids: string[];
+    persona_classification_types?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      persona_classifications?: {
+        name: string;
+        description: string;
+      };
+    }>;
+  }; // 페르소나 조합 관계 데이터
   note_count?: number;
   notes?: InterviewNote[];
 }

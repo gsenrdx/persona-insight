@@ -241,12 +241,23 @@ export async function POST(request: Request) {
 
     // 단일 쿼리로 모든 연도의 데이터 조회
     let query = supabase
-      .from('interviewees')
-      .select('*, session_date')
+      .from('interviews')
+      .select(`
+        *,
+        persona_combination:persona_combinations(
+          id,
+          persona_code,
+          type_ids,
+          title,
+          description
+        )
+      `)
       .eq('company_id', company_id)
-      .gte('session_date', `${minYear}-01-01`)
-      .lte('session_date', `${maxYear}-12-31`)
-      .order('session_date', { ascending: false })
+      .eq('status', 'completed')
+      .is('deleted_at', null)
+      .gte('interview_date', `${minYear}-01-01`)
+      .lte('interview_date', `${maxYear}-12-31`)
+      .order('interview_date', { ascending: false })
 
     // 프로젝트 필터링 추가
     if (project_id) {
@@ -266,18 +277,88 @@ export async function POST(request: Request) {
       )
     }
 
+    // 페르소나 조합 타입 정보를 별도로 가져오기
+    let typeDataMap = new Map()
+    
+    if (allInterviews && allInterviews.length > 0) {
+      // 모든 type_ids 수집
+      const allTypeIds = [...new Set(
+        allInterviews
+          .filter(i => i.persona_combination?.type_ids)
+          .flatMap(i => i.persona_combination.type_ids)
+      )]
+      
+      if (allTypeIds.length > 0) {
+        // 타입 정보 조회
+        const { data: types } = await supabase
+          .from('persona_classification_types')
+          .select(`
+            id,
+            name,
+            description,
+            persona_classifications(
+              name,
+              description
+            )
+          `)
+          .in('id', allTypeIds)
+        
+        // ID로 매핑
+        if (types) {
+          types.forEach(type => {
+            typeDataMap.set(type.id, type)
+          })
+        }
+      }
+    }
+
+    // 인터뷰 데이터에 타입 정보 추가
+    allInterviews?.forEach(interview => {
+      if (interview.persona_combination && interview.persona_combination.type_ids) {
+        interview.persona_combination.persona_classification_types = interview.persona_combination.type_ids
+          .map(typeId => typeDataMap.get(typeId))
+          .filter(Boolean)
+      }
+    })
+
     // 연도별로 데이터 그룹화 및 인사이트 생성
     const results: Record<string, any> = {}
 
     for (const year of years) {
       // 해당 연도의 인터뷰만 필터링
       const yearInterviews = allInterviews?.filter(interview => {
-        const interviewYear = new Date(interview.session_date).getFullYear()
+        const interviewYear = new Date(interview.interview_date).getFullYear()
         return interviewYear === parseInt(year)
       }) || []
 
-      // 해당 연도의 인사이트 변환
-      const insights = transformInterviewDataToInsights(yearInterviews)
+      // 해당 연도의 인사이트 변환 - 새로운 인터뷰 구조 사용
+      const insights = yearInterviews.length > 0 ? (() => {
+        // key_takeaways 기반 인사이트 생성
+        const insightMap = new Map<string, InsightData>()
+        
+        yearInterviews.forEach((interview, idx) => {
+          if (!interview.key_takeaways || !Array.isArray(interview.key_takeaways)) return
+          
+          interview.key_takeaways.forEach(takeaway => {
+            if (!insightMap.has(takeaway)) {
+              insightMap.set(takeaway, {
+                title: takeaway,
+                summary: takeaway,
+                keywords: [],
+                quotes: [],
+                mentionCount: 0,
+                priority: 0
+              })
+            }
+            
+            const insight = insightMap.get(takeaway)!
+            insight.mentionCount += 1
+            insight.priority = insight.mentionCount
+          })
+        })
+        
+        return Array.from(insightMap.values()).sort((a, b) => b.priority - a.priority)
+      })() : []
 
       results[year] = {
         year: parseInt(year),
@@ -288,7 +369,7 @@ export async function POST(request: Request) {
           totalTopics: insights.length,
           totalQuotes: insights.reduce((sum: number, insight) => sum + insight.quotes.length, 0),
           rawInterviewCount: yearInterviews.length,
-          detailedInterviewCount: yearInterviews.filter(i => i.interview_detail && Array.isArray(i.interview_detail) && i.interview_detail.length > 0).length
+          completedInterviewCount: yearInterviews.filter(i => i.status === 'completed').length
         }
       }
     }

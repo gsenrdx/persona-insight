@@ -5,6 +5,7 @@ import { useInterviews } from '@/hooks/use-interviews'
 import { useProjectSummary } from '@/hooks/use-project-summary'
 import { Button } from '@/components/ui/button'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { getPersonaCombinationDisplayName } from '@/lib/utils/persona-combination'
 
 interface Project {
   id: string
@@ -267,13 +268,15 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
     const personaCount = new Map<string, number>()
     
     interviews.forEach(interview => {
-      // 확정된 페르소나가 있으면 우선 사용, 없으면 AI 매칭 결과 사용
-      const personaDefinition = interview.confirmed_persona_definition || interview.ai_persona_definition
+      // 새로운 페르소나 조합 구조 사용
+      const personaCombination = interview.persona_combination
       
-      if (personaDefinition?.name_ko) {
-        const personaName = personaDefinition.name_ko
-        const currentCount = personaCount.get(personaName) || 0
-        personaCount.set(personaName, currentCount + 1)
+      if (personaCombination) {
+        const personaName = getPersonaCombinationDisplayName(personaCombination)
+        if (personaName) {
+          const currentCount = personaCount.get(personaName) || 0
+          personaCount.set(personaName, currentCount + 1)
+        }
       }
     })
     
@@ -304,8 +307,9 @@ export default function ProjectInsights({ project }: ProjectInsightsProps) {
   // 선택된 페르소나에 해당하는 인터뷰 필터링
   const filteredInterviewsByPersona = selectedPersona ? (() => {
     return interviews.filter(interview => {
-      const personaDefinition = interview.confirmed_persona_definition || interview.ai_persona_definition
-      return personaDefinition?.name_ko === selectedPersona
+      const personaCombination = interview.persona_combination
+      const personaName = getPersonaCombinationDisplayName(personaCombination)
+      return personaName === selectedPersona
     })
   })() : []
   // 인터뷰 데이터가 로딩 중일 때 전체 로딩 화면 표시

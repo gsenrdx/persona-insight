@@ -44,6 +44,61 @@ export type Database = {
         }
         Relationships: []
       }
+      glossary: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string
+          definition: string
+          id: string
+          term: string
+          updated_at: string | null
+          updated_by: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by: string
+          definition: string
+          id?: string
+          term: string
+          updated_at?: string | null
+          updated_by: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string
+          definition?: string
+          id?: string
+          term?: string
+          updated_at?: string | null
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "glossary_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "glossary_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "glossary_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_note_replies: {
         Row: {
           company_id: string
@@ -511,65 +566,113 @@ export type Database = {
           },
         ]
       }
-      persona_criteria_configurations: {
+      persona_classification_types: {
+        Row: {
+          classification_id: string
+          created_at: string | null
+          description: string
+          display_order: number
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          classification_id: string
+          created_at?: string | null
+          description: string
+          display_order?: number
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          classification_id?: string
+          created_at?: string | null
+          description?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_classification_types_classification_id_fkey"
+            columns: ["classification_id"]
+            isOneToOne: false
+            referencedRelation: "persona_classifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      persona_classifications: {
         Row: {
           company_id: string
           created_at: string | null
-          created_by: string | null
+          description: string
+          display_order: number
           id: string
-          is_active: boolean | null
-          output_config: Json
-          persona_matrix: Json
-          project_id: string | null
-          scoring_guidelines: Json
-          unclassified_cells: Json
+          name: string
           updated_at: string | null
-          x_axis: Json
-          y_axis: Json
         }
         Insert: {
           company_id: string
           created_at?: string | null
-          created_by?: string | null
+          description: string
+          display_order?: number
           id?: string
-          is_active?: boolean | null
-          output_config?: Json
-          persona_matrix?: Json
-          project_id?: string | null
-          scoring_guidelines?: Json
-          unclassified_cells?: Json
+          name: string
           updated_at?: string | null
-          x_axis?: Json
-          y_axis?: Json
         }
         Update: {
           company_id?: string
           created_at?: string | null
-          created_by?: string | null
+          description?: string
+          display_order?: number
           id?: string
-          is_active?: boolean | null
-          output_config?: Json
-          persona_matrix?: Json
-          project_id?: string | null
-          scoring_guidelines?: Json
-          unclassified_cells?: Json
+          name?: string
           updated_at?: string | null
-          x_axis?: Json
-          y_axis?: Json
         }
         Relationships: [
           {
-            foreignKeyName: "persona_criteria_configurations_company_id_fkey"
+            foreignKeyName: "persona_classifications_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      persona_combinations: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          persona_code: string
+          type_ids: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          persona_code: string
+          type_ids: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          persona_code?: string
+          type_ids?: string[]
+          updated_at?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "persona_criteria_configurations_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "persona_combinations_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -661,9 +764,52 @@ export type Database = {
           },
         ]
       }
+      persona_type_mappings: {
+        Row: {
+          combination_id: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          legacy_persona_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          combination_id?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          legacy_persona_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          combination_id?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          legacy_persona_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_type_mappings_combination_id_fkey"
+            columns: ["combination_id"]
+            isOneToOne: false
+            referencedRelation: "persona_combinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_type_mappings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personas: {
         Row: {
           active: boolean | null
+          combination_id: string | null
           company_id: string
           created_at: string | null
           criteria_configuration_id: string | null
@@ -691,6 +837,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          combination_id?: string | null
           company_id: string
           created_at?: string | null
           criteria_configuration_id?: string | null
@@ -718,6 +865,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          combination_id?: string | null
           company_id?: string
           created_at?: string | null
           criteria_configuration_id?: string | null
@@ -752,17 +900,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "personas_combination_id_fkey"
+            columns: ["combination_id"]
+            isOneToOne: false
+            referencedRelation: "persona_combinations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "personas_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "personas_criteria_configuration_id_fkey"
-            columns: ["criteria_configuration_id"]
-            isOneToOne: false
-            referencedRelation: "persona_criteria_configurations"
             referencedColumns: ["id"]
           },
           {
@@ -1054,14 +1202,6 @@ export type Database = {
           project_role: string
         }[]
       }
-      create_interview_version: {
-        Args: {
-          p_interview_id: string
-          p_change_reason?: string
-          p_is_major?: boolean
-        }
-        Returns: string
-      }
       get_changed_fields: {
         Args: { old_data: Json; new_data: Json }
         Returns: string[]
@@ -1096,10 +1236,6 @@ export type Database = {
           new_interview_ids: string[]
           current_completed_count: number
         }[]
-      }
-      get_next_version_number: {
-        Args: { p_interview_id: string }
-        Returns: number
       }
       get_project_members_with_profiles: {
         Args: { p_project_id: string }
@@ -1155,6 +1291,10 @@ export type Database = {
       get_user_company_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      migrate_persona_types_to_combinations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       pgmq_archive: {
         Args: { queue_name: string; msg_id: number }

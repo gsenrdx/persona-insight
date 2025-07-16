@@ -94,7 +94,8 @@ export async function POST(req: NextRequest) {
           insight,
           insight_quote,
           thumbnail,
-          project_id
+          project_id,
+          combination_id
         `)
         .eq('id', personaId)
         .eq('company_id', companyId)
@@ -103,28 +104,63 @@ export async function POST(req: NextRequest) {
       personas = data;
       personasError = error;
     } else {
-      // company_id와 persona_type으로만 조회 (project_id 구분 없이)
-      const { data, error } = await supabase
-        .from('personas')
-        .select(`
-          id,
-          persona_type,
-          persona_description,
-          persona_summary,
-          persona_style,
-          painpoints,
-          needs,
-          insight,
-          insight_quote,
-          thumbnail,
-          project_id
-        `)
+      // 먼저 새로운 분류 체계에서 매핑 확인
+      const { data: mapping } = await supabase
+        .from('persona_type_mappings')
+        .select('combination_id')
         .eq('company_id', companyId)
-        .eq('persona_type', personaType)
-        .eq('active', true); // 활성화된 페르소나만 조회
+        .eq('legacy_persona_type', personaType)
+        .single();
       
-      personas = data;
-      personasError = error;
+      if (mapping?.combination_id) {
+        // 새로운 분류 체계의 combination_id로 조회
+        const { data, error } = await supabase
+          .from('personas')
+          .select(`
+            id,
+            persona_type,
+            persona_description,
+            persona_summary,
+            persona_style,
+            painpoints,
+            needs,
+            insight,
+            insight_quote,
+            thumbnail,
+            project_id,
+            combination_id
+          `)
+          .eq('company_id', companyId)
+          .eq('combination_id', mapping.combination_id)
+          .eq('active', true);
+        
+        personas = data;
+        personasError = error;
+      } else {
+        // 매핑이 없으면 기존 방식대로 persona_type으로 조회
+        const { data, error } = await supabase
+          .from('personas')
+          .select(`
+            id,
+            persona_type,
+            persona_description,
+            persona_summary,
+            persona_style,
+            painpoints,
+            needs,
+            insight,
+            insight_quote,
+            thumbnail,
+            project_id,
+            combination_id
+          `)
+          .eq('company_id', companyId)
+          .eq('persona_type', personaType)
+          .eq('active', true);
+        
+        personas = data;
+        personasError = error;
+      }
     }
 
     if (personasError) {
@@ -293,6 +329,14 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // 신규 페르소나 생성
+            // 먼저 새로운 분류 체계에서 매핑 확인
+            const { data: typeMapping } = await supabase
+              .from('persona_type_mappings')
+              .select('combination_id')
+              .eq('company_id', companyId)
+              .eq('legacy_persona_type', personaType)
+              .single();
+            
             const insertData = {
               persona_type: personaType,
               persona_description: parsedInterviewee.description || parsedInterviewee.user_description || `${personaType} 타입 사용자`,
@@ -317,6 +361,7 @@ export async function POST(req: NextRequest) {
               })(),
               company_id: companyId,
               project_id: projectId,
+              combination_id: typeMapping?.combination_id || null, // 새로운 분류 체계 연결
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };

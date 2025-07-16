@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, RotateCw, Check, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getPersonaCombinationDisplayName } from "@/lib/utils/persona-combination"
 import {
   Popover,
   PopoverContent,
@@ -64,7 +65,7 @@ export const createInterviewColumns = (
   isAdmin?: boolean,
   onAssignPersona?: (interviewId: string) => void,
   projectId?: string,
-  personaDefinitions?: any[],
+  personaCombinations?: any[],
   creators?: { id: string; name: string }[],
   onEditMetadata?: (interview: Interview) => void
 ): ColumnDef<Interview>[] => [
@@ -319,11 +320,11 @@ export const createInterviewColumns = (
                     />
                     <span>전체</span>
                   </button>
-                  {personaDefinitions && personaDefinitions.length > 0 && (
+                  {personaCombinations && personaCombinations.length > 0 && (
                     <>
                       <div className="h-px bg-gray-200 my-1" />
-                      {personaDefinitions.map(persona => {
-                        const color = getPersonaHighlightColor(persona.name_ko)
+                      {personaCombinations.map(persona => {
+                        const color = getPersonaHighlightColor(persona.persona_code)
                         const isSelected = selectedPersonas.includes(persona.id)
                         return (
                           <button
@@ -361,7 +362,7 @@ export const createInterviewColumns = (
                               color?.bg || 'bg-gray-200/60', 
                               color?.text || 'text-gray-900'
                             )}>
-                              {persona.name_ko}
+                              {persona.persona_code}
                             </span>
                           </button>
                         )
@@ -378,22 +379,19 @@ export const createInterviewColumns = (
     filterFn: (row, id, value) => {
       if (!value) return true
       
-      const confirmed = row.original.confirmed_persona_definition_id
-      const aiMatch = row.original.ai_persona_match
-      const aiDefinition = row.original.ai_persona_definition
+      const personaCombinationId = row.original.persona_combination_id
+      const personaCombination = row.original.persona_combination
       
       // 확정 안됨 필터가 활성화된 경우
-      if (value.unconfirmed === true && confirmed) {
+      if (value.unconfirmed === true && personaCombinationId) {
         return false // 확정된 것은 숨김
       }
       
       // 페르소나 필터가 있는 경우
       if (value.personas && value.personas.length > 0) {
-        // 특정 페르소나 ID로 필터링 (OR 조건)
+        // 특정 페르소나 조합 ID로 필터링 (OR 조건)
         for (const filterId of value.personas) {
-          if (confirmed === filterId) return true
-          if (aiMatch === filterId) return true
-          if (aiDefinition?.id === filterId) return true
+          if (personaCombinationId === filterId) return true
         }
         return false // 선택된 페르소나에 해당하지 않으면 숨김
       }
@@ -402,53 +400,43 @@ export const createInterviewColumns = (
     },
     size: 150,
     cell: ({ row }) => {
-      const confirmedPersonaDefinitionId = row.original.confirmed_persona_definition_id // 확정된 페르소나 ID
-      const confirmedPersonaDefinition = row.original.confirmed_persona_definition // 확정된 페르소나 관계 데이터
-      const aiPersonaMatch = row.original.ai_persona_match // AI 추천 persona_definitions ID
-      const aiPersonaDefinition = row.original.ai_persona_definition // AI 추천 관계 데이터
+      const personaCombinationId = row.original.persona_combination_id // 페르소나 조합 ID
+      const personaCombination = row.original.persona_combination // 페르소나 조합 데이터
       
       // 페르소나가 전혀 없는 경우
-      if (!confirmedPersonaDefinitionId && !aiPersonaMatch && !aiPersonaDefinition) return <span className="text-sm text-gray-500 pl-2">-</span>
+      if (!personaCombinationId || !personaCombination) return <span className="text-sm text-gray-500 pl-2">-</span>
       
-      // AI 추천이 있지만 아직 확정되지 않은 경우를 확정된 것처럼 표시
-      const effectivePersonaDefinitionId = confirmedPersonaDefinitionId || aiPersonaMatch
-      const effectivePersonaDefinition = confirmedPersonaDefinition || aiPersonaDefinition
-      
-      // 표시할 페르소나가 있는 경우 - 형광펜 스타일
-      if (effectivePersonaDefinitionId && effectivePersonaDefinition) {
-        const displayName = effectivePersonaDefinition.name_ko
-        const color = getPersonaHighlightColor(displayName)
-        const isAutoConfirmed = !confirmedPersonaDefinitionId && aiPersonaMatch // AI 자동 확정 여부
+      // 표시할 페르소나 조합이 있는 경우 - 형광펜 스타일
+      const displayName = getPersonaCombinationDisplayName(personaCombination) // 예: "루틴형 + 즉시형"
+      const color = getPersonaHighlightColor(displayName)
         
-        return (
-          <div className="pl-2 min-w-0 flex items-center gap-2">
-            <span className={cn(
-              "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
-              color?.bg || 'bg-gray-200/60', color?.text || 'text-gray-900'
-            )}>
-              <Check className="h-3 w-3" />
-              {displayName}
-              {isAutoConfirmed && <span className="text-[10px] opacity-70">(AI)</span>}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs hover:bg-gray-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (onAssignPersona) {
-                  onAssignPersona(row.original.id)
-                }
-              }}
-            >
-              변경
-            </Button>
-          </div>
-        )
-      }
+      return (
+        <div className="pl-2 min-w-0 flex items-center gap-2">
+          <span className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+            color?.bg || 'bg-gray-200/60', color?.text || 'text-gray-900'
+          )}>
+            <Check className="h-3 w-3" />
+            {displayName}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs hover:bg-gray-100"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onAssignPersona) {
+                onAssignPersona(row.original.id)
+              }
+            }}
+          >
+            변경
+          </Button>
+        </div>
+      )
       
       // 기타 경우 (발생하지 않아야 함)
-      return <span className="text-sm text-gray-500 pl-2">-</span>
+      // return <span className="text-sm text-gray-500 pl-2">-</span>
     },
   },
   {

@@ -29,7 +29,8 @@ import { createInterviewColumns } from "./interview-columns"
 import { FileText, Search, Loader2, Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "react-intersection-observer"
-import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
+import { usePersonas } from "@/hooks/use-personas"
+import { useAuth } from "@/hooks/use-auth"
 import { EditInterviewMetadataModal } from "@/components/modal/edit-interview-metadata-modal"
 
 interface InterviewDataTableInfiniteProps {
@@ -73,8 +74,11 @@ export function InterviewDataTableInfinite({
   const hasActiveFilters = columnFilters.length > 0 || showMyInterviewsOnly || globalFilter
   const [editingInterview, setEditingInterview] = React.useState<Interview | null>(null)
   
-  // 페르소나 정의 목록 가져오기
-  const { data: personaDefinitions } = usePersonaDefinitions()
+  // 페르소나 조합 목록 가져오기
+  const { profile } = useAuth()
+  const { data: personaCombinations = [] } = usePersonas({
+    companyId: profile?.company_id
+  })
   
   // 생성자 목록 추출
   const creators = React.useMemo(() => {
@@ -144,11 +148,11 @@ export function InterviewDataTableInfinite({
         onAssignPersona(interviewId, recommendedPersona)
       } : undefined,
       projectId,
-      personaDefinitions,
+      personaCombinations,
       creators,
       (interview: Interview) => setEditingInterview(interview)
     ),
-    [onView, onDelete, currentUserId, onRetry, isAdmin, onAssignPersona, projectId, interviews, personaDefinitions, creators]
+    [onView, onDelete, currentUserId, onRetry, isAdmin, onAssignPersona, projectId, interviews, personaCombinations, creators]
   )
 
   // Memoize filtered and sorted data

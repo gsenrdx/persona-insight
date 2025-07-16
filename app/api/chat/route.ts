@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
   const lastUser = messages?.[messages.length - 1]?.content ?? ''
 
   // Chat API 요청 데이터
+  // 새로운 페르소나 구조에 맞게 수정
+  // persona_title과 persona_style은 /api/personas에서 생성된 값 사용
+  // 나머지 필드는 기본값 사용 (복잡한 속성들은 더 이상 사용하지 않음)
 
   // MISO API 호출
   const upstream = await fetch(
@@ -31,13 +34,13 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         query: lastUser,
         inputs: {
-          persona_title: personaData.persona_title || personaData.name || '',
-          persona_summary: personaData.persona_summary || personaData.summary || '',
-          persona_style: personaData.persona_style || personaData.persona_character || '',
-          painpoints: personaData.painpoints || personaData.painPoint || '',
-          needs: personaData.needs || personaData.hiddenNeeds || '',
-          insight: personaData.insight || '',
-          insight_quote: personaData.insight_quote || ''
+          persona_title: personaData.persona_title || '',
+          persona_summary: personaData.persona_summary || '',
+          persona_style: personaData.persona_style || '',
+          painpoints: personaData.painpoints || '이 페르소나의 구체적인 고민은 인터뷰 데이터를 통해 파악됩니다.',
+          needs: personaData.needs || '이 페르소나의 니즈는 인터뷰 데이터를 통해 파악됩니다.',
+          insight: personaData.insight || '페르소나별 고객 유형입니다.',
+          insight_quote: ''
         },
         mode: 'streaming',
         conversation_id: clientConversationId || '',

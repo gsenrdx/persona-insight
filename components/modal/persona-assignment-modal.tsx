@@ -6,53 +6,58 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Check, Loader2, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { usePersonaDefinitions } from "@/hooks/use-persona-definitions"
+import { getPersonaCombinationDisplayName } from "@/lib/utils/persona-combination"
+import { usePersonas } from "@/hooks/use-personas"
+import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 
 interface PersonaAssignmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   interviewId: string
-  currentPersonaDefinitionId?: string | null
+  currentPersonaCombinationId?: string | null
   recommendedPersona?: string
-  onAssign: (definitionId: string) => Promise<void>
+  onAssign: (combinationId: string) => Promise<void>
 }
 
 export function PersonaAssignmentModal({
   open,
   onOpenChange,
   interviewId,
-  currentPersonaDefinitionId,
+  currentPersonaCombinationId,
   recommendedPersona,
   onAssign,
 }: PersonaAssignmentModalProps) {
-  const [selectedDefinitionId, setSelectedDefinitionId] = useState<string | null>(currentPersonaDefinitionId || null)
+  const [selectedCombinationId, setSelectedCombinationId] = useState<string | null>(currentPersonaCombinationId || null)
   const [isAssigning, setIsAssigning] = useState(false)
   const { toast } = useToast()
 
-  // 페르소나 정의 목록 가져오기
-  const { data: personaDefinitions, isLoading } = usePersonaDefinitions()
+  // 페르소나 조합 목록 가져오기
+  const { profile } = useAuth()
+  const { data: personaCombinations = [], isLoading } = usePersonas({
+    companyId: profile?.company_id
+  })
 
   // 모달이 열릴 때 AI 추천 자동 선택
   useEffect(() => {
     if (open) {
-      if (currentPersonaDefinitionId) {
-        setSelectedDefinitionId(currentPersonaDefinitionId)
-      } else if (recommendedPersona && personaDefinitions) {
-        const recommended = personaDefinitions.find(def => def.name_ko === recommendedPersona)
+      if (currentPersonaCombinationId) {
+        setSelectedCombinationId(currentPersonaCombinationId)
+      } else if (recommendedPersona && personaCombinations) {
+        const recommended = personaCombinations.find(combo => combo.persona_code === recommendedPersona)
         if (recommended) {
-          setSelectedDefinitionId(recommended.id)
+          setSelectedCombinationId(recommended.id)
         }
       }
     }
-  }, [open, recommendedPersona, personaDefinitions, currentPersonaDefinitionId])
+  }, [open, recommendedPersona, personaCombinations, currentPersonaCombinationId])
 
   const handleAssign = async () => {
-    if (!selectedDefinitionId) return
+    if (!selectedCombinationId) return
 
     setIsAssigning(true)
     try {
-      await onAssign(selectedDefinitionId)
+      await onAssign(selectedCombinationId)
       toast({
         title: "페르소나가 반영되었습니다",
         description: "인터뷰 내용이 회사 페르소나에 반영되었습니다."
@@ -83,25 +88,31 @@ export function PersonaAssignmentModal({
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               </div>
-            ) : personaDefinitions && personaDefinitions.length > 0 ? (
+            ) : personaCombinations && personaCombinations.length > 0 ? (
               <div className="space-y-1">
                 {/* AI 추천을 맨 위에 배치 */}
-                {personaDefinitions
+                {personaCombinations
                   .sort((a, b) => {
-                    const aIsRecommended = a.name_ko === recommendedPersona
-                    const bIsRecommended = b.name_ko === recommendedPersona
+                    const aIsRecommended = recommendedPersona ? (
+                      getPersonaCombinationDisplayName(a).includes(recommendedPersona) || a.persona_code === recommendedPersona
+                    ) : false
+                    const bIsRecommended = recommendedPersona ? (
+                      getPersonaCombinationDisplayName(b).includes(recommendedPersona) || b.persona_code === recommendedPersona
+                    ) : false
                     if (aIsRecommended && !bIsRecommended) return -1
                     if (!aIsRecommended && bIsRecommended) return 1
                     return 0
                   })
-                  .map((definition) => {
-                  const isSelected = selectedDefinitionId === definition.id
-                  const isRecommended = definition.name_ko === recommendedPersona
+                  .map((combination) => {
+                  const isSelected = selectedCombinationId === combination.id
+                  const isRecommended = recommendedPersona ? (
+                    getPersonaCombinationDisplayName(combination).includes(recommendedPersona) || combination.persona_code === recommendedPersona
+                  ) : false
                   
                   return (
                     <button
-                      key={definition.id}
-                      onClick={() => setSelectedDefinitionId(definition.id)}
+                      key={combination.id}
+                      onClick={() => setSelectedCombinationId(combination.id)}
                       className={cn(
                         "w-full px-6 py-4 rounded-lg transition-all text-left group",
                         "hover:bg-gray-50",
@@ -116,7 +127,7 @@ export function PersonaAssignmentModal({
                               "font-medium transition-colors text-base",
                               isSelected ? "text-gray-900" : "text-gray-700"
                             )}>
-                              {definition.name_ko}
+                              {getPersonaCombinationDisplayName(combination)}
                             </h4>
                             {isRecommended && (
                               <div className="flex items-center gap-1 text-blue-600">
@@ -125,11 +136,9 @@ export function PersonaAssignmentModal({
                               </div>
                             )}
                           </div>
-                          {definition.description && (
-                            <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                              {definition.description}
-                            </p>
-                          )}
+                          <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                            {combination.persona_code} 유형
+                          </p>
                         </div>
                         <div className={cn(
                           "flex-shrink-0 ml-4 w-5 h-5 rounded-full transition-all",
@@ -167,7 +176,7 @@ export function PersonaAssignmentModal({
           </Button>
           <Button
             onClick={handleAssign}
-            disabled={!selectedDefinitionId || isAssigning}
+            disabled={!selectedCombinationId || isAssigning}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isAssigning ? (

@@ -1,6 +1,6 @@
 // 인터뷰 대상자 관련 타입 정의
 
-// persona-criteria 설정에 따라 동적으로 결정되는 축 점수
+// 페르소나 분류 기준에 따라 동적으로 결정되는 축 점수
 // 예: { "루틴형_score": 80, "즉시형_score": 20 }
 export interface AxisScore {
   [key: string]: number
@@ -35,8 +35,8 @@ export interface IntervieweeData {
   session_date: string
   user_type: string
   user_description: string | null
-  x_axis: AxisScore[] | null // persona-criteria 설정에 따라 동적
-  y_axis: AxisScore[] | null // persona-criteria 설정에 따라 동적
+  x_axis: AxisScore[] | null // 페르소나 분류 기준에 따라 동적
+  y_axis: AxisScore[] | null // 페르소나 분류 기준에 따라 동적
   interviewee_summary: string | null
   interviewee_style: string | null
   interview_detail: string | InterviewDetailItem[] | null // JSON 문자열 또는 파싱된 배열

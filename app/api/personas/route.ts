@@ -1,68 +1,53 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { supabaseAdmin } from "@/lib/supabase-server"
+import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 
-// CRUD operations for personas with pagination and filtering
+// 새로운 페르소나 구조에 맞게 데이터 조회
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const persona_type = searchParams.get('type')
     const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
     
-    // Pagination parameters
-    const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
-    const offset = (page - 1) * limit
-
-    // company_id 또는 project_id 중 하나가 필요
-    if (!company_id && !project_id) {
+    // 인증 처리 - 두 가지 방법 지원 (인터뷰 API와 동일)
+    let targetCompanyId: string
+    const authHeader = request.headers.get('authorization')
+    
+    if (authHeader) {
+      // Authorization 헤더가 있으면 사용
+      const userProfile = await getAuthenticatedUserProfile(authHeader, supabaseAdmin)
+      targetCompanyId = company_id || userProfile.companyId
+    } else if (company_id) {
+      // URL 파라미터로 company_id가 전달되면 사용 (서버 컴포넌트 지원)
+      targetCompanyId = company_id
+    } else {
       return NextResponse.json({
-        error: "company_id 또는 project_id가 필요합니다",
+        error: "인증이 필요합니다",
+        success: false
+      }, { status: 401 })
+    }
+    
+    if (!targetCompanyId) {
+      return NextResponse.json({
+        error: "company_id가 필요합니다",
         success: false
       }, { status: 400 })
     }
 
-    // Single query with count and data
-    let query = supabase
-      .from('personas')
+    // 페르소나 조합 조회 (title, description 포함)
+    const { data: combinations, error } = await supabaseAdmin
+      .from('persona_combinations')
       .select(`
         id,
-        persona_type,
-        persona_title,
-        persona_description,
-        persona_summary,
+        persona_code,
+        type_ids,
         thumbnail,
-        persona_style,
-        painpoints,
-        needs,
-        insight,
-        insight_quote,
-        created_at,
-        project_id,
-        company_id,
-        persona_age:persona_summary,
-        persona_gender:persona_style,
-        persona_job:persona_description,
-        persona_intro:persona_summary,
-        persona_image:thumbnail
-      `, { count: 'exact' })
-      .eq('active', true)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    // Company or Project filtering
-    if (project_id) {
-      query = query.eq('project_id', project_id)
-    } else if (company_id) {
-      query = query.eq('company_id', company_id)
-    }
-
-    // Type filtering
-    if (persona_type) {
-      query = query.eq('persona_type', persona_type)
-    }
-
-    const { data, count, error } = await query
+        title,
+        description,
+        created_at
+      `)
+      .eq('company_id', targetCompanyId)
+      .order('persona_code', { ascending: true })
 
     if (error) {
       return NextResponse.json({
@@ -71,32 +56,100 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
-    // Calculate pagination metadata
-    const totalPages = Math.ceil((count || 0) / limit)
-    const hasNextPage = page < totalPages
-    const hasPreviousPage = page > 1
+    // 각 조합에 대한 상세 정보 조회
+    const personasWithDetails = await Promise.all(
+      (combinations || []).map(async (combination) => {
+        // type_ids가 배열인지 확인하고 타입 정보 조회
+        const typeIds = Array.isArray(combination.type_ids) ? combination.type_ids : []
+        
+        let types = []
+        if (typeIds.length > 0) {
+          const { data: typeData, error: typeError } = await supabaseAdmin
+            .from('persona_classification_types')
+            .select(`
+              id,
+              name,
+              description,
+              classification:persona_classifications!inner (
+                id,
+                name,
+                description
+              )
+            `)
+            .in('id', typeIds)
+          
+          types = typeData || []
+        }
 
-    // Add cache headers
-    const headers = {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-      'X-Total-Count': String(count || 0),
-      'X-Total-Pages': String(totalPages),
-      'X-Current-Page': String(page),
-      'X-Page-Size': String(limit)
+        // 인터뷰 수 조회
+        const { count: interviewCount } = await supabaseAdmin
+          .from('interviews')
+          .select('id', { count: 'exact', head: true })
+          .eq('persona_combination_id', combination.id)
+
+        // 타입 정보를 기반으로 제목과 설명 생성
+        const typeNames = types.map((t: any) => t.name).filter(Boolean)
+        const classificationNames = types.map((t: any) => t.classification?.name).filter(Boolean)
+        
+        // combination.title이 있으면 사용하고, 없으면 타입 기반으로 생성
+        const title = combination.title || 
+          (typeNames.length > 0 
+            ? `${combination.persona_code}: ${typeNames.join(' + ')}`
+            : `페르소나 ${combination.persona_code}`)
+        
+        const description = combination.description || 
+          (classificationNames.length > 0 
+            ? classificationNames.join(', ')
+            : "")
+        
+        const summary = typeNames.length > 0 
+          ? typeNames.join(' + ')
+          : ""
+        
+        return {
+          id: combination.id,
+          persona_type: combination.persona_code,
+          persona_title: title,
+          persona_description: description,
+          persona_summary: summary,
+          thumbnail: combination.thumbnail,
+          persona_style: typeNames.join(', '),
+          painpoints: "페르소나별 인터뷰 데이터를 기반으로 분석이 필요합니다",
+          needs: "페르소나별 인터뷰 데이터를 기반으로 분석이 필요합니다",
+          insight: `${title} 유형의 고객입니다`,
+          insight_quote: "",
+          created_at: combination.created_at,
+          project_id: null,
+          company_id: targetCompanyId,
+          interview_count: interviewCount || 0,
+          types: types.map(t => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            classification_name: t.classification?.name || ""
+          }))
+        }
+      })
+    )
+
+    // 프로젝트별 필터링 (인터뷰가 있는 페르소나만 표시)
+    let filteredPersonas = personasWithDetails
+    if (project_id) {
+      // 프로젝트에 속한 인터뷰가 있는 페르소나 조합 ID 조회
+      const { data: projectInterviews } = await supabaseAdmin
+        .from('interviews')
+        .select('persona_combination_id')
+        .eq('project_id', project_id)
+        .not('persona_combination_id', 'is', null)
+
+      const combinationIds = [...new Set(projectInterviews?.map(i => i.persona_combination_id) || [])]
+      filteredPersonas = personasWithDetails.filter(p => combinationIds.includes(p.id))
     }
 
     return NextResponse.json({
-      data,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage
-      },
+      data: filteredPersonas,
       success: true
-    }, { headers })
+    })
   } catch (error) {
     return NextResponse.json({
       error: "페르소나 데이터를 가져오는데 실패했습니다",
@@ -105,153 +158,26 @@ export async function GET(request: Request) {
   }
 }
 
-// Create new persona
+// 페르소나 조합은 자동으로 생성되므로 POST는 필요하지 않음
 export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    
-    // Validate required fields
-    const requiredFields = [
-      'persona_type', 'persona_description', 'persona_summary', 
-      'persona_style', 'painpoints', 'needs', 'insight', 'insight_quote'
-    ]
-    
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json({
-          error: `${field} 필드가 필요합니다`,
-          success: false
-        }, { status: 400 })
-      }
-    }
-
-    // Check if persona type already exists
-    const { data: existingPersona } = await supabase
-      .from('personas')
-      .select('id')
-      .eq('persona_type', body.persona_type)
-      .single()
-
-    if (existingPersona) {
-      return NextResponse.json({
-        error: `${body.persona_type} 타입의 페르소나가 이미 존재합니다`,
-        success: false
-      }, { status: 409 })
-    }
-    
-    const { data, error } = await supabase
-      .from('personas')
-      .insert([body])
-      .select()
-
-    if (error) {
-      return NextResponse.json({
-        error: "페르소나 데이터 저장에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      data: data[0],
-      success: true
-    }, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({
-      error: "페르소나 데이터 저장에 실패했습니다",
-      success: false
-    }, { status: 500 })
-  }
+  return NextResponse.json({
+    error: "페르소나는 회사별 분류 설정에 따라 자동으로 생성됩니다",
+    success: false
+  }, { status: 400 })
 }
 
-// Update persona
+// 페르소나 조합 자체는 수정할 수 없음
 export async function PUT(request: Request) {
-  try {
-    const body = await request.json()
-    const { id, ...updateData } = body
-    
-    if (!id) {
-      return NextResponse.json({
-        error: "ID가 필요합니다",
-        success: false
-      }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('personas')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-
-    if (error) {
-      return NextResponse.json({
-        error: "페르소나 데이터 업데이트에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json({
-        error: "해당 ID의 페르소나를 찾을 수 없습니다",
-        success: false
-      }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      data: data[0],
-      success: true
-    })
-  } catch (error) {
-    return NextResponse.json({
-      error: "페르소나 데이터 업데이트에 실패했습니다",
-      success: false
-    }, { status: 500 })
-  }
+  return NextResponse.json({
+    error: "페르소나 조합은 수정할 수 없습니다",
+    success: false
+  }, { status: 400 })
 }
 
-// Delete persona
+// 페르소나 조합은 삭제할 수 없음
 export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    
-    if (!id) {
-      return NextResponse.json({
-        error: "ID가 필요합니다",
-        success: false
-      }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('personas')
-      .delete()
-      .eq('id', id)
-      .select()
-
-    if (error) {
-      return NextResponse.json({
-        error: "페르소나 데이터 삭제에 실패했습니다",
-        success: false
-      }, { status: 500 })
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json({
-        error: "해당 ID의 페르소나를 찾을 수 없습니다",
-        success: false
-      }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      message: "페르소나가 성공적으로 삭제되었습니다",
-      success: true
-    })
-  } catch (error) {
-    return NextResponse.json({
-      error: "페르소나 데이터 삭제에 실패했습니다",
-      success: false
-    }, { status: 500 })
-  }
+  return NextResponse.json({
+    error: "페르소나 조합은 삭제할 수 없습니다",
+    success: false
+  }, { status: 400 })
 }
