@@ -1,20 +1,25 @@
 import { NextResponse } from "next/server"
 import { InsightsService } from "@/lib/services/insights"
+import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
+import { supabaseAdmin } from "@/lib/supabase-server"
 
 export async function GET(request: Request) {
   try {
+    // 인증 처리 (캐시 적용)
+    const authorization = request.headers.get('authorization')
+    if (!authorization) {
+      return NextResponse.json({
+        error: "인증이 필요합니다",
+        details: "Authorization 헤더를 제공해주세요."
+      }, { status: 401 })
+    }
+
+    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
+    
     const { searchParams } = new URL(request.url)
-    const company_id = searchParams.get('company_id')
+    const company_id = searchParams.get('company_id') || companyId
     const project_id = searchParams.get('project_id')
     const year = searchParams.get('year') || new Date().getFullYear().toString()
-
-    // Input validation
-    if (!company_id) {
-      return NextResponse.json(
-        { error: "company_id가 필요합니다", details: "회사 ID를 제공해주세요." }, 
-        { status: 400 }
-      )
-    }
 
     if (!/^\d{4}$/.test(year)) {
       return NextResponse.json(

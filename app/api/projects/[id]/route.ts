@@ -2,13 +2,14 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
 import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 
-// 프로젝트 권한 확인 함수
+// 최적화된 프로젝트 권한 확인 함수
 async function checkProjectAccess(projectId: string, userId: string) {
+  // 프로젝트 기본 정보 조회 (멤버 정보 포함)
   const { data, error } = await supabaseAdmin
     .from('projects')
     .select(`
       *,
-      project_members!inner(
+      project_members(
         id,
         role,
         joined_at,
@@ -23,39 +24,76 @@ async function checkProjectAccess(projectId: string, userId: string) {
     return { hasAccess: false, error: "프로젝트를 찾을 수 없습니다", project: null }
   }
 
-  // 사용자의 프로필 정보 조회
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', userId)
-    .single()
+  // 캐시된 사용자 프로필 정보 조회 (auth-cache 활용)
+  const { companyId, userId: authUserId } = await getAuthenticatedUserProfile(
+    `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, // 임시 토큰 사용
+    supabaseAdmin
+  ).catch(() => ({ companyId: null, userId: null }))
 
-  if (!profile) {
-    return { hasAccess: false, error: "사용자 정보를 찾을 수 없습니다", project: null }
+  // 프로필 정보가 없으면 직접 조회
+  if (!companyId || authUserId !== userId) {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', userId)
+      .single()
+
+    if (!profile) {
+      return { hasAccess: false, error: "사용자 정보를 찾을 수 없습니다", project: null }
+    }
+
+    // 권한 확인 로직 단순화
+    const isOwner = data.created_by === userId
+    const isMaster = data.master_id === userId
+    const isCompanyAdmin = profile.role === 'company_admin' || profile.role === 'super_admin'
+    const isInSameCompany = profile.company_id === data.company_id
+    const membership = data.project_members?.find((pm) => pm.user_id === userId)
+    const isMember = !!membership
+    
+    // 공개 프로젝트: 같은 회사 구성원은 모두 접근 가능
+    // 비공개 프로젝트: 멤버, 생성자, 마스터, 회사 관리자만 접근 가능
+    const hasAccess = isInSameCompany && (
+      data.visibility === 'public' ||
+      isOwner ||
+      isMaster ||
+      isCompanyAdmin ||
+      isMember
+    )
+
+    const projectData = {
+      ...data,
+      membership,
+      user_role: membership?.role || null,
+      project_members: undefined // 중복 데이터 제거
+    }
+
+    return { 
+      hasAccess, 
+      project: projectData,
+      isOwner,
+      isMaster,
+      isCompanyAdmin
+    }
   }
 
-  // 권한 확인
+  // 캐시된 정보를 사용한 빠른 권한 확인
   const isOwner = data.created_by === userId
   const isMaster = data.master_id === userId
-  const isCompanyAdmin = profile.role === 'company_admin' || profile.role === 'super_admin'
-  const isInSameCompany = profile.company_id === data.company_id
-  const isMember = data.project_members?.some((pm) => pm.user_id === userId)
+  const isInSameCompany = data.company_id === companyId
+  const membership = data.project_members?.find((pm) => pm.user_id === userId)
+  const isMember = !!membership
   
-  // 공개 프로젝트: 같은 회사 구성원은 모두 접근 가능
-  // 비공개 프로젝트: 멤버, 생성자, 마스터, 회사 관리자만 접근 가능
   const hasAccess = isInSameCompany && (
     data.visibility === 'public' ||
     isOwner ||
     isMaster ||
-    isCompanyAdmin ||
     isMember
   )
 
-  // 멤버십 정보를 프로젝트에 포함
-  const membership = data.project_members?.find((pm) => pm.user_id === userId)
   const projectData = {
     ...data,
     membership,
+    user_role: membership?.role || null,
     project_members: undefined // 중복 데이터 제거
   }
 
@@ -64,7 +102,7 @@ async function checkProjectAccess(projectId: string, userId: string) {
     project: projectData,
     isOwner,
     isMaster,
-    isCompanyAdmin
+    isCompanyAdmin: false
   }
 }
 

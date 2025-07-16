@@ -402,9 +402,32 @@ export const createInterviewColumns = (
     cell: ({ row }) => {
       const personaCombinationId = row.original.persona_combination_id // 페르소나 조합 ID
       const personaCombination = row.original.persona_combination // 페르소나 조합 데이터
+      const status = row.original.status // 인터뷰 상태
       
       // 페르소나가 전혀 없는 경우
-      if (!personaCombinationId || !personaCombination) return <span className="text-sm text-gray-500 pl-2">-</span>
+      if (!personaCombinationId || !personaCombination) {
+        // 상태가 완료인 경우 "페르소나 지정하기" 버튼 표시
+        if (status === 'completed' && onAssignPersona) {
+          return (
+            <div className="pl-2 min-w-0 flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs hover:bg-gray-100 text-blue-600 hover:text-blue-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAssignPersona(row.original.id)
+                }}
+              >
+                페르소나 지정하기
+              </Button>
+            </div>
+          )
+        }
+        
+        // 그 외의 경우 단순히 "-" 표시
+        return <span className="text-sm text-gray-500 pl-2">-</span>
+      }
       
       // 표시할 페르소나 조합이 있는 경우 - 형광펜 스타일
       const displayName = getPersonaCombinationDisplayName(personaCombination) // 예: "루틴형 + 즉시형"
@@ -434,9 +457,6 @@ export const createInterviewColumns = (
           </Button>
         </div>
       )
-      
-      // 기타 경우 (발생하지 않아야 함)
-      // return <span className="text-sm text-gray-500 pl-2">-</span>
     },
   },
   {

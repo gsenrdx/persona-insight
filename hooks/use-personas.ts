@@ -17,7 +17,7 @@ import { PersonaData } from '@/types/persona'
 /**
  * 페르소나 목록 조회
  */
-export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: boolean }) {
+export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: boolean; raw?: boolean }) {
   const { user } = useAuth()
   
   return useQuery({
@@ -31,6 +31,31 @@ export function usePersonas(query: PersonaListQuery = {}, options?: { enabled?: 
       if (!query.companyId && !query.projectId) throw new Error('company_id 또는 project_id가 필요합니다')
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
+      
+      // raw=true인 경우 직접 API 호출
+      if (options?.raw) {
+        const url = new URL('/api/personas', window.location.origin)
+        url.searchParams.set('company_id', query.companyId || '')
+        if (query.projectId) url.searchParams.set('project_id', query.projectId)
+        url.searchParams.set('raw', 'true')
+        
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('페르소나 데이터를 가져오는데 실패했습니다')
+        }
+        
+        const result = await response.json()
+        return result.data
+      }
+      
+      // 기존 로직 유지
       const response = await personasApi.getPersonas(session.access_token, query)
       const result = extractApiData(response)
       // API가 페이지네이션 형식으로 반환하는 경우 처리

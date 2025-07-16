@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
+import { getAuthenticatedUserProfile } from "@/lib/utils/auth-cache"
 import { ProjectWithStats, TransformedProject, ProjectWithAggregates, Project, ProjectMember } from "@/types/project"
 
 // 사용자가 소속된 프로젝트 조회 (공개 프로젝트 + 멤버십이 있는 비공개 프로젝트)
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const company_id = searchParams.get('company_id')
-    const user_id = searchParams.get('user_id')
-
-    // company_id와 user_id가 필수로 제공되어야 함
-    if (!company_id || !user_id) {
+    // 인증 처리 (캐시 적용)
+    const authorization = request.headers.get('authorization')
+    if (!authorization) {
       return NextResponse.json({
-        error: "company_id와 user_id가 필요합니다",
+        error: "인증이 필요합니다",
         success: false
-      }, { status: 400 })
+      }, { status: 401 })
     }
+
+    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
+    
+    // URL 파라미터로 오버라이드 가능 (서버 컴포넌트 지원)
+    const { searchParams } = new URL(request.url)
+    const company_id = searchParams.get('company_id') || companyId
+    const user_id = searchParams.get('user_id') || userId
 
     // RPC 함수를 사용하여 프로젝트 목록과 멤버 정보 조회
     // TODO: personas 테이블이 삭제되어 RPC 함수가 실패하므로 일단 비활성화
@@ -178,6 +183,17 @@ export async function GET(request: Request) {
 // 새로운 프로젝트 생성
 export async function POST(request: Request) {
   try {
+    // 인증 처리 (캐시 적용)
+    const authorization = request.headers.get('authorization')
+    if (!authorization) {
+      return NextResponse.json({
+        error: "인증이 필요합니다",
+        success: false
+      }, { status: 401 })
+    }
+
+    const { userId, companyId } = await getAuthenticatedUserProfile(authorization, supabaseAdmin)
+    
     const body = await request.json()
     
     const {
@@ -186,8 +202,6 @@ export async function POST(request: Request) {
       visibility = 'public',
       join_method = 'open',
       password,
-      user_id,
-      company_id,
       purpose,
       target_audience,
       research_method,
@@ -196,33 +210,11 @@ export async function POST(request: Request) {
     } = body
 
     // 필수 필드 검증
-    if (!name || !user_id || !company_id) {
+    if (!name) {
       return NextResponse.json({
-        error: "name, user_id, company_id는 필수 입력 사항입니다",
+        error: "name은 필수 입력 사항입니다",
         success: false
       }, { status: 400 })
-    }
-
-    // 사용자 프로필 조회 (권한 확인)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', user_id)
-      .single()
-
-    if (profileError || !profile) {
-      return NextResponse.json({
-        error: "사용자 정보를 찾을 수 없습니다",
-        success: false
-      }, { status: 404 })
-    }
-
-    // 회사 멤버인지 확인
-    if (profile.company_id !== company_id) {
-      return NextResponse.json({
-        error: "해당 회사의 멤버가 아닙니다",
-        success: false
-      }, { status: 403 })
     }
 
     // 프로젝트 생성
@@ -234,8 +226,8 @@ export async function POST(request: Request) {
         visibility,
         join_method,
         password: join_method === 'password' ? password : null,
-        created_by: user_id,
-        company_id,
+        created_by: userId,
+        company_id: companyId,
         purpose: purpose || null,
         target_audience: target_audience || null,
         research_method: research_method || null,
@@ -259,7 +251,7 @@ export async function POST(request: Request) {
       .from('project_members')
       .insert({
         project_id: project.id,
-        user_id: user_id,
+        user_id: userId,
         role: 'owner',
         joined_at: new Date().toISOString()
       })

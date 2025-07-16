@@ -19,7 +19,7 @@ import { ChatInterfaceProps, ExtendedMessage, SummaryData } from "./types"
 import { MentionData } from "@/lib/utils/mention"
 
 // 성능 최적화: 메모화된 ChatInterface 컴포넌트
-const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [] }: ChatInterfaceProps) {
+const ChatInterface = memo(function ChatInterface({ personaId, personaData, allPersonas = [] }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -73,19 +73,20 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
     }
   }, [])
 
-  // 초기 자동 인사 메시지 전송
+  // 초기 자동 인사 메시지 전송 (사용자에게 보이지 않음)
   useEffect(() => {
     if (!hasGreetedRef.current && personaData && personaData.name) {
       hasGreetedRef.current = true
       
-      const greetingMessage: Message = {
-        id: "greeting-user",
-        role: "user" as const,
-        content: "안녕하세요!",
+      // 시스템 입장 메시지를 즉시 표시
+      const personaName = personaData.persona_title || personaData.name || '페르소나'
+      const systemMessage: ExtendedMessage = {
+        id: "system-entrance",
+        role: "system" as const,
+        content: `${personaName}님께서 입장하셨습니다.`,
         createdAt: new Date(),
       }
-      
-      setChatMessages([greetingMessage])
+      setChatMessages([systemMessage])
       
       setTimeout(() => {
         handleAutoGreeting()
@@ -128,30 +129,6 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
     setReplyingTo(null)
   }, [])
 
-  // 성능 최적화: 메모화된 persona 데이터 객체
-  const memoizedPersonaApiData = useMemo(() => ({
-    persona_title: activePersona.persona_title || activePersona.name || '',
-    persona_summary: activePersona.persona_summary || activePersona.summary || '',
-    persona_style: activePersona.persona_style || activePersona.persona_character || '',
-    painpoints: activePersona.painpoints || activePersona.painPoint || '',
-    needs: activePersona.needs || activePersona.hiddenNeeds || '',
-    insight: activePersona.insight || '',
-    insight_quote: activePersona.insight_quote || ''
-  }), [
-    activePersona.persona_title,
-    activePersona.name,
-    activePersona.persona_summary,
-    activePersona.summary,
-    activePersona.persona_style,
-    activePersona.persona_character,
-    activePersona.painpoints,
-    activePersona.painPoint,
-    activePersona.needs,
-    activePersona.hiddenNeeds,
-    activePersona.insight,
-    activePersona.insight_quote
-  ])
-
   // 성능 최적화: 메모화된 API 호출 함수
   const callChatAPI = useCallback(async (messages: ExtendedMessage[], conversationId: string | null) => {
     const response = await fetch('/api/chat', {
@@ -161,7 +138,7 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
       },
       body: JSON.stringify({
         messages,
-        personaData: memoizedPersonaApiData,
+        personaId,
         conversationId
       }),
     })
@@ -171,14 +148,15 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
     }
 
     return response
-  }, [memoizedPersonaApiData])
+  }, [personaId])
 
   // 자동 인사 메시지 전송
   const handleAutoGreeting = async () => {
+    const personaName = activePersona.persona_title || activePersona.name || '페르소나'
     const greetingUserMessage: Message = {
       id: "greeting-user",
       role: "user",
-      content: "안녕하세요!",
+      content: `${personaName}님께서 입장하셨습니다.`,
       createdAt: new Date(),
     }
 
@@ -204,6 +182,7 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
       }
 
       setShowLoadingMsg(false)
+      // 기존 시스템 메시지에 어시스턴트 메시지 추가
       setChatMessages(prev => [...prev, assistantMessage])
 
       await processMisoStreaming(response, assistantMessage, setChatMessages, scrollToBottom)
@@ -211,6 +190,7 @@ const ChatInterface = memo(function ChatInterface({ personaData, allPersonas = [
     } catch (error) {
       setShowLoadingMsg(false)
       
+      // 기존 시스템 메시지에 에러 메시지 추가
       setChatMessages(prev => [
         ...prev,
         {

@@ -42,7 +42,7 @@ export function ChatInput({
   onCancelReply
 }: ChatInputProps) {
   return (
-    <div className="flex-shrink-0 p-4 bg-transparent border-t border-gray-100">
+    <div className="flex-shrink-0 p-4 bg-transparent">
       {/* 꼬리질문 중인 메시지 표시 */}
       <AnimatePresence>
         {replyingTo && (
@@ -114,16 +114,16 @@ export function ChatInput({
             placeholder={replyingTo ? "꼬리질문을 입력하세요..." : "메시지를 입력하세요..."}
             disabled={loading}
             rows={1}
-            className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 resize-none"
+            className="w-full px-5 py-4 pr-12 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 resize-none"
             onKeyDown={onKeyDown}
             style={{
-              minHeight: '40px',
-              maxHeight: '120px'
+              minHeight: '60px',
+              maxHeight: '200px'
             }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement
               target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+              target.style.height = Math.min(target.scrollHeight, 200) + 'px'
             }}
           />
           

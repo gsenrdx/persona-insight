@@ -52,6 +52,7 @@ export interface PersonaCardProps {
   persona_character?: string
   persona_type?: string
   persona_description?: string
+  interview_count?: number
 }
 
 

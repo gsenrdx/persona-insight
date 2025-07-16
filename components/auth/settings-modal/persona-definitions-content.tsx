@@ -6,6 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
   Settings, 
   Plus, 
@@ -18,7 +26,8 @@ import {
   Trash2,
   Upload,
   Image as ImageIcon,
-  FolderOpen
+  FolderOpen,
+  Edit
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
@@ -61,6 +70,14 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
   const [uploadingThumbnails, setUploadingThumbnails] = useState<Record<string, boolean>>({})
   const [galleryModalOpen, setGalleryModalOpen] = useState(false)
   const [selectedCombinationKey, setSelectedCombinationKey] = useState<string | null>(null)
+  
+  // 편집 다이얼로그 관련 상태
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingCombination, setEditingCombination] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: ''
+  })
   
   // 모든 사용자가 편집 가능하도록 설정
   const canEdit = true // profile?.role === 'super_admin' || profile?.role === 'company_admin'
@@ -384,6 +401,35 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
     setGalleryModalOpen(true)
   }
 
+  // 편집 다이얼로그 열기
+  const openEditDialog = (combinationKey: string) => {
+    setEditingCombination(combinationKey)
+    setEditForm({
+      title: personaCombinationTitles[combinationKey] || `페르소나 ${combinationKey}`,
+      description: personaCombinationDescriptions[combinationKey] || ''
+    })
+    setEditDialogOpen(true)
+  }
+
+  // 편집 폼 저장
+  const handleEditSave = () => {
+    if (!editingCombination) return
+
+    setPersonaCombinationTitles(prev => ({
+      ...prev,
+      [editingCombination]: editForm.title
+    }))
+
+    setPersonaCombinationDescriptions(prev => ({
+      ...prev,
+      [editingCombination]: editForm.description
+    }))
+
+    setEditDialogOpen(false)
+    setEditingCombination(null)
+    toast.success('페르소나 정보가 업데이트되었습니다')
+  }
+
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* 헤더 */}
@@ -503,7 +549,7 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                             <Input
                               value={classification.name}
                               onChange={(e) => handleUpdateClassification(classification.id, { name: e.target.value })}
-                              placeholder="예: 충전 패턴"
+                              placeholder="분류명을 입력하세요"
                               className="h-9 text-sm"
                             />
                           </div>
@@ -512,7 +558,7 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                             <Input
                               value={classification.description}
                               onChange={(e) => handleUpdateClassification(classification.id, { description: e.target.value })}
-                              placeholder="예: 사용자가 선호하는 충전 형태"
+                              placeholder="분류 설명을 입력하세요"
                               className="h-9 text-sm"
                             />
                           </div>
@@ -554,13 +600,13 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                                   <Input
                                     value={type.name}
                                     onChange={(e) => handleUpdateType(classification.id, type.id, { name: e.target.value })}
-                                    placeholder="유형 이름 (예: 루틴형)"
+                                    placeholder="유형 이름을 입력하세요"
                                     className="h-8 text-sm"
                                   />
                                   <Textarea
                                     value={type.description}
                                     onChange={(e) => handleUpdateType(classification.id, type.id, { description: e.target.value })}
-                                    placeholder="유형에 대한 설명을 입력하세요"
+                                    placeholder="유형 설명을 입력하세요"
                                     className="min-h-[60px] resize-none text-sm"
                                   />
                                 </div>
@@ -607,7 +653,14 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
             {/* 맞춤 페르소나 섹션 */}
             {classifications.length > 0 && classifications.every(c => c.types.length > 0) && (
               <div className="bg-white rounded-lg border border-gray-200 p-5">
-                <h4 className="text-base font-medium text-gray-900 mb-4">맞춤 페르소나</h4>
+                <div className="mb-4">
+                  <h4 className="text-base font-medium text-gray-900 mb-2">맞춤 페르소나</h4>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                    <p className="text-xs text-green-700">
+                      📝 <strong>편집 방법</strong>: 각 페르소나의 편집 버튼을 클릭하여 의미있는 이름과 설명을 설정하세요
+                    </p>
+                  </div>
+                </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -630,9 +683,9 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                         <th className="text-left py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wider">
                           코드
                         </th>
-                        {isEditMode && (
-                          <th className="w-10"></th>
-                        )}
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                          편집
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -715,21 +768,9 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                             
                             {/* 페르소나 이름 컬럼 */}
                             <td className="py-3 px-4">
-                              {isEditMode ? (
-                                <Input
-                                  value={combination.title || ''}
-                                  onChange={(e) => setPersonaCombinationTitles(prev => ({
-                                    ...prev,
-                                    [combinationKey]: e.target.value
-                                  }))}
-                                  placeholder={`페르소나 ${combinationKey}`}
-                                  className="h-8 text-sm"
-                                />
-                              ) : (
-                                <span className="text-sm font-medium text-gray-900">
-                                  {combination.title}
-                                </span>
-                              )}
+                              <span className="text-sm font-medium text-gray-900">
+                                {combination.title}
+                              </span>
                             </td>
                             
                             {/* 분류 유형 컬럼들 */}
@@ -757,18 +798,19 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                               {combinationKey}
                             </td>
                             
-                            {/* 편집 모드 삭제 버튼 */}
-                            {isEditMode && (
-                              <td className="py-3 px-4">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </td>
-                            )}
+                            {/* 편집 버튼 */}
+                            <td className="py-3 px-4">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditDialog(combinationKey)}
+                                className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                                title="제목과 설명 편집"
+                                disabled={!canEdit}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </td>
                           </tr>
                         )
                       })}
@@ -827,6 +869,47 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
         onSelectImage={handleGalleryImageSelect}
         currentImageUrl={selectedCombinationKey ? personaCombinationThumbnails[selectedCombinationKey] : null}
       />
+
+      {/* 페르소나 편집 다이얼로그 */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>페르소나 편집</DialogTitle>
+            <DialogDescription>
+              {editingCombination} 페르소나의 제목과 설명을 편집하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-title">페르소나 제목</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="페르소나 제목을 입력하세요"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">페르소나 설명</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="페르소나 설명을 입력하세요"
+                className="min-h-[100px] resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={handleEditSave}>
+              저장
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

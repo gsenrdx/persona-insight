@@ -66,34 +66,39 @@ export function useMisoStreaming() {
               
               if (receivedText === "") continue
               
-              // 도구 사용 중이 아닐 때만 메시지 업데이트
+              // 도구 사용 중이 아닐 때만 메시지 업데이트 (메모리 최적화)
               if (!isUsingToolRef.current) {
                 setChatMessages(prev => {
-                  const updated = [...prev]
-                  const lastIndex = updated.length - 1
-                  if (lastIndex >= 0 && updated[lastIndex]?.role === "assistant" && updated[lastIndex]?.id === assistantMessage.id) {
-                    const currentContent = updated[lastIndex]?.content || ''
-                    
-                    // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
-                    if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
-                      updated[lastIndex] = {
-                        ...updated[lastIndex],
-                        content: receivedText,
-                      } as ExtendedMessage
-                    } 
-                    // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
-                    else if (currentContent.startsWith(receivedText)) {
-                      return prev
-                    }
-                    // 그 외의 경우는 델타 텍스트로 추가
-                    else {
-                      updated[lastIndex] = {
-                        ...updated[lastIndex],
-                        content: currentContent + receivedText,
-                      } as ExtendedMessage
-                    }
+                  const lastIndex = prev.length - 1
+                  
+                  // 업데이트할 메시지가 없으면 이전 상태 반환
+                  if (lastIndex < 0 || 
+                      prev[lastIndex]?.role !== "assistant" || 
+                      prev[lastIndex]?.id !== assistantMessage.id) {
+                    return prev
                   }
-                  return updated
+                  
+                  const currentContent = prev[lastIndex]?.content || ''
+                  
+                  // 받은 텍스트가 현재 텍스트로 시작하고 더 길다면, 누적된 전체 텍스트
+                  if (receivedText.startsWith(currentContent) && receivedText.length > currentContent.length) {
+                    // 마지막 메시지만 업데이트 (불변성 유지하면서 메모리 절약)
+                    return prev.slice(0, -1).concat({
+                      ...prev[lastIndex],
+                      content: receivedText,
+                    } as ExtendedMessage)
+                  } 
+                  // 현재 텍스트가 받은 텍스트로 시작한다면, 이미 포함된 내용이므로 무시
+                  else if (currentContent.startsWith(receivedText)) {
+                    return prev
+                  }
+                  // 그 외의 경우는 델타 텍스트로 추가
+                  else {
+                    return prev.slice(0, -1).concat({
+                      ...prev[lastIndex],
+                      content: currentContent + receivedText,
+                    } as ExtendedMessage)
+                  }
                 })
                 
                 scrollToBottom()

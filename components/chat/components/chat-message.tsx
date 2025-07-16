@@ -33,6 +33,22 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const showToolUsing = isLastAssistantMessage && isStreaming && isUsingTool
   
+  // 시스템 메시지 처리
+  if (message.role === "system") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="flex justify-center mb-4"
+      >
+        <div className="text-gray-500 text-xs">
+          {message.content}
+        </div>
+      </motion.div>
+    )
+  }
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}

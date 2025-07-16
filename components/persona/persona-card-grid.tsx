@@ -41,8 +41,8 @@ export default function PersonaCardGrid() {
       
       return {
         id: persona.id,
-        name: persona.persona_title || persona.persona_description,
-        image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title || persona.persona_description)}`,
+        name: persona.persona_title,
+        image: persona.thumbnail || `/placeholder.svg?height=300&width=400&text=${encodeURIComponent(persona.persona_title)}`,
         keywords: [], // 키워드는 비워둠
         insight: persona.insight,
         summary: persona.persona_description,
@@ -51,6 +51,7 @@ export default function PersonaCardGrid() {
         persona_character: persona.persona_style,
         persona_type: persona.persona_type,
         persona_description: persona.persona_description,
+        interview_count: persona.interview_count || 0,
         // Chat API에서 필요한 추가 필드들
         persona_title: persona.persona_title,
         persona_summary: persona.persona_summary,
@@ -59,7 +60,14 @@ export default function PersonaCardGrid() {
         needs: persona.needs,
         insight_quote: persona.insight_quote
       }
-    }).sort((a, b) => a.persona_type.localeCompare(b.persona_type))
+    }).sort((a, b) => {
+      // 1순위: interview_count 내림차순 (할당된 인터뷰가 많은 것부터)
+      if (a.interview_count !== b.interview_count) {
+        return (b.interview_count || 0) - (a.interview_count || 0)
+      }
+      // 2순위: persona_type 오름차순 (P1, P2, P3...)
+      return a.persona_type.localeCompare(b.persona_type)
+    })
   }, [rawPersonas])
 
 
@@ -186,7 +194,7 @@ export default function PersonaCardGrid() {
       key={`${profile?.company_id}-${selectedKeywords.join(',')}`} // 회사 ID와 선택된 키워드 변경 시 애니메이션 재생
     >
       {filteredPersonas.map((persona) => (
-        <motion.div key={persona.id} variants={item} className="h-full">
+        <motion.div key={persona.id} variants={item} className="h-[220px]">
           <PersonaCard
             id={persona.id}
             name={persona.name}
@@ -199,6 +207,7 @@ export default function PersonaCardGrid() {
             persona_character={persona.persona_character}
             persona_type={persona.persona_type}
             persona_description={persona.persona_description}
+            interview_count={persona.interview_count}
           />
         </motion.div>
       ))}

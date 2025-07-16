@@ -32,10 +32,13 @@ export function PersonaAssignmentModal({
   const [isAssigning, setIsAssigning] = useState(false)
   const { toast } = useToast()
 
-  // 페르소나 조합 목록 가져오기
-  const { profile } = useAuth()
+  // 페르소나 조합 목록 가져오기 (raw 데이터)
+  const { profile, user } = useAuth()
   const { data: personaCombinations = [], isLoading } = usePersonas({
     companyId: profile?.company_id
+  }, {
+    enabled: !!profile?.company_id,
+    raw: true // 원본 persona_combinations 데이터 요청
   })
 
   // 모달이 열릴 때 AI 추천 자동 선택

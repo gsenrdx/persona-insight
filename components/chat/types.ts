@@ -56,6 +56,6 @@ export interface ExtendedMessage extends Message {
 
 export interface ChatInterfaceProps {
   personaId: string
-  personaData: any
+  personaData: any  // 디스플레이용 (제거 예정)
   allPersonas?: any[]
 }

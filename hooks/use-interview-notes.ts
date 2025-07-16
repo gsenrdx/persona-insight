@@ -25,7 +25,7 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
   const { session, profile } = useAuth()
   const queryClient = useQueryClient()
 
-  // 노트 목록 조회 (협업 시나리오를 고려한 폴링)
+  // 노트 목록 조회 (스마트 폴링으로 협업 지원)
   const {
     data: notes = [],
     isLoading,
@@ -51,17 +51,42 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
       return result.data || []
     },
     enabled: !!session?.access_token && !!interviewId,
-    // 노트는 협업이 빈번하므로 30초마다 동기화 (다른 사용자 변경사항 반영)
-    refetchInterval: 30000,
+    // 적응형 폴링: 백그라운드에서 비활성화, 최근 활동 시에만 활성
+    refetchInterval: (query) => {
+      // 백그라운드 탭에서 폴링 비활성화
+      if (document.hidden) return false
+      
+      const notes = query.state.data as InterviewNote[] || []
+      
+      // 노트가 없으면 폴링 중단
+      if (notes.length === 0) return false
+      
+      // 최근 5분 이내 노트가 있으면 30초마다 폴링
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+      const hasRecentActivity = notes.some(note => {
+        const noteTime = new Date(note.created_at).getTime()
+        return noteTime > fiveMinutesAgo
+      })
+      
+      // 최근 활동이 있으면 30초, 없으면 5분마다 폴링
+      return hasRecentActivity ? 30000 : 5 * 60 * 1000
+    },
     // 창 포커스 시 최신 상태 확인
     refetchOnWindowFocus: true,
     // 재연결 시 동기화
     refetchOnReconnect: true,
-    // 1분간 캐시 유지
-    staleTime: 60 * 1000,
-    // 에러 시 재시도
-    retry: 2,
-    retryDelay: 1000
+    // 캐시 시간 단축 (협업 환경)
+    staleTime: 30 * 1000,
+    // 메모리 효율을 위한 가비지 컬렉션 시간
+    gcTime: 5 * 60 * 1000,
+    // 에러 시 재시도 최적화
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) return false
+      // 네트워크 오류는 더 적극적으로 재시도
+      if (error?.message?.includes('Failed to fetch')) return failureCount < 5
+      return true
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 10000)
   })
 
   // 노트 추가 (낙관적 업데이트)
@@ -123,6 +148,9 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
         )
       }
       
+      // 노트 추가 후 폴링 활성화 (다른 사용자 반응 감지)
+      queryClient.invalidateQueries({ queryKey: ['interview-notes', interviewId] })
+      
       toast.success('노트가 추가되었습니다')
     },
     onError: (error, variables, context) => {
@@ -157,6 +185,8 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
       return response.json()
     },
     onSuccess: () => {
+      // 노트 수정 후 폴링 활성화
+      queryClient.invalidateQueries({ queryKey: ['interview-notes', interviewId] })
       toast.success('노트가 수정되었습니다')
     },
     onError: (error) => {
@@ -182,6 +212,8 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
       }
     },
     onSuccess: () => {
+      // 노트 삭제 후 폴링 활성화
+      queryClient.invalidateQueries({ queryKey: ['interview-notes', interviewId] })
       toast.success('노트가 삭제되었습니다')
     },
     onError: (error) => {
@@ -211,6 +243,8 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
       return response.json()
     },
     onSuccess: () => {
+      // 댓글 추가 후 폴링 활성화
+      queryClient.invalidateQueries({ queryKey: ['interview-notes', interviewId] })
       toast.success('댓글이 추가되었습니다')
     },
     onError: (error) => {
@@ -236,6 +270,8 @@ export function useInterviewNotes(interviewId: string, projectId?: string) {
       }
     },
     onSuccess: () => {
+      // 댓글 삭제 후 폴링 활성화
+      queryClient.invalidateQueries({ queryKey: ['interview-notes', interviewId] })
       toast.success('댓글이 삭제되었습니다')
     },
     onError: (error) => {
