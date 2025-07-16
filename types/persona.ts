@@ -5,24 +5,41 @@ import { Database } from './supabase'
 // 새로운 페르소나 데이터 구조 (페르소나 조합 기반)
 export interface PersonaData {
   id: string
-  persona_type: string
-  persona_title: string
-  persona_description: string
-  persona_summary: string
+  persona_code: string
+  title: string
+  description: string
   thumbnail: string | null
-  persona_style: string
-  painpoints: string
-  needs: string
-  insight: string
-  insight_quote: string
-  created_at: string
-  project_id: string | null
+  type_ids: string[]
   company_id: string
+  created_at: string
+  updated_at: string
+  
+  // 인터뷰 데이터 연동
+  interviewData?: {
+    insights: string          // 핵심 인사이트 요약
+    painPoints: string        // 주요 고민점들
+    needs: string            // 주요 니즈들
+    keyQuotes: string        // 인상적인 인터뷰 발언들
+    profileContext: string   // 대화 컨텍스트용 프로필 요약
+  }
+  
+  // 레거시 호환성 (필요시 제거 가능)
+  persona_type?: string
+  persona_title?: string
+  persona_description?: string
+  persona_summary?: string
+  persona_style?: string
+  painpoints?: string
+  needs?: string
+  insight?: string
+  insight_quote?: string
+  project_id?: string | null
   interview_count?: number
   types?: Array<{
     id: string
     name: string
     description: string
+    classification_name?: string
     persona_classifications?: {
       name: string
       description: string

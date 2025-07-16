@@ -53,6 +53,7 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
           persona_character: persona.persona_style,
           persona_type: persona.persona_type,
           persona_description: persona.persona_description,
+          interview_count: persona.interview_count || 0,
           persona_title: persona.persona_title,
           persona_summary: persona.persona_summary,
           persona_style: persona.persona_style,
@@ -62,6 +63,11 @@ export async function fetchPersonas(company_id?: string): Promise<PersonaCardDat
         }
       })
       .sort((a, b) => {
+        // 1순위: interview_count 내림차순 (할당된 인터뷰가 많은 것부터)
+        if (a.interview_count !== b.interview_count) {
+          return (b.interview_count || 0) - (a.interview_count || 0)
+        }
+        // 2순위: persona_type 오름차순 (P1, P2, P3...)
         return a.persona_type.localeCompare(b.persona_type)
       })
   } catch (error) {
@@ -159,6 +165,7 @@ export interface PersonaCardData {
   persona_character: string
   persona_type: string
   persona_description: string
+  interview_count?: number
   // Chat API용 추가 필드
   persona_title?: string | null
   persona_summary?: string | null

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { useAuth } from '@/hooks/use-auth'
 import { useProject, useProjectMembers } from '@/hooks/use-projects'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
+import { ProjectWithMembership } from '@/types'
 import ProjectSettings from '@/components/project/tabs/project-settings'
 import { ProjectInterviews, ProjectInsights } from '@/components/project/tabs'
 import { ProjectLayout } from '@/components/layout/project-layout'
@@ -19,10 +22,27 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
   const { profile, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   
-  // 병렬 데이터 페칭
-  const { data: project, isLoading: projectLoading, error, isError, refetch, isInitialLoading } = useProject(projectId)
-  const { data: members, isLoading: membersLoading } = useProjectMembers(projectId)
+  // 캐시된 프로젝트 목록에서 해당 프로젝트를 먼저 찾음
+  const cachedProject = profile?.company_id && profile?.id ? 
+    queryClient.getQueryData<ProjectWithMembership[]>(
+      queryKeys.projects.byCompanyAndUser(profile.company_id, profile.id)
+    )?.find(p => p.id === projectId) : null
+  
+  // 캐시된 데이터가 있으면 즉시 사용, 없으면 API 호출
+  const { data: apiProject, isLoading: projectLoading, error, isError, refetch, isInitialLoading } = useProject(projectId, {
+    enabled: !cachedProject && !authLoading && !!projectId, // 캐시된 데이터가 없을 때만 API 호출
+    initialData: cachedProject as any, // 캐시된 데이터를 초기 데이터로 사용
+  })
+  
+  // 실제 사용할 프로젝트 데이터: 캐시된 데이터 우선, 없으면 API 데이터
+  const project = cachedProject || apiProject
+  
+  // 멤버 정보는 필요시에만 로드 (캐시된 데이터에 member_count는 있음)
+  const { data: members, isLoading: membersLoading } = useProjectMembers(projectId, {
+    enabled: !authLoading && !!projectId, // 기본 조건은 유지
+  })
   
   const [activeView, setActiveView] = useState(() => {
     const tabParam = searchParams.get('tab')
@@ -62,8 +82,8 @@ export function ProjectDetailContent({ projectId }: ProjectDetailContentProps) {
     setDownloadHandlers(handlers)
   }, [])
   
-  // 전체 로딩 상태 - 인증 로딩 상태도 포함
-  const isLoading = authLoading || projectLoading || membersLoading || isInitialLoading
+  // 전체 로딩 상태 - 캐시된 데이터가 있으면 로딩 상태 단축
+  const isLoading = authLoading || (!cachedProject && (projectLoading || isInitialLoading)) || membersLoading
 
   // URL 쿼리 파라미터로부터 activeView 설정
   useEffect(() => {

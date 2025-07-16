@@ -16,9 +16,8 @@ import { ProjectSearchBar } from '../components/project-search-bar'
 import { CreateProjectDialog } from '../components/create-project-dialog'
 import { ProjectSkeleton } from '../components/project-skeleton'
 import { JoinProjectDialog } from '../components/join-project-dialog'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
-import { projectsApi as projectService } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
 // 프로젝트 수정을 위한 인터페이스
@@ -47,7 +46,7 @@ export function ProjectPageContent() {
   const [showJoinDialog, setShowJoinDialog] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectWithMembership | null>(null)
   
-  // 편집 관련
+  // 편집 관련 (추후 구현)
   const [editingProject, setEditingProject] = useState<ProjectEditData | null>(null)
   
   // 초대 관련 (추후 구현)
@@ -65,56 +64,8 @@ export function ProjectPageContent() {
     project.visibility === 'public' && project.user_role === null
   )
 
-  // 화면에 보이는 프로젝트들만 프리페칭 (최대 6개)
-  const visibleProjects = filteredProjects.slice(0, 6)
-  
-  // 프로젝트 상세 데이터 배치 프리페칭 (최대 6개만)
-  const projectDetailsQueries = useQueries({
-    queries: visibleProjects.map(project => ({
-      queryKey: queryKeys.projects.detail(project.id),
-      queryFn: async () => {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
-        const response = await projectService.getProject(session.access_token, project.id, profile?.id)
-        return response.data
-      },
-      staleTime: 5 * 60 * 1000, // 5분
-      enabled: !!profile?.id && !!visibleProjects.length,
-    }))
-  })
-
-  // 프로젝트 멤버 데이터 배치 프리페칭
-  const projectMembersQueries = useQueries({
-    queries: visibleProjects.map(project => ({
-      queryKey: queryKeys.projects.member(project.id),
-      queryFn: async () => {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
-        const response = await projectService.getProjectMembers(session.access_token, project.id)
-        return response.data
-      },
-      staleTime: 5 * 60 * 1000, // 5분
-      enabled: !!profile?.id && !!visibleProjects.length,
-    }))
-  })
-
-  // 인터뷰 데이터는 이제 Realtime으로 처리되므로 프리페칭 제거
-  // const interviewQueries = useQueries({
-  //   queries: visibleProjects.map(project => ({
-  //     queryKey: queryKeys.interviews.byProject(project.id, { limit: 20 }),
-  //     queryFn: async () => {
-  //       if (!profile?.company_id) throw new Error('회사 정보가 없습니다')
-  //       const response = await fetch(
-  //         `/api/interviews?company_id=${profile.company_id}&project_id=${project.id}&limit=20&offset=0`
-  //       )
-  //       if (!response.ok) throw new Error('인터뷰 데이터를 가져올 수 없습니다')
-  //       const data = await response.json()
-  //       return data.data || []
-  //     },
-  //     staleTime: 5 * 60 * 1000, // 5분
-  //     enabled: !!profile?.company_id && !!profile?.id && !!visibleProjects.length,
-  //   }))
-  // })
+  // 프리페칭 제거: 프로젝트 목록 데이터에 이미 필요한 정보가 포함되어 있음
+  // 프로젝트 상세 페이지에서 캐시된 목록 데이터를 우선 사용하고, 필요한 경우에만 추가 로드
 
   // 새 프로젝트 생성
   const handleCreateProject = async (projectData: CreateProjectData) => {
@@ -170,7 +121,7 @@ export function ProjectPageContent() {
       throw new Error('프로젝트 참여에 실패했습니다')
     }
 
-    const result = await response.json()
+    await response.json()
     
     // 성공 토스트를 먼저 표시
     toast.success('프로젝트에 참여했습니다!')

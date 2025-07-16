@@ -201,18 +201,8 @@ export async function POST(req: NextRequest) {
         existingCombinationIds.push(combo.id)
       })
       
-      // 구조가 변경되면 인터뷰와의 연결 해제
-      if (existingCombinations.length > 0) {
-        const { error: unlinkError } = await supabaseAdmin
-          .from('interviews')
-          .update({ persona_combination_id: null })
-          .in('persona_combination_id', existingCombinationIds)
-        
-        if (unlinkError) {
-          console.error('Error unlinking interviews:', unlinkError)
-          // 계속 진행
-        }
-      }
+      // 중요: 기존 인터뷰와의 연결은 유지합니다
+      // 분류 기준 수정 시 기존 인터뷰 데이터를 보존하여 데이터 손실을 방지합니다
     }
 
     // 저장된 분류 기준과 유형을 다시 조회
@@ -269,17 +259,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 분류 구조가 변경되었으므로 모든 기존 조합 삭제
-      if (existingCombinations && existingCombinations.length > 0) {
-        const { error: deleteError } = await supabaseAdmin
-          .from('persona_combinations')
-          .delete()
-          .eq('company_id', companyId)
-        
-        if (deleteError) {
-          console.error('Error deleting old combinations:', deleteError)
-        }
-      }
+      // 중요: 기존 페르소나 조합은 삭제하지 않습니다
+      // 기존 인터뷰와의 연결을 유지하기 위해 기존 조합을 보존합니다
+      // 새로운 조합만 추가하여 점진적으로 시스템을 발전시킵니다
 
       // 새 조합 추가/업데이트
       if (combinationData.length > 0) {
@@ -291,7 +273,6 @@ export async function POST(req: NextRequest) {
           })
         
         if (upsertError) {
-          console.error('Error upserting combinations:', upsertError)
           return NextResponse.json({ error: '페르소나 조합 저장 실패' }, { status: 500 })
         }
       }

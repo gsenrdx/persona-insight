@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const company_id = searchParams.get('company_id')
     const project_id = searchParams.get('project_id')
+    const raw = searchParams.get('raw') === 'true' // 원본 persona_combinations 데이터 반환용
     
     // 인증 처리 - 두 가지 방법 지원 (인터뷰 API와 동일)
     let targetCompanyId: string
@@ -56,40 +57,137 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
-    // 각 조합에 대한 상세 정보 조회
-    const personasWithDetails = await Promise.all(
-      (combinations || []).map(async (combination) => {
-        // type_ids가 배열인지 확인하고 타입 정보 조회
-        const typeIds = Array.isArray(combination.type_ids) ? combination.type_ids : []
+    // raw=true인 경우 원본 persona_combinations 데이터와 type 정보 반환
+    if (raw) {
+      const combinationsWithTypes = []
+      
+      if (combinations && combinations.length > 0) {
+        // 모든 type_ids 수집
+        const allTypeIds = [...new Set(
+          combinations
+            .filter(c => Array.isArray(c.type_ids) && c.type_ids.length > 0)
+            .flatMap(c => c.type_ids)
+        )]
         
-        let types = []
-        if (typeIds.length > 0) {
-          const { data: typeData, error: typeError } = await supabaseAdmin
+        // 타입 정보 배치 조회
+        let typesMap = new Map()
+        if (allTypeIds.length > 0) {
+          const { data: typeData } = await supabaseAdmin
             .from('persona_classification_types')
             .select(`
               id,
               name,
               description,
-              classification:persona_classifications!inner (
+              classification_id,
+              persona_classifications!inner (
                 id,
                 name,
                 description
               )
             `)
-            .in('id', typeIds)
+            .in('id', allTypeIds)
           
-          types = typeData || []
+          if (typeData) {
+            typeData.forEach(type => {
+              typesMap.set(type.id, type)
+            })
+          }
         }
+        
+        // persona_combinations 데이터에 type 정보 포함
+        combinationsWithTypes.push(...combinations.map(combination => {
+          const typeIds = Array.isArray(combination.type_ids) ? combination.type_ids : []
+          const types = typeIds.map(id => typesMap.get(id)).filter(Boolean)
+          
+          return {
+            id: combination.id,
+            persona_code: combination.persona_code,
+            type_ids: combination.type_ids,
+            title: combination.title,
+            description: combination.description,
+            thumbnail: combination.thumbnail,
+            created_at: combination.created_at,
+            persona_classification_types: types
+          }
+        }))
+      }
+      
+      return NextResponse.json({
+        data: combinationsWithTypes,
+        success: true
+      })
+    }
 
-        // 인터뷰 수 조회
-        const { count: interviewCount } = await supabaseAdmin
-          .from('interviews')
-          .select('id', { count: 'exact', head: true })
-          .eq('persona_combination_id', combination.id)
-
+    // 프로덕션 수준 배치 조회로 N+1 문제 해결
+    let personasWithDetails = []
+    
+    if (combinations && combinations.length > 0) {
+      // 1. 모든 type_ids 수집
+      const allTypeIds = [...new Set(
+        combinations
+          .filter(c => Array.isArray(c.type_ids) && c.type_ids.length > 0)
+          .flatMap(c => c.type_ids)
+      )]
+      
+      // 2. 배치로 모든 타입 정보 조회 (한 번의 쿼리)
+      let typesMap = new Map()
+      if (allTypeIds.length > 0) {
+        const { data: typeData } = await supabaseAdmin
+          .from('persona_classification_types')
+          .select(`
+            id,
+            name,
+            description,
+            classification_id,
+            persona_classifications!inner (
+              id,
+              name,
+              description
+            )
+          `)
+          .in('id', allTypeIds)
+        
+        if (typeData) {
+          typeData.forEach(type => {
+            typesMap.set(type.id, type)
+          })
+        }
+      }
+      
+      // 3. 배치로 모든 인터뷰 수 조회 (한 번의 쿼리)
+      const combinationIds = combinations.map(c => c.id)
+      const { data: interviewCounts } = await supabaseAdmin
+        .from('interviews')
+        .select('persona_combination_id')
+        .in('persona_combination_id', combinationIds)
+        .eq('company_id', targetCompanyId)
+        .is('deleted_at', null)
+        .not('persona_combination_id', 'is', null)
+      
+      // 인터뷰 수 집계
+      const countMap = new Map()
+      if (interviewCounts) {
+        interviewCounts.forEach(interview => {
+          const id = interview.persona_combination_id
+          if (id) {
+            countMap.set(id, (countMap.get(id) || 0) + 1)
+          }
+        })
+      }
+      
+      // 4. 메모리 기반 조합으로 빠른 변환
+      personasWithDetails = combinations.map(combination => {
+        const typeIds = Array.isArray(combination.type_ids) ? combination.type_ids : []
+        
+        // 메모리 기반 타입 정보 조회 (O(1))
+        const types = typeIds.map(id => typesMap.get(id)).filter(Boolean)
+        
+        // 메모리 기반 인터뷰 수 조회 (O(1))
+        const interviewCount = countMap.get(combination.id) || 0
+        
         // 타입 정보를 기반으로 제목과 설명 생성
-        const typeNames = types.map((t: any) => t.name).filter(Boolean)
-        const classificationNames = types.map((t: any) => t.classification?.name).filter(Boolean)
+        const typeNames = types.map(t => t.name).filter(Boolean)
+        const classificationNames = types.map(t => t.persona_classifications?.name).filter(Boolean)
         
         // combination.title이 있으면 사용하고, 없으면 타입 기반으로 생성
         const title = combination.title || 
@@ -121,16 +219,16 @@ export async function GET(request: Request) {
           created_at: combination.created_at,
           project_id: null,
           company_id: targetCompanyId,
-          interview_count: interviewCount || 0,
+          interview_count: interviewCount,
           types: types.map(t => ({
             id: t.id,
             name: t.name,
             description: t.description,
-            classification_name: t.classification?.name || ""
+            classification_name: t.persona_classifications?.name || ""
           }))
         }
       })
-    )
+    }
 
     // 프로젝트별 필터링 (인터뷰가 있는 페르소나만 표시)
     let filteredPersonas = personasWithDetails

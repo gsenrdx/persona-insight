@@ -41,7 +41,7 @@ export async function GET(
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
     const deletedOnly = searchParams.get('deletedOnly') === 'true'
     
-    // 인터뷰 목록 조회 (페르소나 정보는 별도로 처리)
+    // 인터뷰 목록 조회 (페르소나 정보 포함)
     let query = supabase
       .from('interviews')
       .select(`
@@ -71,24 +71,19 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    // 페르소나 조합 타입 정보를 별도로 가져오기
-    const personaCombinationIds = interviews
-      ?.map(i => i.persona_combination?.id)
-      .filter(Boolean) as string[]
-    
+    // 효율적인 타입 정보 배치 조회 (N+1 문제 해결)
     let typeDataMap = new Map()
     
-    if (personaCombinationIds.length > 0) {
-      // 각 조합의 type_ids를 가져와서 타입 정보 조회
-      const combinations = interviews
-        ?.filter(i => i.persona_combination)
-        .map(i => i.persona_combination) as any[]
-      
-      // 모든 type_ids 수집
-      const allTypeIds = [...new Set(combinations.flatMap(c => c.type_ids || []))]
+    if (interviews && interviews.length > 0) {
+      // 모든 인터뷰의 type_ids를 미리 수집
+      const allTypeIds = [...new Set(
+        interviews
+          .filter(i => i.persona_combination?.type_ids)
+          .flatMap(i => i.persona_combination.type_ids || [])
+      )]
       
       if (allTypeIds.length > 0) {
-        // 타입 정보 조회
+        // 한 번의 쿼리로 모든 타입 정보 조회
         const { data: types } = await supabase
           .from('persona_classification_types')
           .select(`
@@ -102,7 +97,7 @@ export async function GET(
           `)
           .in('id', allTypeIds)
         
-        // ID로 매핑
+        // 빠른 조회를 위한 Map 생성
         if (types) {
           types.forEach(type => {
             typeDataMap.set(type.id, type)
@@ -111,12 +106,12 @@ export async function GET(
       }
     }
     
-    // Transform the data to match expected format
+    // 데이터 변환 (메모리 기반 매핑으로 최적화)
     const transformedInterviews = interviews?.map(interview => {
       const combination = interview.persona_combination
       
-      // type_ids에 해당하는 타입 정보 추가
-      if (combination && combination.type_ids) {
+      // 메모리 기반 타입 정보 매핑 (O(1) 조회)
+      if (combination && combination.type_ids && typeDataMap.size > 0) {
         combination.persona_classification_types = combination.type_ids
           .map(typeId => typeDataMap.get(typeId))
           .filter(Boolean)

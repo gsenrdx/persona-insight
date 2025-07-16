@@ -77,18 +77,18 @@ export function ChatMessages({
             className="flex justify-start mb-4"
           >
             <div className="flex flex-row items-end gap-2">
-              <div className="h-8 w-8 rounded-full flex-shrink-0 overflow-hidden">
+              <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
                 {activePersona.image || activePersona.avatar ? (
                   <Image
                     src={activePersona.image || activePersona.avatar}
                     alt={activePersona.persona_title || activePersona.name}
-                    width={32}
-                    height={32}
+                    width={40}
+                    height={40}
                     className="object-cover w-full h-full"
                     unoptimized={(activePersona.image || activePersona.avatar).includes('supabase.co')}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 text-gray-700">
+                  <div className="w-full h-full flex items-center justify-center text-sm bg-gray-100 text-gray-700">
                     {(activePersona.persona_title || activePersona.name).substring(0, 2)}
                   </div>
                 )}

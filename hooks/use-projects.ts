@@ -43,19 +43,20 @@ export function useProjects(query: ProjectListQuery = {}, options?: { enabled?: 
 /**
  * 단일 프로젝트 조회
  */
-export function useProject(projectId: string) {
+export function useProject(projectId: string, options?: { enabled?: boolean; initialData?: any }) {
   const { user, loading: authLoading } = useAuth()
   
   return useQuery({
     queryKey: queryKeys.projects.detail(projectId),
     queryFn: async () => {
-      // 세션을 직접 가져와서 사용
+      // 세션을 직접 가져와서 사용 (캐시된 세션 활용)
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('인증 토큰을 찾을 수 없습니다')
       const response = await projectsApi.getProject(session.access_token, projectId)
       return extractApiData(response)
     },
-    enabled: !authLoading && !!projectId, // authLoading이 false일 때만 실행
+    enabled: options?.enabled !== undefined ? options.enabled : (!authLoading && !!projectId),
+    initialData: options?.initialData,
     staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
     gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
     refetchOnMount: false, // 마운트 시 재조회 방지
@@ -73,7 +74,7 @@ export function useProject(projectId: string) {
 /**
  * 프로젝트 멤버 목록 조회
  */
-export function useProjectMembers(projectId: string) {
+export function useProjectMembers(projectId: string, options?: { enabled?: boolean; staleTime?: number }) {
   const { user, loading: authLoading } = useAuth()
   
   return useQuery({
@@ -85,8 +86,8 @@ export function useProjectMembers(projectId: string) {
       const response = await projectsApi.getProjectMembers(session.access_token, projectId)
       return extractApiData(response)
     },
-    enabled: !authLoading && !!projectId, // authLoading이 false일 때만 실행
-    staleTime: 10 * 60 * 1000, // 10분간 fresh 상태 유지
+    enabled: options?.enabled !== undefined ? options.enabled : (!authLoading && !!projectId),
+    staleTime: options?.staleTime ?? 10 * 60 * 1000, // 10분간 fresh 상태 유지
     gcTime: 30 * 60 * 1000, // 30분간 캐시 유지
     refetchOnMount: false, // 마운트 시 재조회 방지
   })

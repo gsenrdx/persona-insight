@@ -18,18 +18,18 @@ export function ChatHeader({ message, personaData }: ChatHeaderProps) {
   
   return (
     <>
-      <div className="h-8 w-8 rounded-full flex-shrink-0 overflow-hidden">
+      <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
         {displayPersona.image ? (
           <Image
             src={displayPersona.image}
             alt={displayPersona.name}
-            width={32}
-            height={32}
+            width={40}
+            height={40}
             className="object-cover w-full h-full"
             unoptimized={displayPersona.image.includes('supabase.co')}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs bg-gray-100 text-gray-700">
+          <div className="w-full h-full flex items-center justify-center text-sm bg-gray-100 text-gray-700">
             {displayPersona.name.substring(0, 2)}
           </div>
         )}

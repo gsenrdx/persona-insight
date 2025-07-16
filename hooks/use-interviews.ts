@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './use-auth'
 import { Interview } from '@/types/interview'
 import { toast } from 'sonner'
+import { useEffect } from 'react'
 
 interface UseInterviewsOptions {
   projectId: string
@@ -23,7 +24,53 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
   const { session, profile } = useAuth()
   const queryClient = useQueryClient()
 
-  // 스마트 폴링 기반 인터뷰 목록 조회
+  // 상태 체크용 최적화된 폴링 (처리 중일 때만)
+  const {
+    data: statusData,
+    isLoading: isLoadingStatus,
+    error: statusError,
+    refetch: refetchStatus
+  } = useQuery<{ data: Interview[], stats: Record<string, number>, metadata: any }>({
+    queryKey: ['interviews-status', projectId],
+    queryFn: async () => {
+      if (!session?.access_token) throw new Error('인증이 필요합니다')
+      
+      const response = await fetch(`/api/projects/${projectId}/interviews/status`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`상태 조회 실패: ${response.status}`)
+      }
+      
+      return response.json()
+    },
+    enabled: enabled && !!session?.access_token,
+    // 적응형 폴링: 처리 중일 때만 활성화
+    refetchInterval: (query) => {
+      if (document.hidden) return false
+      
+      const data = query.state.data
+      const processingCount = data?.metadata?.processingCount || 0
+      
+      // 폴링이 필요한지 판단 (statusData만 사용)
+      const totalProcessingCount = processingCount
+      
+      // 처리 중인 항목이 없으면 폴링 중단
+      if (totalProcessingCount === 0) return false
+      
+      // 처리 중인 항목이 있을 때만 3초 간격으로 폴링
+      return 3000
+    },
+    staleTime: 1000, // 1초 stale time
+    gcTime: 2 * 60 * 1000, // 2분 캐시
+    retry: 2,
+    retryDelay: 1000
+  })
+
+  // 전체 데이터 조회 (폴링 없음)
   const {
     data: interviews = [],
     isLoading,
@@ -50,26 +97,49 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       return result.data || []
     },
     enabled: enabled && !!session?.access_token,
-    // 스마트 폴링: processing 상태가 있을 때만 3초마다 자동 새로고침
-    refetchInterval: (query) => {
-      const interviews = query.state.data as Interview[] || []
-      const hasProcessing = interviews.some(i => 
-        i.workflow_status === 'processing' || i.status === 'processing'
-      )
-      return hasProcessing ? 3000 : false // 3초로 단축 (더 빠른 반응)
-    },
-    // 창 포커스 시 새로고침 (사용자가 돌아왔을 때 최신 상태 확인)
+    // 폴링 없음 - 상태 변경 시에만 수동으로 refetch
+    refetchInterval: false,
+    // 창 포커스 시에만 새로고침 (백그라운드 복귀 시)
     refetchOnWindowFocus: true,
     // 재연결 시 새로고침 (네트워크 복구 시)
     refetchOnReconnect: true,
-    // 3분간 캐시 유지 (폴링이 있으므로 짧게)
-    staleTime: 3 * 60 * 1000,
-    // 캐시 수명 5분
-    gcTime: 5 * 60 * 1000,
-    // 에러 시 3번 재시도
-    retry: 3,
+    // 스테일 타임 단축 (폴링 시 더 빠른 반응)
+    staleTime: 30 * 1000,
+    // 캐시 수명 연장 (메모리 효율)
+    gcTime: 10 * 60 * 1000,
+    // 에러 시 지수 백오프 재시도
+    retry: (failureCount, error) => {
+      // 최대 3번까지, 네트워크 오류는 더 적극적으로 재시도
+      if (failureCount >= 3) return false
+      if (error?.message?.includes('network')) return failureCount < 5
+      return true
+    },
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
   })
+
+  // 상태 변경 감지 및 전체 데이터 동기화
+  useEffect(() => {
+    if (statusData?.data && interviews.length > 0) {
+      const statusInterviews = statusData.data
+      
+      // 상태 변경 감지 (processing → completed/failed)
+      const statusChanged = statusInterviews.some(statusItem => {
+        const currentItem = interviews.find(i => i.id === statusItem.id)
+        if (!currentItem) return true // 새로운 항목
+
+        const currentStatus = currentItem.status
+        const newStatus = statusItem.status
+
+        return currentStatus !== newStatus && 
+               (currentStatus === 'processing' || newStatus === 'completed' || newStatus === 'failed')
+      })
+
+      // 상태 변경이 감지되면 전체 데이터 재조회
+      if (statusChanged) {
+        queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+      }
+    }
+  }, [statusData?.data, interviews, queryClient, projectId])
 
   // 인터뷰 생성 (낙관적 업데이트)
   const createMutation = useMutation({
@@ -120,8 +190,9 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       return response.json()
     },
     onSuccess: (data) => {
-      // 생성 성공 시 목록 새로고침
+      // 생성 성공 시 두 쿼리 모두 새로고침
       queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['interviews-status', projectId] })
       toast.success('인터뷰 분석을 시작합니다')
     },
     onError: (error) => {
@@ -145,8 +216,9 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       return response.json()
     },
     onSuccess: () => {
-      // 업데이트 성공 시 목록 새로고침
+      // 업데이트 성공 시 두 쿼리 모두 새로고침
       queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['interviews-status', projectId] })
       toast.success('인터뷰가 업데이트되었습니다')
     },
     onError: () => {
@@ -167,8 +239,9 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
       return id
     },
     onSuccess: () => {
-      // 삭제 성공 시 두 목록 모두 새로고침
+      // 삭제 성공 시 모든 관련 쿼리 새로고침
       queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['interviews-status', projectId] })
       queryClient.invalidateQueries({ queryKey: ['deleted-interviews', projectId] })
       toast.success('인터뷰가 삭제되었습니다')
     },
@@ -177,18 +250,15 @@ export function useInterviews({ projectId, enabled = true }: UseInterviewsOption
     }
   })
 
-  // 상태 분석
-  const processingCount = interviews.filter(i => 
-    i.workflow_status === 'processing' || i.status === 'processing'
-  ).length
+  // 상태 분석 (statusData에서 가져오거나 fallback)
+  const processingCount = statusData?.metadata?.processingCount || 
+    (interviews?.filter(i => i.status === 'processing').length ?? 0)
   
-  const completedCount = interviews.filter(i => 
-    i.workflow_status === 'completed' || i.status === 'completed'
-  ).length
+  const completedCount = statusData?.metadata?.completedCount || 
+    (interviews?.filter(i => i.status === 'completed').length ?? 0)
   
-  const failedCount = interviews.filter(i => 
-    i.workflow_status === 'failed' || i.status === 'failed'
-  ).length
+  const failedCount = statusData?.metadata?.failedCount || 
+    (interviews?.filter(i => i.status === 'failed').length ?? 0)
 
   return {
     // 데이터
@@ -283,12 +353,14 @@ export function useRestoreInterview(projectId?: string) {
       return response.json()
     },
     onSuccess: () => {
-      // 복원 성공 시 두 목록 모두 새로고침
+      // 복원 성공 시 모든 관련 쿼리 새로고침
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ['interviews', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['interviews-status', projectId] })
         queryClient.invalidateQueries({ queryKey: ['deleted-interviews', projectId] })
       } else {
         queryClient.invalidateQueries({ queryKey: ['interviews'] })
+        queryClient.invalidateQueries({ queryKey: ['interviews-status'] })
         queryClient.invalidateQueries({ queryKey: ['deleted-interviews'] })
       }
     },

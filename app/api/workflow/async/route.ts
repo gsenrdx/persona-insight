@@ -155,6 +155,20 @@ export async function POST(req: NextRequest) {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
           
+          // 500 에러지만 실제로는 처리가 완료되었을 수 있음
+          
+          // 실제 처리 상태 확인
+          const { data: currentInterview } = await supabase
+            .from('interviews')
+            .select('status, updated_at')
+            .eq('id', interviewId)
+            .single()
+          
+          // 이미 완료된 상태라면 실패로 업데이트하지 않음
+          if (currentInterview?.status === 'completed') {
+            return
+          }
+          
           await supabase
             .from('interviews')
             .update({
@@ -164,12 +178,24 @@ export async function POST(req: NextRequest) {
                 ...(typeof insertedData?.[0]?.metadata === 'object' && insertedData[0].metadata !== null ? insertedData[0].metadata : {}),
                 error: errorData.error || 'Background processing failed',
                 message: errorData.message || response.statusText,
-                failed_at: new Date().toISOString()
+                failed_at: new Date().toISOString(),
+                response_status: response.status
               } as any
             })
             .eq('id', interviewId)
         }
       } catch (error: any) {
+        // 실제 처리 상태 확인
+        const { data: currentInterview } = await supabase
+          .from('interviews')
+          .select('status, updated_at')
+          .eq('id', interviewId)
+          .single()
+        
+        // 이미 완료된 상태라면 실패로 업데이트하지 않음
+        if (currentInterview?.status === 'completed') {
+          return
+        }
         
         await supabase
           .from('interviews')

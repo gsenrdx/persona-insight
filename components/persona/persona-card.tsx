@@ -38,6 +38,7 @@ export default function PersonaCard({
   persona_character,
   persona_type,
   persona_description,
+  interview_count = 0,
 }: PersonaCardProps) {
   const router = useRouter()
   const [isHovered, setIsHovered] = useState(false)
@@ -62,6 +63,11 @@ export default function PersonaCard({
   }, [id])
 
   const handleCardClick = () => {
+    // 인터뷰가 없는 경우 클릭 비활성화
+    if (interview_count === 0) {
+      return
+    }
+
     setIsModalOpen(true)
     setIsLoading(true)
     
@@ -103,27 +109,20 @@ export default function PersonaCard({
           layoutId={`persona-card-${id}`}
         >
           <div className={cn(
-            "relative h-full cursor-pointer overflow-hidden rounded-xl border shadow-sm transition-all duration-300",
-            "bg-white border-slate-200"
+            "relative h-full overflow-hidden rounded-xl border shadow-sm transition-all duration-300",
+            "bg-white border-slate-200",
+            interview_count === 0 ? "cursor-not-allowed opacity-60" : "cursor-pointer"
           )}>
             {/* 페르소나 카드 - 애플 스타일 */}
-            <div className="relative p-4 h-full flex flex-col z-10">
+            <div className="relative p-4 h-full flex flex-col">
               {/* 헤더 영역 - 페르소나 이름 (title) */}
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3">
                 <h3 className={cn(
-                  "text-base font-semibold leading-tight flex-1",
+                  "text-base font-semibold leading-tight",
                   "text-zinc-900"
                 )}>
                   {name}
                 </h3>
-                {persona_type && (
-                  <div className={cn(
-                    "ml-2 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0",
-                    "bg-blue-600 text-white"
-                  )}>
-                    {persona_type}
-                  </div>
-                )}
               </div>
               
               {/* 설명 - persona_description */}
@@ -179,12 +178,12 @@ export default function PersonaCard({
             
             {/* 페르소나 이미지 배경 그라데이션 */}
             <div className={cn(
-              "absolute bottom-0 right-0 w-32 h-32 rounded-full -mr-10 -mb-10 z-0 overflow-hidden",
+              "absolute bottom-0 right-0 w-32 h-32 rounded-full -mr-10 -mb-10 z-20 overflow-hidden",
               "bg-gradient-to-br from-indigo-100 to-indigo-300/40"
             )} />
             
             {/* 페르소나 이미지 - 크기 통일 (250x250) */}
-            <div className="absolute -bottom-2 -right-2 w-32 h-32 z-10 pointer-events-none">
+            <div className="absolute -bottom-2 -right-2 w-32 h-32 z-30 pointer-events-none">
               <motion.div
                 initial={{ y: 0 }}
                 animate={{ y: [0, -5, 0] }}
@@ -208,6 +207,25 @@ export default function PersonaCard({
                 />
               </motion.div>
             </div>
+            
+            {/* 인터뷰 없음 오버레이 */}
+            {interview_count === 0 && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-40 flex items-center justify-center">
+                <div className="text-center px-4">
+                  <div className="mb-2">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-gray-100 flex items-center justify-center">
+                      <MessageCircle className="h-6 w-6 text-gray-400" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    할당된 인터뷰가 없습니다
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    인터뷰를 추가하면 대화할 수 있어요
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 

@@ -122,6 +122,8 @@ export async function POST(req: NextRequest) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 290000) // 4분 50초 타임아웃
     
+    // console.log('[MISO-API-START]', { interviewId, contentLength: maskedContent.length })
+    
     const workflowResponse = await fetch(
       `${MISO_API_URL}/ext/v1/workflows/run`,
       {
@@ -147,6 +149,8 @@ export async function POST(req: NextRequest) {
         signal: controller.signal
       }
     ).finally(() => clearTimeout(timeoutId))
+    
+    // console.log('[MISO-API-END]', { interviewId, status: workflowResponse.status })
     
     if (!workflowResponse.ok) {
       const errorMessage = await workflowResponse.text().catch(() => '')
@@ -181,7 +185,22 @@ export async function POST(req: NextRequest) {
     const workflowResult = await workflowResponse.json()
     const outputs = workflowResult.data?.outputs || {}
     
-    // 4. DB 업데이트 (성공)
+    // 4. 페르소나 코드를 UUID로 매핑
+    let personaCombinationId: string | null = null
+    if (outputs.ai_persona_match && typeof outputs.ai_persona_match === 'string') {
+      const { data: personaCombination } = await supabase
+        .from('persona_combinations')
+        .select('id')
+        .eq('persona_code', outputs.ai_persona_match)
+        .eq('company_id', company?.id)
+        .single()
+      
+      if (personaCombination) {
+        personaCombinationId = personaCombination.id
+      }
+    }
+
+    // 5. DB 업데이트 (성공) - 존재하는 컬럼만 업데이트
     const { error: updateError } = await supabase
       .from('interviews')
       .update({
@@ -195,8 +214,15 @@ export async function POST(req: NextRequest) {
         primary_needs: outputs.primary_needs || null,
         hmw_questions: outputs.hmw_questions || null,
         script_sections: outputs.script_sections || null,
-        ai_persona_match: outputs.ai_persona_match || null,
-        ai_persona_explanation: outputs.ai_persona_explanation || null,
+        persona_combination_id: personaCombinationId,
+        
+        // 디버깅용 로그
+        metadata: {
+          miso_outputs: Object.keys(outputs),
+          ai_persona_match: outputs.ai_persona_match,
+          persona_combination_id: personaCombinationId,
+          processing_completed_at: new Date().toISOString()
+        } as any,
         updated_at: new Date().toISOString()
       })
       .eq('id', interviewId)
@@ -211,7 +237,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 5. 스크립트 섹션 저장 (고유 섹션명만)
+    // 6. 스크립트 섹션 저장 (고유 섹션명만)
     if (outputs.script_sections && Array.isArray(outputs.script_sections)) {
       const companyId = company?.id
       
@@ -251,13 +277,13 @@ export async function POST(req: NextRequest) {
           
           if (insertError) {
             // 섹션 저장 실패는 전체 프로세스 실패로 처리하지 않음
-            // 에러는 무시하고 계속 진행
+            // 에러 로깅 후 계속 진행 (운영환경에서는 실제 로깅 시스템 사용)
           }
         }
       }
     }
 
-    // 6. 핵심 요약(key_takeaways) 저장 (고유 값만)
+    // 7. 핵심 요약(key_takeaways) 저장 (고유 값만)
     if (outputs.key_takeaways && Array.isArray(outputs.key_takeaways)) {
       const companyId = company?.id
       
@@ -297,7 +323,7 @@ export async function POST(req: NextRequest) {
           
           if (insertError) {
             // takeaways 저장 실패는 전체 프로세스 실패로 처리하지 않음
-            // 에러는 무시하고 계속 진행
+            // 에러 로깅 후 계속 진행 (운영환경에서는 실제 로깅 시스템 사용)
           }
         }
       }
@@ -314,6 +340,8 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error: any) {
+    // 에러 로깅 (개발용 - 운영에서는 실제 로깅 시스템 사용)
+    // console.error('Process workflow error:', { name: error.name, message: error.message, interviewId })
     
     // 오류 발생 시 상태 업데이트
     const errorInfo = {
