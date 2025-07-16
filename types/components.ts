@@ -51,6 +51,7 @@ export interface PersonaCardProps {
   hiddenNeeds: string
   persona_character?: string
   persona_type?: string
+  persona_code?: string
   persona_description?: string
   interview_count?: number
 }

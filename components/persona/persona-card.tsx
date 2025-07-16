@@ -37,6 +37,7 @@ export default function PersonaCard({
   hiddenNeeds,
   persona_character,
   persona_type,
+  persona_code,
   persona_description,
   interview_count = 0,
 }: PersonaCardProps) {
@@ -116,13 +117,22 @@ export default function PersonaCard({
             {/* 페르소나 카드 - 애플 스타일 */}
             <div className="relative p-4 h-full flex flex-col">
               {/* 헤더 영역 - 페르소나 이름 (title) */}
-              <div className="mb-3">
+              <div className="mb-3 flex items-start justify-between">
                 <h3 className={cn(
                   "text-base font-semibold leading-tight",
                   "text-zinc-900"
                 )}>
                   {name}
                 </h3>
+                {/* 페르소나 코드 */}
+                {(persona_code || persona_type) && (
+                  <div className={cn(
+                    "px-2 py-0.5 rounded-md text-xs font-medium",
+                    "bg-zinc-100 text-zinc-600"
+                  )}>
+                    {persona_code || persona_type}
+                  </div>
+                )}
               </div>
               
               {/* 설명 - persona_description */}
