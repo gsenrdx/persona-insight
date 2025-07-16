@@ -96,7 +96,6 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, personaId, conversationId: clientConversationId } = await req.json()
 
-
     if (!personaId) {
       return new Response('페르소나 ID가 필요합니다.', { status: 400 })
     }

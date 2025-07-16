@@ -429,7 +429,6 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
     setEditingCombination(null)
     toast.success('페르소나 정보가 업데이트되었습니다')
   }
-
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* 헤더 */}
@@ -549,6 +548,9 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                             <Input
                               value={classification.name}
                               onChange={(e) => handleUpdateClassification(classification.id, { name: e.target.value })}
+<<<<<<< HEAD
+                              placeholder="분류명을 입력하세요"
+=======
                               placeholder="분류명을 입력하세요"
                               className="h-9 text-sm"
                             />
@@ -558,6 +560,9 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                             <Input
                               value={classification.description}
                               onChange={(e) => handleUpdateClassification(classification.id, { description: e.target.value })}
+<<<<<<< HEAD
+                              placeholder="분류 설명을 입력하세요"
+=======
                               placeholder="분류 설명을 입력하세요"
                               className="h-9 text-sm"
                             />
@@ -600,12 +605,18 @@ export function PersonaDefinitionsContent({ companyId, onClose }: PersonaDefinit
                                   <Input
                                     value={type.name}
                                     onChange={(e) => handleUpdateType(classification.id, type.id, { name: e.target.value })}
+<<<<<<< HEAD
+                                    placeholder="유형 이름을 입력하세요"
+=======
                                     placeholder="유형 이름을 입력하세요"
                                     className="h-8 text-sm"
                                   />
                                   <Textarea
                                     value={type.description}
                                     onChange={(e) => handleUpdateType(classification.id, type.id, { description: e.target.value })}
+<<<<<<< HEAD
+                                    placeholder="유형 설명을 입력하세요"
+=======
                                     placeholder="유형 설명을 입력하세요"
                                     className="min-h-[60px] resize-none text-sm"
                                   />

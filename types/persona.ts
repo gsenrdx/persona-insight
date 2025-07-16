@@ -24,13 +24,27 @@ export interface PersonaData {
   }
   
   // 레거시 호환성 (필요시 제거 가능)
+  persona_type?: string
   persona_title?: string
+  persona_description?: string
   persona_summary?: string
   persona_style?: string
   painpoints?: string
   needs?: string
   insight?: string
   insight_quote?: string
+  project_id?: string | null
+  interview_count?: number
+  types?: Array<{
+    id: string
+    name: string
+    description: string
+    classification_name?: string
+    persona_classifications?: {
+      name: string
+      description: string
+    }
+  }>
 }
 
 // 레거시 호환성을 위한 타입 유지
