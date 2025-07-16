@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 import { FileText, MoreVertical, Clock, Calendar, User, MessageSquare, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getPersonaCombinationDisplayName } from '@/lib/utils/persona-combination'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -208,6 +209,14 @@ export function InterviewList({ interviews, onView, onDelete, loading }: Intervi
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="h-3.5 w-3.5" />
                       <span>노트 {interview.note_count}개</span>
+                    </div>
+                  )}
+                  
+                  {interview.persona_combination && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {getPersonaCombinationDisplayName(interview.persona_combination)}
+                      </span>
                     </div>
                   )}
                 </div>

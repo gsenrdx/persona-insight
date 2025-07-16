@@ -47,14 +47,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 })
     }
 
-    // 기본 쿼리
+    // 기본 쿼리 - 새로운 persona_combination 구조로 업데이트 (타입 정보는 별도 처리)
     let query = supabase
       .from('interviews')
       .select(`
         *,
         created_by_profile:profiles!interviews_created_by_fkey(id, name),
-        ai_persona_definition:persona_definitions!interviews_ai_persona_match_fkey(id, name_ko, name_en, description, tags),
-        confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey(id, name_ko, name_en, description, tags),
+        persona_combination:persona_combinations(
+          id, 
+          persona_code, 
+          type_ids,
+          title,
+          description
+        ),
         interview_notes(id, is_deleted)
       `)
       .eq('company_id', companyId)
@@ -91,12 +96,56 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // 페르소나 조합 타입 정보를 별도로 가져오기
+    let typeDataMap = new Map()
+    
+    if (interviews && interviews.length > 0) {
+      // 모든 type_ids 수집
+      const allTypeIds = [...new Set(
+        interviews
+          .filter(i => i.persona_combination?.type_ids)
+          .flatMap(i => i.persona_combination.type_ids)
+      )]
+      
+      if (allTypeIds.length > 0) {
+        // 타입 정보 조회
+        const { data: types } = await supabase
+          .from('persona_classification_types')
+          .select(`
+            id,
+            name,
+            description,
+            persona_classifications(
+              name,
+              description
+            )
+          `)
+          .in('id', allTypeIds)
+        
+        // ID로 매핑
+        if (types) {
+          types.forEach(type => {
+            typeDataMap.set(type.id, type)
+          })
+        }
+      }
+    }
+
     // 메모 수 계산하여 추가 (삭제되지 않은 메모만 카운트)
-    const interviewsWithNoteCount = interviews?.map(interview => ({
-      ...interview,
-      note_count: interview.interview_notes?.filter(note => !note.is_deleted).length || 0,
-      interview_notes: undefined // 실제 메모 데이터는 제거하고 카운트만 전달
-    })) || []
+    const interviewsWithNoteCount = interviews?.map(interview => {
+      // type_ids에 해당하는 타입 정보 추가
+      if (interview.persona_combination && interview.persona_combination.type_ids) {
+        interview.persona_combination.persona_classification_types = interview.persona_combination.type_ids
+          .map(typeId => typeDataMap.get(typeId))
+          .filter(Boolean)
+      }
+      
+      return {
+        ...interview,
+        note_count: interview.interview_notes?.filter(note => !note.is_deleted).length || 0,
+        interview_notes: undefined // 실제 메모 데이터는 제거하고 카운트만 전달
+      }
+    }) || []
 
     return NextResponse.json({
       data: interviewsWithNoteCount,

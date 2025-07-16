@@ -3,7 +3,7 @@
 import { PersonaTypeInfo } from '@/types/persona'
 
 // 기본 페르소나 타입 맵핑 (하드코딩된 기본값)
-// TODO: 향후 persona-criteria 설정으로부터 동적으로 생성하도록 개선
+// TODO: 향후 페르소나 분류 설정으로부터 동적으로 생성하도록 개선
 const DEFAULT_PERSONA_TYPE_MAP: Record<string, PersonaTypeInfo> = {
   'A': {
     title: 'Type A',

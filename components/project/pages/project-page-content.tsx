@@ -9,7 +9,6 @@ import { ProjectWithMembership } from '@/types'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { AppLayout } from "@/components/layout/app-layout"
-import { PersonaCriteriaModal } from '@/components/modal'
 import { Plus, Sparkles, FolderOpen } from 'lucide-react'
 import { ProjectHeader } from '../sections/project-header'
 import { ProjectGrid } from '../sections/project-grid'
@@ -45,7 +44,6 @@ export function ProjectPageContent() {
   // 상태 관리
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showPersonaCriteriaModal, setShowPersonaCriteriaModal] = useState(false)
   const [showJoinDialog, setShowJoinDialog] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectWithMembership | null>(null)
   
@@ -235,7 +233,6 @@ export function ProjectPageContent() {
         <div className="container mx-auto px-4">
           <ProjectHeader
             projectCount={filteredProjects.length}
-            onShowPersonaCriteria={() => setShowPersonaCriteriaModal(true)}
             onCreateProject={() => setShowCreateForm(true)}
           />
         </div>
@@ -335,10 +332,6 @@ export function ProjectPageContent() {
         />
       )}
 
-      <PersonaCriteriaModal 
-        open={showPersonaCriteriaModal}
-        onOpenChange={setShowPersonaCriteriaModal}
-      />
 
       {/* 프로젝트 참여 다이얼로그 */}
       <JoinProjectDialog

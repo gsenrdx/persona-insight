@@ -29,8 +29,6 @@ export {
   joinProject
 } from './projects'
 
-// Re-export persona-criteria as is (no refactoring needed for now)
-export * from './persona-criteria'
 
 // Type exports (이제 types/api.ts에서 중앙 관리됨)
 export type {

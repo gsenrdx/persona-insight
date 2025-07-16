@@ -17,11 +17,12 @@ export async function GET(request: Request) {
 
     // 실제 인터뷰가 존재하는 연도들을 조회
     let query = supabase
-      .from('interviewees')
-      .select('session_date')
+      .from('interviews')
+      .select('interview_date')
       .eq('company_id', company_id)
-      .not('interview_detail', 'is', null)
-      .not('session_date', 'is', null)
+      .eq('status', 'completed')
+      .is('deleted_at', null)
+      .not('interview_date', 'is', null)
 
     // 프로젝트 필터링 추가
     if (project_id) {
@@ -41,8 +42,8 @@ export async function GET(request: Request) {
     const yearsSet = new Set<string>()
     
     interviews?.forEach(interview => {
-      if (interview.session_date) {
-        const year = new Date(interview.session_date).getFullYear().toString()
+      if (interview.interview_date) {
+        const year = new Date(interview.interview_date).getFullYear().toString()
         yearsSet.add(year)
       }
     })

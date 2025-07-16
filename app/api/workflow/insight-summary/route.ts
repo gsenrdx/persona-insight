@@ -75,7 +75,14 @@ export async function POST(req: NextRequest) {
         key_takeaways,
         primary_pain_points,
         primary_needs,
-        ai_persona_match,
+        persona_combination_id,
+        persona_combination:persona_combinations(
+          id,
+          persona_code,
+          type_ids,
+          title,
+          description
+        ),
         created_at,
         updated_at
       `)
@@ -147,7 +154,7 @@ export async function POST(req: NextRequest) {
   
   <personas>
     ${interviews.map(interview => 
-      interview.ai_persona_match?.name_ko ? `<persona>${interview.ai_persona_match.name_ko}</persona>` : ''
+      interview.persona_combination?.persona_code ? `<persona>${interview.persona_combination.persona_code}</persona>` : ''
     ).join('')}
   </personas>
 </insights_data>

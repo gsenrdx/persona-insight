@@ -33,9 +33,13 @@ export async function GET(
       .select(`
         *,
         created_by_profile:profiles!interviews_created_by_fkey(id, name),
-        persona:personas!interviews_persona_id_fkey(id, persona_type, persona_title),
-        ai_persona_definition:persona_definitions!interviews_ai_persona_match_fkey(id, name_ko, name_en, description, tags),
-        confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey(id, name_ko, name_en, description, tags)
+        persona_combination:persona_combinations(
+          id, 
+          persona_code, 
+          type_ids,
+          title,
+          description
+        )
       `)
       .eq('id', id)
       .eq('company_id', companyId)
@@ -52,6 +56,26 @@ export async function GET(
         { error: '인터뷰를 찾을 수 없습니다', success: false },
         { status: 404 }
       )
+    }
+
+    // 페르소나 조합 타입 정보를 별도로 가져오기
+    if (data.persona_combination && data.persona_combination.type_ids) {
+      const { data: types } = await supabase
+        .from('persona_classification_types')
+        .select(`
+          id,
+          name,
+          description,
+          persona_classifications(
+            name,
+            description
+          )
+        `)
+        .in('id', data.persona_combination.type_ids)
+      
+      if (types) {
+        data.persona_combination.persona_classification_types = types
+      }
     }
 
     return NextResponse.json({ success: true, data })
@@ -168,7 +192,6 @@ export async function DELETE(
         .select()
 
       if (error) {
-        console.error('Soft delete error:', error)
         return NextResponse.json(
           { error: `인터뷰 삭제 중 오류가 발생했습니다: ${error.message}`, success: false },
           { status: 500 }

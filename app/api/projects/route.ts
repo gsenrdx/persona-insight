@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     }
 
     // RPC 함수를 사용하여 프로젝트 목록과 멤버 정보 조회
+    // TODO: personas 테이블이 삭제되어 RPC 함수가 실패하므로 일단 비활성화
+    /*
     const { data: rpcData, error: rpcError } = await supabaseAdmin
       .rpc('get_projects_with_members', {
         p_company_id: company_id,
@@ -49,6 +51,7 @@ export async function GET(request: Request) {
         success: true
       })
     }
+    */
 
     // RPC 함수 실패 시 기존 방식으로 fallback
     // RPC 함수 오류
@@ -61,13 +64,11 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members(id, role, joined_at, user_id),
-          interviews(count),
-          personas!left(count)
+          interviews(count)
         `)
         .eq('company_id', company_id)
         .eq('is_active', true)
-        .eq('visibility', 'public')
-        .eq('personas.active', true),
+        .eq('visibility', 'public'),
       
       // 사용자가 멤버인 비공개 프로젝트
       supabaseAdmin
@@ -75,14 +76,12 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members!inner(id, role, joined_at, user_id),
-          interviews(count),
-          personas!left(count)
+          interviews(count)
         `)
         .eq('company_id', company_id)
         .eq('is_active', true)
         .eq('visibility', 'private')
         .eq('project_members.user_id', user_id)
-        .eq('personas.active', true)
     ])
 
     const combinedData = [
@@ -103,8 +102,7 @@ export async function GET(request: Request) {
         .select(`
           *,
           project_members(count),
-          interviews(count),
-          personas(count)
+          interviews(count)
         `)
         .eq('company_id', company_id)
         .eq('is_active', true)
@@ -122,11 +120,10 @@ export async function GET(request: Request) {
       const transformedFallbackData = (fallbackData || []).map((project) => ({
         ...project,
         member_count: project.project_members?.[0]?.count || 0,
-        interview_count: project.interviewees?.[0]?.count || 0,
-        persona_count: project.personas?.[0]?.count || 0,
+        interview_count: project.interviews?.[0]?.count || 0,
+        persona_count: 0, // TODO: 새로운 구조에서는 인터뷰를 통해 간접적으로 계산
         project_members: undefined,
-        interviewees: undefined,
-        personas: undefined
+        interviews: undefined
       }))
 
       return NextResponse.json({
@@ -142,9 +139,10 @@ export async function GET(request: Request) {
       // 프로젝트 멤버 수 계산
       const memberCount = project.project_members?.length || 0
       
-      // 인터뷰 및 페르소나 수 계산
+      // 인터뷰 수 계산
       const interviewCount = project.interviews?.[0]?.count || 0
-      const personaCount = project.personas?.[0]?.count || 0
+      // 페르소나 수는 인터뷰에 할당된 고유 페르소나 조합 수로 계산 (나중에 별도 쿼리로 처리)
+      const personaCount = 0 // TODO: 새로운 구조에서는 인터뷰를 통해 간접적으로 계산
       
       return {
         ...project,
@@ -154,8 +152,7 @@ export async function GET(request: Request) {
         interview_count: interviewCount,
         persona_count: personaCount,
         project_members: undefined, // 중복 데이터 제거
-        interviews: undefined, // 중복 데이터 제거
-        personas: undefined // 중복 데이터 제거
+        interviews: undefined // 중복 데이터 제거
       }
     })
 

@@ -93,9 +93,6 @@ export interface AddInterviewModalProps extends BaseModalProps {
 }
 
 
-export interface PersonaCriteriaModalProps extends BaseModalProps {
-  projectId?: string
-}
 
 // === Chat 컴포넌트 Props ===
 export interface ChatInterfaceProps {

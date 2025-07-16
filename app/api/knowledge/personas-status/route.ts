@@ -14,7 +14,7 @@ interface PersonaKnowledgeStatus {
 
 export async function POST(req: NextRequest) {
   try {
-    const { company_id, project_id, criteria_configuration_id } = await req.json()
+    const { company_id, project_id } = await req.json()
 
     if (!company_id) {
       return NextResponse.json({
@@ -33,10 +33,6 @@ export async function POST(req: NextRequest) {
 
     if (project_id) {
       query = query.eq('project_id', project_id)
-    }
-
-    if (criteria_configuration_id) {
-      query = query.eq('criteria_configuration_id', criteria_configuration_id)
     }
 
     const { data: personas, error: personasError } = await query

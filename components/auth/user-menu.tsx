@@ -10,15 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, HelpCircle, Database, ChevronDown } from 'lucide-react'
-import ProfileModal from './profile-modal'
-import { MisoKnowledgeStatusModal } from '@/components/modal/miso-knowledge-status-modal'
+import { LogOut, Settings, HelpCircle, ChevronDown } from 'lucide-react'
+import SettingsModal from './settings-modal'
 
 export default function UserMenu() {
   const { user, profile, signOut } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [profileModalOpen, setProfileModalOpen] = useState(false)
-  const [knowledgeStatusOpen, setKnowledgeStatusOpen] = useState(false)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
 
   const handleSignOut = async () => {
     setLoading(true)
@@ -55,14 +53,9 @@ export default function UserMenu() {
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
-            <User className="mr-2 h-4 w-4" />
-            <span>프로필 설정</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => setKnowledgeStatusOpen(true)}>
-            <Database className="mr-2 h-4 w-4" />
-            <span>MISO Knowledge 상태</span>
+          <DropdownMenuItem onClick={() => setSettingsModalOpen(true)}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>설정</span>
           </DropdownMenuItem>
           
           <DropdownMenuItem onClick={() => window.open(guideLink, '_blank')}>
@@ -83,17 +76,10 @@ export default function UserMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 프로필 모달 */}
-      <ProfileModal
-        open={profileModalOpen}
-        onOpenChange={setProfileModalOpen}
-      />
-      
-      {/* MISO Knowledge 연동 상태 모달 */}
-      <MisoKnowledgeStatusModal
-        open={knowledgeStatusOpen}
-        onOpenChange={setKnowledgeStatusOpen}
-        companyId={profile?.company_id || ''}
+      {/* 설정 모달 */}
+      <SettingsModal
+        open={settingsModalOpen}
+        onOpenChange={setSettingsModalOpen}
       />
     </>
   )

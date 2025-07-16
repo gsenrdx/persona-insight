@@ -30,15 +30,13 @@ interface MisoKnowledgeStatusModalProps {
   onOpenChange: (open: boolean) => void
   companyId: string
   projectId?: string
-  criteriaConfigurationId?: string
 }
 
 export function MisoKnowledgeStatusModal({
   open,
   onOpenChange,
   companyId,
-  projectId,
-  criteriaConfigurationId
+  projectId
 }: MisoKnowledgeStatusModalProps) {
   const { profile } = useAuth()
   const queryClient = useQueryClient()
@@ -47,7 +45,7 @@ export function MisoKnowledgeStatusModal({
   const canEdit = profile?.role !== 'company_user'
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['personas-knowledge-status', companyId, projectId, criteriaConfigurationId],
+    queryKey: ['personas-knowledge-status', companyId, projectId],
     queryFn: async () => {
       const response = await fetch('/api/knowledge/personas-status', {
         method: 'POST',
@@ -56,8 +54,7 @@ export function MisoKnowledgeStatusModal({
         },
         body: JSON.stringify({
           company_id: companyId,
-          project_id: projectId,
-          criteria_configuration_id: criteriaConfigurationId
+          project_id: projectId
         })
       })
 

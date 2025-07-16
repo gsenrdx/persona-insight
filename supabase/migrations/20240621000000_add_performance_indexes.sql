@@ -56,14 +56,18 @@ ON persona_topic_documents(persona_id);
 CREATE INDEX IF NOT EXISTS idx_persona_topic_docs_topic 
 ON persona_topic_documents(topic_id);
 
--- Persona criteria configurations table indexes
-CREATE INDEX IF NOT EXISTS idx_persona_criteria_company_active 
-ON persona_criteria_configurations(company_id, is_active) 
-WHERE is_active = true;
+-- Persona classifications table indexes
+CREATE INDEX IF NOT EXISTS idx_persona_classifications_company 
+ON persona_classifications(company_id);
 
-CREATE INDEX IF NOT EXISTS idx_persona_criteria_project_active 
-ON persona_criteria_configurations(project_id, is_active) 
-WHERE project_id IS NOT NULL AND is_active = true;
+CREATE INDEX IF NOT EXISTS idx_persona_classification_types_classification 
+ON persona_classification_types(classification_id);
+
+CREATE INDEX IF NOT EXISTS idx_persona_combinations_company 
+ON persona_combinations(company_id);
+
+CREATE INDEX IF NOT EXISTS idx_persona_type_mappings_company 
+ON persona_type_mappings(company_id);
 
 -- Companies table index for JOIN operations
 CREATE INDEX IF NOT EXISTS idx_companies_id 
@@ -79,8 +83,6 @@ ON personas(company_id)
 WHERE project_id IS NULL AND active = true;
 
 -- Add GIN index for JSONB columns if needed for performance
-CREATE INDEX IF NOT EXISTS idx_personas_matrix_position 
-ON personas USING gin(matrix_position);
 
 CREATE INDEX IF NOT EXISTS idx_interviewees_interview_detail 
 ON interviewees USING gin(interview_detail) 
@@ -93,5 +95,8 @@ ANALYZE project_members;
 ANALYZE profiles;
 ANALYZE main_topics;
 ANALYZE persona_topic_documents;
-ANALYZE persona_criteria_configurations;
+ANALYZE persona_classifications;
+ANALYZE persona_classification_types;
+ANALYZE persona_combinations;
+ANALYZE persona_type_mappings;
 ANALYZE companies;

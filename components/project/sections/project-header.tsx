@@ -4,13 +4,11 @@ import { Plus, LayoutGrid } from "lucide-react"
 
 interface ProjectHeaderProps {
   projectCount: number
-  onShowPersonaCriteria: () => void
   onCreateProject: () => void
 }
 
 export function ProjectHeader({ 
   projectCount, 
-  onShowPersonaCriteria, 
   onCreateProject 
 }: ProjectHeaderProps) {
   return (

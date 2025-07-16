@@ -35,11 +35,11 @@ export async function POST(
     const userProfile = await getAuthenticatedUserProfile(authHeader, supabaseAdmin)
     const { userId, companyId } = userProfile
     
-    const { personaDefinitionId } = await request.json()
+    const { personaCombinationId } = await request.json()
     
-    if (!personaDefinitionId) {
+    if (!personaCombinationId) {
       return NextResponse.json({
-        error: 'persona_definition_id가 필요합니다',
+        error: 'persona_combination_id가 필요합니다',
         success: false
       }, { status: 400 })
     }
@@ -51,8 +51,7 @@ export async function POST(
         id,
         project_id,
         company_id,
-        persona_id,
-        ai_persona_match
+        persona_combination_id
       `)
       .eq('id', id)
       .single()
@@ -64,25 +63,16 @@ export async function POST(
       }, { status: 404 })
     }
 
-    // 선택한 persona_definition의 id를 confirmed_persona_definition_id에 할당
+    // 선택한 persona_combination의 id를 persona_combination_id에 할당
     const { data: updatedInterview, error: updateError } = await supabaseAdmin
       .from('interviews')
       .update({ 
-        confirmed_persona_definition_id: personaDefinitionId
+        persona_combination_id: personaCombinationId
       })
       .eq('id', id)
       .select(`
         *,
-        ai_persona_definition:persona_definitions!ai_persona_match (
-          id,
-          name_ko,
-          name_en
-        ),
-        confirmed_persona_definition:persona_definitions!interviews_confirmed_persona_definition_id_fkey (
-          id,
-          name_ko,
-          name_en
-        )
+        persona_combination:persona_combinations(id, persona_code, type_ids, title, description)
       `)
       .single()
 
