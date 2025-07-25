@@ -142,6 +142,7 @@ export async function getAuthenticatedUserProfile(
       .select(`
         company_id,
         name,
+        role,
         company:companies(
           id,
           name,
@@ -151,18 +152,23 @@ export async function getAuthenticatedUserProfile(
       .eq('id', userId)
       .single();
 
-    if (profileError || !profile?.company_id || !profile?.company) {
+    if (profileError || !profile) {
       throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+
+    // super_admin의 경우 company 정보가 없어도 허용
+    if (profile.role !== 'super_admin' && (!profile.company_id || !profile.company)) {
+      throw new Error('사용자의 회사 정보를 찾을 수 없습니다.');
     }
 
     const company = Array.isArray(profile.company) ? profile.company[0] : profile.company;
     
     const userProfile: CachedUserProfile = {
       userId,
-      companyId: profile.company_id,
+      companyId: profile.company_id || 'system', // super_admin은 'system'으로 설정
       userName: profile.name || '',
-      companyName: company?.name || '',
-      companyInfo: company?.description || '',
+      companyName: company?.name || 'System Admin',
+      companyInfo: company?.description || 'System Administration',
       cachedAt: Date.now()
     };
     

@@ -15,7 +15,7 @@ function AuthLoadingScreen() {
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { user, loading, error, refreshProfile } = useAuth()
+  const { user, profile, loading, error, refreshProfile } = useAuth()
   const router = useRouter()
 
   // 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
@@ -25,8 +25,28 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [user, loading, router])
 
-  // 로딩 중일 때
-  if (loading) {
+  // 권한별 리다이렉트 처리 - profile이 완전히 로딩된 후에만 실행
+  useEffect(() => {
+    // loading이 끝나고, user와 profile이 모두 있을 때만 실행
+    if (!loading && user && profile) {
+      const currentPath = window.location.pathname
+      
+      if (profile.role === 'super_admin') {
+        // super_admin은 /admin 페이지로
+        if (!currentPath.startsWith('/admin')) {
+          router.replace('/admin')
+        }
+      } else if (profile.role === 'company_admin' || profile.role === 'company_user') {
+        // company_admin, company_user는 /admin 접근 시 홈으로
+        if (currentPath.startsWith('/admin')) {
+          router.replace('/')
+        }
+      }
+    }
+  }, [user, profile, loading, router])
+
+  // 로딩 중이거나 profile이 아직 로딩되지 않은 경우
+  if (loading || (user && !profile)) {
     return <AuthLoadingScreen />
   }
 
