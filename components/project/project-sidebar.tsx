@@ -150,7 +150,7 @@ export function ProjectSidebar({ activeView, onViewChange, className, scriptSect
                 return (
                   <button
                     ref={isActive ? activeButtonRef : null}
-                    key={section.sector_name}
+                    key={`${index}-${section.sector_name}`}
                     onClick={() => {
                       onSectionClick?.(section.sector_name)
                     }}
