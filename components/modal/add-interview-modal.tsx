@@ -46,6 +46,13 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
   const [textTitle, setTextTitle] = useState('');
   const [textDate, setTextDate] = useState<string>(new Date().toISOString().split('T')[0] || '');
   
+  // 전역 STT 옵션 상태
+  const [globalSttOptions, setGlobalSttOptions] = useState({
+    speakerDiarization: true,
+    includeTimestamps: true,
+    interviewFormat: true
+  });
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -57,6 +64,7 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
       formData.append('audio', file);
       const userName = String(user?.user_metadata?.name || user?.email || '익명');
       formData.append('userName', userName);
+      formData.append('sttOptions', JSON.stringify(globalSttOptions));
 
       const response = await fetch('/api/workflow/audio-to-text', {
         method: 'POST',
@@ -384,6 +392,11 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
     setInputType('stt');
     setShowDropdown(false);
     setIsDragging(false);
+    setGlobalSttOptions({
+      speakerDiarization: true,
+      includeTimestamps: true,
+      interviewFormat: true
+    });
     onOpenChange?.(false);
   };
 
@@ -560,6 +573,40 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {/* 음성 파일 업로드 */}
             {inputType === 'audio' && (
               <div className="space-y-4">
+                {/* STT 옵션 */}
+                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-700">변환 설정:</span>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={globalSttOptions.speakerDiarization}
+                        onChange={(e) => setGlobalSttOptions(prev => ({ ...prev, speakerDiarization: e.target.checked }))}
+                        className="w-4 h-4 text-gray-900 bg-gray-100 border-gray-300 rounded focus:ring-gray-500 focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-700">화자구분</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={globalSttOptions.includeTimestamps}
+                        onChange={(e) => setGlobalSttOptions(prev => ({ ...prev, includeTimestamps: e.target.checked }))}
+                        className="w-4 h-4 text-gray-900 bg-gray-100 border-gray-300 rounded focus:ring-gray-500 focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-700">타임스탬프</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={globalSttOptions.interviewFormat}
+                        onChange={(e) => setGlobalSttOptions(prev => ({ ...prev, interviewFormat: e.target.checked }))}
+                        className="w-4 h-4 text-gray-900 bg-gray-100 border-gray-300 rounded focus:ring-gray-500 focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-700">인터뷰형식</span>
+                    </label>
+                  </div>
+                </div>
+
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
                     <span className="text-xs font-bold text-blue-600">2</span>
@@ -679,21 +726,37 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
             {/* 음성 변환 중인 파일 목록 */}
             {audioConversions.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
-                    <span className="text-xs font-bold text-orange-600">⚡</span>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
+                      <span className="text-xs font-bold text-orange-600">⚡</span>
+                    </div>
+                    음성 변환 진행 상황
+                    <span className="text-sm font-normal text-gray-500">({audioConversions.length}개)</span>
+                  </h3>
+                  
+                  {/* 현재 적용된 STT 옵션 표시 */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">적용된 옵션:</span>
+                    {globalSttOptions.speakerDiarization && (
+                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">화자구분</span>
+                    )}
+                    {globalSttOptions.includeTimestamps && (
+                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded">타임스탬프</span>
+                    )}
+                    {globalSttOptions.interviewFormat && (
+                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">인터뷰형식</span>
+                    )}
                   </div>
-                  음성 변환 진행 상황
-                  <span className="text-sm font-normal text-gray-500">({audioConversions.length}개)</span>
-                </h3>
+                </div>
                 
                 <div className="ml-8 space-y-3">
                   {audioConversions.map((item) => (
                     <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3 flex-1">
                           <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center",
+                            "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
                             item.status === 'converting' && "bg-orange-100",
                             item.status === 'completed' && "bg-green-100",
                             item.status === 'failed' && "bg-red-100"
@@ -702,15 +765,15 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                             {item.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
                             {item.status === 'failed' && <AlertTriangle className="w-4 h-4 text-red-600" />}
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <input
                               type="text"
                               value={item.title}
                               onChange={(e) => updateAudioTitle(item.id, e.target.value)}
-                              className="text-sm font-medium bg-transparent border-0 border-b border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:outline-none"
+                              className="text-sm font-medium bg-transparent border-0 border-b border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:outline-none w-full"
                               placeholder="제목 입력"
                             />
-                            <p className="text-xs text-gray-500">{item.file.name}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{item.file.name}</p>
                           </div>
                         </div>
                         
@@ -841,9 +904,9 @@ export default function AddInterviewModal({ open, onOpenChange, onFilesSubmit, p
                   )}
                 </h3>
                 
-                <div className="ml-8 flex flex-wrap gap-3">
+                <div className="ml-8 grid grid-cols-3 gap-3">
                   {interviews.map((item) => (
-                    <div key={item.id} className="group relative inline-flex flex-col p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all">
+                    <div key={item.id} className="group relative flex flex-col p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all">
                       <div className="flex items-start gap-2 mb-2">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",

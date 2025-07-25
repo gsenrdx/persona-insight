@@ -11,6 +11,22 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('audio') as File
     const userName = (formData.get('userName') as string) || '익명'
+    const sttOptionsString = formData.get('sttOptions') as string
+    
+    // STT 옵션 파싱
+    let sttOptions = {
+      speakerDiarization: true,
+      includeTimestamps: true,
+      interviewFormat: true
+    }
+    
+    if (sttOptionsString) {
+      try {
+        sttOptions = { ...sttOptions, ...JSON.parse(sttOptionsString) }
+      } catch (error) {
+        console.log('STT 옵션 파싱 실패, 기본값 사용:', error)
+      }
+    }
 
     // 파일 유효성 검증
     if (!file) {
@@ -62,7 +78,8 @@ export async function POST(req: NextRequest) {
     console.log('Audio file upload info:', {
       originalName: file.name,
       extension: fileExtension,
-      size: file.size
+      size: file.size,
+      sttOptions: sttOptions
     });
 
     // Supabase 클라이언트 초기화
@@ -131,7 +148,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const prompt = "Generate a transcript of the speech. Please provide only the transcribed text without any additional formatting or explanations."
+    // STT 옵션에 따른 프롬프트 생성
+    let prompt = "Generate a transcript of the speech."
+    
+    if (sttOptions.speakerDiarization) {
+      prompt += " Identify and label different speakers as 'Interviewer:' and 'Interviewee:' for each dialogue."
+    }
+    
+    if (sttOptions.includeTimestamps) {
+      prompt += " Include timestamps in MM:SS format for each speaker turn."
+    }
+    
+    if (sttOptions.interviewFormat) {
+      prompt += " Format the output as a structured interview with clear speaker labels and natural dialogue flow."
+    } else {
+      prompt += " Provide a clean transcript without additional formatting."
+    }
+    
+    prompt += " Please provide only the transcribed content as requested."
+    
+    console.log('Generated prompt for STT:', prompt)
 
     const result = await model.generateContent([prompt, audioFile])
     const transcribedText = result.response.text()
@@ -166,7 +202,8 @@ export async function POST(req: NextRequest) {
         fileName: file.name,
         fileSize: file.size,
         fileUrl: publicUrl, // URL 반환 (디버깅용)
-        provider: 'gemini'
+        provider: 'gemini',
+        sttOptions: sttOptions // 사용된 STT 옵션 정보
       }
     }), {
       status: 200,
