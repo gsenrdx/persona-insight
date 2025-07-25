@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
         .from('persona_combinations')
         .select('id')
         .eq('persona_code', outputs.ai_persona_match)
-        .eq('company_id', company?.id)
+        .eq('company_id', company?.id || '')
         .single()
       
       if (personaCombination) {

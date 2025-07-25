@@ -18,6 +18,8 @@ declare namespace NodeJS {
     SUPABASE_SERVICE_ROLE_KEY: string
     MISO_API_KEY: string
     MISO_API_URL?: string
+    GEMINI_API_KEY?: string
+    OPENAI_API_KEY?: string
   }
 }
 
